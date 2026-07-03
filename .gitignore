@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.production.local
+
+# Build output
+client/dist/
+dist/
+
+# Local database
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Uploaded clinic files
+uploads/
+
+# Generated exports and backups
+exports/
+backups/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
