@@ -1,22 +1,75 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import { emptyPatient, medicalConditionFields, patientFieldGroups } from "../lib/forms";
 import { createPatient, getNextPatientId, getPatient, updatePatient } from "../lib/api";
 import { calculateAgeFromBirthday, validatePatientForm } from "../lib/validation";
 
+const allergySummaryFields = [
+  ["allergy_local_anesthetic", "Local Anesthetic", "local_anesthetic_details"],
+  ["allergy_penicillin", "Penicillin / Antibiotics"],
+  ["allergy_sulfa", "Sulfa Drugs"],
+  ["allergy_aspirin", "Aspirin"],
+  ["allergy_latex", "Latex"],
+  ["allergy_others", "Other Allergies", "allergy_others_details"]
+];
+
+function isChecked(value) {
+  return value === "Yes" || value === 1 || value === true || value === "1";
+}
+
 function generateMedicalAlertSummary(form) {
-  const alerts = [];
-  if (form.allergy_local_anesthetic === "Yes") alerts.push("Local anesthetic allergy");
-  if (form.allergy_penicillin === "Yes") alerts.push("Penicillin or antibiotics allergy");
-  if (form.allergy_latex === "Yes") alerts.push("Latex allergy");
-  if (form.condition_diabetes) alerts.push("Diabetes");
-  if (form.condition_high_blood_pressure) alerts.push("High blood pressure");
-  if (form.condition_heart_disease) alerts.push("Heart disease");
-  if (form.condition_bleeding_problems) alerts.push("Bleeding problems");
-  if (form.pregnant === "Yes") alerts.push("Pregnant");
-  if (form.other_medical_condition === "Yes" && form.other_medical_condition_details) alerts.push(form.other_medical_condition_details);
-  return alerts.join(", ");
+  const sections = [];
+
+  const selectedConditions = medicalConditionFields
+    .filter(([field]) => isChecked(form[field]))
+    .map(([, label]) => label);
+
+  if (selectedConditions.length) {
+    sections.push(`Medical conditions: ${selectedConditions.join(", ")}`);
+  }
+
+  const allergyAlerts = allergySummaryFields
+    .filter(([field]) => form[field] === "Yes")
+    .map(([, label, detailField]) => {
+      const details = detailField ? String(form[detailField] || "").trim() : "";
+      return details ? `${label} (${details})` : label;
+    });
+
+  if (allergyAlerts.length) {
+    sections.push(`Allergies: ${allergyAlerts.join(", ")}`);
+  }
+
+  if (form.blood_type) {
+    sections.push(`Blood Type: ${form.blood_type}`);
+  }
+
+  if (form.pregnant === "Yes") {
+    sections.push("Pregnancy: Pregnant");
+  }
+
+  if (form.under_medical_treatment === "Yes") {
+    sections.push(`Medical Treatment: ${form.medical_treatment_details || "Under medical treatment"}`);
+  }
+
+  if (form.serious_illness_history === "Yes") {
+    sections.push(`Serious Illness / Operation: ${form.serious_illness_details || "History reported"}`);
+  }
+
+  if (form.hospitalized_history === "Yes") {
+    sections.push(`Hospitalization: ${form.hospitalization_details || "History reported"}`);
+  }
+
+  if (form.taking_medications === "Yes") {
+    sections.push(`Medications: ${form.medication_details || "Medication reported"}`);
+  }
+
+  if (form.other_medical_condition === "Yes" && form.other_medical_condition_details) {
+    sections.push(`Other Medical Condition: ${form.other_medical_condition_details}`);
+  }
+
+  return sections.join(" | ");
 }
 
 function fieldClassName(hasError) {
@@ -173,6 +226,7 @@ export default function PatientFormPage({ mode = "create" }) {
   }
 
   const patientName = [form.last_name, [form.first_name, form.middle_name].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const hasMedicalAlert = Boolean(form.medical_alert_summary);
 
   return (
     <Layout>
@@ -185,6 +239,7 @@ export default function PatientFormPage({ mode = "create" }) {
               <p className="mt-2 text-sm text-slate-600">Capture registration, contact, medical history, allergies, and risk indicators in one clean record.</p>
             </div>
             <div className="no-print flex flex-wrap gap-3">
+              <BackButton fallbackTo={mode === "edit" && patientId ? `/patients/${patientId}` : "/patients"} />
               {mode === "create" && (
                 <button type="button" onClick={resetNewPatient} className="button-secondary">
                   New Patient
@@ -193,15 +248,10 @@ export default function PatientFormPage({ mode = "create" }) {
               <button type="submit" className="button-primary">
                 {mode === "edit" ? "Update Patient" : "Save Patient"}
               </button>
-              {mode === "edit" && (
-                <Link className="button-secondary" to={`/patients/${patientId}`}>
-                  Load Patient
-                </Link>
-              )}
             </div>
           </div>
 
-          <div className="record-grid mt-5">
+          <div className="record-grid mt-5 xl:grid-cols-3">
             <div className="record-tile">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Patient ID</p>
               <p className="mt-2 text-xl font-semibold text-slate-900">{form.patient_id || "-"}</p>
@@ -214,10 +264,18 @@ export default function PatientFormPage({ mode = "create" }) {
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Patient Name</p>
               <p className="mt-2 text-lg font-semibold text-slate-900">{patientName || "-"}</p>
             </div>
-            <div className="status-strip">
-              <p className="text-xs uppercase tracking-[0.2em] text-clinic-700">Medical Alert Summary</p>
-              <p className="mt-2 text-sm font-medium text-clinic-900">{form.medical_alert_summary || "No major medical alerts generated yet."}</p>
-            </div>
+          </div>
+          <div
+            className={`mt-4 rounded-2xl px-4 py-4 ${
+              hasMedicalAlert ? "border border-rose-200 bg-rose-50 text-rose-700" : "border border-slate-200 bg-slate-50 text-slate-600"
+            }`}
+          >
+            <p className={`text-xs uppercase tracking-[0.2em] ${hasMedicalAlert ? "text-rose-700" : "text-slate-500"}`}>
+              Medical Alert Summary
+            </p>
+            <p className="mt-2 whitespace-normal break-words text-sm leading-relaxed">
+              {form.medical_alert_summary || "No major medical alerts generated yet."}
+            </p>
           </div>
 
           {status && <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">{status}</p>}

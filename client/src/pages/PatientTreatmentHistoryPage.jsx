@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import TreatmentHistoryTable from "../components/TreatmentHistoryTable";
 import { getExportUrl, getPatient, getTreatmentsByPatient } from "../lib/api";
@@ -25,6 +26,7 @@ export default function PatientTreatmentHistoryPage() {
             </p>
           </div>
           <div className="no-print flex flex-wrap gap-3">
+            <BackButton fallbackTo={patient ? `/patients/${patient.patient_id}` : "/patients"} />
             <Link className="button-secondary" to={`/print/patients/${patientId}/treatments`}>
               Print Full History
             </Link>

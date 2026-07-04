@@ -1,34 +1,18 @@
-import crypto from "node:crypto";
 import fs from "node:fs";
-import path from "node:path";
 import express from "express";
-import multer from "multer";
-import { fileURLToPath } from "node:url";
-import { createAttachment, getAttachmentsByTreatmentId } from "../services/attachmentService.js";
+import { createAttachment, deleteAttachmentById, getAttachmentById, getAttachmentsByTreatmentId } from "../services/attachmentService.js";
 import { getPatientByPatientId } from "../services/patientService.js";
 import { getTreatmentByTreatmentId } from "../services/treatmentService.js";
-
-const currentDir = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.resolve(currentDir, "../../..");
-const patientUploadDir = path.join(rootDir, "uploads", "patients");
-const treatmentUploadDir = path.join(rootDir, "uploads", "treatments");
-fs.mkdirSync(patientUploadDir, { recursive: true });
-fs.mkdirSync(treatmentUploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination(req, _file, callback) {
-    callback(null, req.body.treatment_id ? treatmentUploadDir : patientUploadDir);
-  },
-  filename(_req, file, callback) {
-    const extension = path.extname(file.originalname);
-    callback(null, `${Date.now()}-${crypto.randomUUID()}${extension}`);
-  }
-});
-
-const upload = multer({ storage });
+import {
+  attachmentUpload,
+  buildAttachmentPath,
+  deleteAttachmentFileIfPresent,
+  normalizeAttachmentType,
+  resolveAttachmentAbsolutePath
+} from "../utils/attachmentUtils.js";
 const router = express.Router();
 
-router.post("/", upload.single("file"), (req, res) => {
+router.post("/", attachmentUpload.single("file"), (req, res) => {
   if (!req.file) {
     res.status(400).json({ message: "File upload is required." });
     return;
@@ -44,14 +28,18 @@ router.post("/", upload.single("file"), (req, res) => {
     return;
   }
 
-  const relativePath = req.body.treatment_id
-    ? `/uploads/treatments/${req.file.filename}`
-    : `/uploads/patients/${req.file.filename}`;
+  const attachmentTypeResult = normalizeAttachmentType(req.body.attachment_type);
+  if (attachmentTypeResult.error) {
+    res.status(400).json({ message: attachmentTypeResult.error });
+    return;
+  }
 
-  createAttachment({
+  const relativePath = buildAttachmentPath(req.file.filename, req.body.treatment_id);
+
+  const attachment = createAttachment({
     patient_id: req.body.patient_id,
     treatment_id: req.body.treatment_id || null,
-    attachment_type: req.body.attachment_type || "other",
+    attachment_type: attachmentTypeResult.value,
     original_filename: req.file.originalname,
     stored_filename: req.file.filename,
     file_path: relativePath,
@@ -60,11 +48,48 @@ router.post("/", upload.single("file"), (req, res) => {
     uploaded_at: new Date().toISOString()
   });
 
-  res.status(201).json({ message: "Attachment uploaded.", file_path: relativePath });
+  res.status(201).json({ message: "Attachment uploaded.", attachment, file_path: relativePath });
 });
 
 router.get("/treatments/:treatmentId", (req, res) => {
   res.json(getAttachmentsByTreatmentId(req.params.treatmentId));
+});
+
+router.get("/:id/download", (req, res) => {
+  const attachment = getAttachmentById(req.params.id);
+  if (!attachment) {
+    res.status(404).json({ message: "Attachment not found." });
+    return;
+  }
+
+  const absolutePath = resolveAttachmentAbsolutePath(attachment.file_path);
+  if (!absolutePath) {
+    res.status(400).json({ message: "Attachment file path is not valid." });
+    return;
+  }
+
+  if (!fs.existsSync(absolutePath)) {
+    res.status(404).json({ message: "Attachment file is missing." });
+    return;
+  }
+
+  res.download(absolutePath, attachment.original_filename);
+});
+
+router.delete("/:id", async (req, res, next) => {
+  const attachment = getAttachmentById(req.params.id);
+  if (!attachment) {
+    res.status(404).json({ message: "Attachment not found." });
+    return;
+  }
+
+  try {
+    await deleteAttachmentFileIfPresent(attachment.file_path);
+    deleteAttachmentById(req.params.id);
+    res.json({ message: "Attachment deleted successfully." });
+  } catch (error) {
+    next(error);
+  }
 });
 
 export default router;

@@ -74,7 +74,7 @@ Frontend URL: `http://localhost:5173`
 - Patient uploads: `uploads/patients/`
 - Treatment uploads: `uploads/treatments/`
 - Excel exports: `exports/`
-- Database backups: `backups/`
+- Full system backups: `backups/`
 
 ## Backup
 
@@ -87,7 +87,17 @@ Use either option:
 Backup Database.bat
 ```
 
-The batch file creates a timestamped backup in `backups/`.
+Each backup creates a timestamped folder in `backups/` and includes:
+
+- `data/dental.db`
+- `data/dental.db-shm` if present
+- `data/dental.db-wal` if present
+- `uploads/patients/`
+- `uploads/treatments/`
+- other upload subfolders under `uploads/`
+- `exports/` if present
+
+Backup is intended to protect both the database and uploaded files. Before any major system update, click `Create Backup` first. For real clinic use, copy the created backup folder to an external drive or cloud storage after backup completes.
 
 ## Database Creation
 
@@ -105,7 +115,7 @@ The SQLite database file is created automatically when the backend starts for th
 - Treatment history filtered by selected patient
 - Expanded print-friendly patient, treatment, and treatment history pages
 - Excel export endpoints
-- Local backup endpoint
+- Local backup endpoint for database and uploaded files
 - Local attachment storage and preview support
 - Basic attachment upload forms on patient and treatment record pages
 - Windows start and backup batch files
@@ -186,9 +196,19 @@ Backup:
 1. From a patient record, click `Export Full Record` or `Export Treatments`.
 2. Confirm the exported files are saved in the local `exports/` folder with timestamped filenames.
 
+### Test backup
+
+1. Open the `Backup` page.
+2. Click `Create Backup`.
+3. Confirm a new folder appears in `backups/`.
+4. Confirm that folder contains `data/` and `uploads/`.
+5. Confirm patient and treatment attachment files are present inside the backup copy.
+
 ## Notes
 
 - The app is localhost-only.
 - SQLite remains a local file at `data/dental.db`.
+- The database contains patient and treatment records.
+- The `uploads/` folder contains patient and treatment images/attachments.
 - Restore is not implemented yet.
 - Authentication is not implemented yet.

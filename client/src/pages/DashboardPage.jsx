@@ -22,7 +22,7 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-clinic-700">Clinic Overview</p>
-              <h1 className="mt-2 text-3xl font-bold text-slate-900">Local records, faster than the old workbook.</h1>
+              <h1 className="mt-2 text-3xl font-bold text-slate-900">A Unified System for Clinical Data and Record Management</h1>
             </div>
             <div className="rounded-2xl bg-clinic-50 px-4 py-3 text-right">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-clinic-700">Records</p>

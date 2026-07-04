@@ -25,12 +25,18 @@ const patientFields = [
 
 function normalizePatient(patient) {
   const next = { ...patient };
-  next.medical_alert_summary = next.medical_alert_summary || buildMedicalAlertSummary(next);
+  next.medical_alert_summary = buildMedicalAlertSummary(next);
   return next;
 }
 
 function decoratePatient(row) {
-  return row ? { ...row, display_name: buildPatientDisplayName(row) } : null;
+  return row
+    ? {
+        ...row,
+        medical_alert_summary: buildMedicalAlertSummary(row),
+        display_name: buildPatientDisplayName(row)
+      }
+    : null;
 }
 
 export function listPatients() {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import AttachmentGallery from "../components/AttachmentGallery";
 import AttachmentUploadForm from "../components/AttachmentUploadForm";
+import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import TreatmentHistoryTable from "../components/TreatmentHistoryTable";
 import {
@@ -24,7 +25,12 @@ export default function PatientDetailPage() {
   }, [patientId]);
 
   function refreshAttachments() {
-    getPatientAttachments(patientId).then(setAttachments).catch(() => setAttachments([]));
+    return getPatientAttachments(patientId)
+      .then(setAttachments)
+      .catch((error) => {
+        setAttachments([]);
+        throw error;
+      });
   }
 
   if (!patient) {
@@ -37,6 +43,8 @@ export default function PatientDetailPage() {
     );
   }
 
+  const hasMedicalAlert = Boolean(patient.medical_alert_summary);
+
   return (
     <Layout>
       <section className="page-card">
@@ -47,14 +55,10 @@ export default function PatientDetailPage() {
             <p className="mt-2 text-sm text-slate-600">
               {patient.patient_id} | Registered {patient.date_registered} | Mobile {patient.mobile_number || "-"}
             </p>
-            {patient.medical_alert_summary && (
-              <p className="mt-3 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                Medical Alert Summary: {patient.medical_alert_summary}
-              </p>
-            )}
           </div>
           <div className="no-print flex flex-wrap gap-3">
-            <Link to={`/patients/${patientId}/edit`} className="button-primary">
+            <BackButton fallbackTo="/patients" />
+            <Link to={`/patients/${patientId}/edit`} className="button-secondary">
               Edit Patient
             </Link>
             <Link to={`/treatments/new?patientId=${patientId}`} className="button-secondary">
@@ -67,6 +71,18 @@ export default function PatientDetailPage() {
               Export Full Record
             </a>
           </div>
+        </div>
+        <div
+          className={`mt-5 rounded-2xl px-4 py-4 ${
+            hasMedicalAlert ? "border border-rose-200 bg-rose-50 text-rose-700" : "border border-slate-200 bg-slate-50 text-slate-600"
+          }`}
+        >
+          <p className={`text-xs uppercase tracking-[0.2em] ${hasMedicalAlert ? "text-rose-700" : "text-slate-500"}`}>
+            Medical Alert Summary
+          </p>
+          <p className="mt-2 whitespace-normal break-words text-sm leading-relaxed">
+            {patient.medical_alert_summary || "No major medical alerts generated yet."}
+          </p>
         </div>
       </section>
 
@@ -86,10 +102,10 @@ export default function PatientDetailPage() {
       </section>
 
       <div className="mt-6">
-        <AttachmentUploadForm patientId={patientId} onUploaded={refreshAttachments} />
+        <AttachmentUploadForm patientId={patientId} onUploaded={refreshAttachments} title="Upload Patient Attachment" />
       </div>
       <div className="mt-6">
-        <AttachmentGallery attachments={attachments} title="Patient Attachments" />
+        <AttachmentGallery attachments={attachments} title="Patient Attachments" onDeleted={refreshAttachments} />
       </div>
     </Layout>
   );

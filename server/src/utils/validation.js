@@ -68,6 +68,14 @@ function calculateAge(birthday) {
   return Math.max(age, 0);
 }
 
+function parseAmount(value) {
+  if (value === undefined || value === null) return { isBlank: true, numberValue: null };
+  if (typeof value === "string" && value.trim() === "") return { isBlank: true, numberValue: null };
+
+  const numberValue = Number(value);
+  return { isBlank: false, numberValue };
+}
+
 export function validatePatientPayload(input) {
   const data = { ...input };
   const errors = [];
@@ -136,8 +144,9 @@ export function validateTreatmentPayload(input) {
   data.dentists = cleanString(data.dentists);
   data.tooth_numbers = cleanString(data.tooth_numbers);
   data.remarks = cleanString(data.remarks);
-  data.amount_charged = Number(data.amount_charged || 0);
-  data.amount_paid = Number(data.amount_paid || 0);
+  const amountCharged = parseAmount(data.amount_charged);
+  const amountPaid = parseAmount(data.amount_paid);
+  const balance = parseAmount(data.balance);
 
   if (!treatmentIdPattern.test(data.treatment_id)) errors.push("Treatment ID format must be T-YYYY-0001.");
   if (!data.patient_id) errors.push("Patient ID is required.");
@@ -147,11 +156,43 @@ export function validateTreatmentPayload(input) {
   if (data.next_appointment && data.treatment_date && data.next_appointment < data.treatment_date) errors.push("Next Appointment cannot be earlier than Treatment Date.");
   if (!data.procedure) errors.push("Procedure is required.");
   if (!data.dentists) errors.push("Dentist/s is required.");
-  if (Number.isNaN(data.amount_charged) || data.amount_charged < 0) errors.push("Amount Charged must be 0 or greater.");
-  if (Number.isNaN(data.amount_paid) || data.amount_paid < 0) errors.push("Amount Paid must be 0 or greater.");
-  if (!Number.isNaN(data.amount_paid) && !Number.isNaN(data.amount_charged) && data.amount_paid > data.amount_charged) errors.push("Amount Paid cannot be greater than Amount Charged.");
+  if (amountCharged.isBlank) {
+    errors.push("Amount Charged is required.");
+  } else if (Number.isNaN(amountCharged.numberValue) || amountCharged.numberValue < 0) {
+    errors.push("Amount Charged must be a valid number that is 0 or greater.");
+  }
+  if (amountPaid.isBlank) {
+    errors.push("Amount Paid is required.");
+  } else if (Number.isNaN(amountPaid.numberValue) || amountPaid.numberValue < 0) {
+    errors.push("Amount Paid must be a valid number that is 0 or greater.");
+  }
+  if (balance.isBlank) {
+    errors.push("Balance is required.");
+  } else if (Number.isNaN(balance.numberValue)) {
+    errors.push("Balance must be a valid number.");
+  }
 
-  data.balance = Number((data.amount_charged - data.amount_paid).toFixed(2));
+  if (
+    !amountCharged.isBlank &&
+    !amountPaid.isBlank &&
+    !Number.isNaN(amountCharged.numberValue) &&
+    !Number.isNaN(amountPaid.numberValue) &&
+    amountCharged.numberValue >= 0 &&
+    amountPaid.numberValue >= 0
+  ) {
+    if (amountPaid.numberValue > amountCharged.numberValue) {
+      errors.push("Amount Paid cannot be greater than Amount Charged.");
+    }
+
+    const computedBalance = Number((amountCharged.numberValue - amountPaid.numberValue).toFixed(2));
+    if (!balance.isBlank && !Number.isNaN(balance.numberValue) && Number(balance.numberValue.toFixed(2)) !== computedBalance) {
+      errors.push("Balance must equal Amount Charged minus Amount Paid.");
+    }
+
+    data.amount_charged = Number(amountCharged.numberValue.toFixed(2));
+    data.amount_paid = Number(amountPaid.numberValue.toFixed(2));
+    data.balance = computedBalance;
+  }
 
   return { errors, data };
 }

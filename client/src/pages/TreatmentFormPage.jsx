@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import AttachmentGallery from "../components/AttachmentGallery";
+import AttachmentUploadForm from "../components/AttachmentUploadForm";
+import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import TreatmentHistoryTable from "../components/TreatmentHistoryTable";
-import { emptyTreatment } from "../lib/forms";
+import { emptyTreatment, suggestedTreatmentProcedures } from "../lib/forms";
 import {
   createTreatment,
   getNextTreatmentId,
   getPatient,
   getTreatment,
+  getTreatmentAttachments,
   getTreatmentsByPatient,
   searchPatients,
   updateTreatment
 } from "../lib/api";
+import { formatPesoAmount } from "../lib/formatters";
 import { validateTreatmentForm } from "../lib/validation";
 
 function inputClass(hasError) {
@@ -38,11 +43,13 @@ export default function TreatmentFormPage({ mode = "create" }) {
   const { treatmentId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const procedureDatalistId = "suggested-treatment-procedures";
   const [patientQuery, setPatientQuery] = useState("");
   const [patientResults, setPatientResults] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [history, setHistory] = useState([]);
-  const [form, setForm] = useState({ ...emptyTreatment, balance: "0.00" });
+  const [attachments, setAttachments] = useState([]);
+  const [form, setForm] = useState({ ...emptyTreatment, balance: "" });
   const [status, setStatus] = useState("");
   const [errors, setErrors] = useState({});
 
@@ -56,12 +63,14 @@ export default function TreatmentFormPage({ mode = "create" }) {
           setSelectedPatient(patient);
         })
         .catch(() => setStatus("Unable to load treatment."));
+      getTreatmentAttachments(treatmentId).then(setAttachments).catch(() => setAttachments([]));
       return;
     }
 
     getNextTreatmentId()
       .then((data) => setForm((current) => ({ ...current, treatment_id: data.treatment_id })))
       .catch(() => setStatus("Unable to generate the next treatment ID."));
+    setAttachments([]);
 
     if (initialPatientId) {
       getPatient(initialPatientId)
@@ -92,14 +101,15 @@ export default function TreatmentFormPage({ mode = "create" }) {
       const next = { ...current, [name]: value };
       const charged = name === "amount_charged" ? value : current.amount_charged;
       const paid = name === "amount_paid" ? value : current.amount_paid;
-      const amountCharged = Number(charged || 0);
-      const amountPaid = Number(paid || 0);
-      next.balance = Number.isNaN(amountCharged - amountPaid) ? "0.00" : (amountCharged - amountPaid).toFixed(2);
+      const amountCharged = charged === "" ? Number.NaN : Number(charged);
+      const amountPaid = paid === "" ? Number.NaN : Number(paid);
+      next.balance = Number.isNaN(amountCharged) || Number.isNaN(amountPaid) ? "" : (amountCharged - amountPaid).toFixed(2);
       return next;
     });
     setErrors((current) => {
       const next = { ...current };
       delete next[name];
+      if (name === "amount_charged" || name === "amount_paid") delete next.balance;
       return next;
     });
     setStatus("");
@@ -135,9 +145,20 @@ export default function TreatmentFormPage({ mode = "create" }) {
 
   async function handleNewTreatment() {
     const data = await getNextTreatmentId();
-    setForm({ ...emptyTreatment, treatment_id: data.treatment_id, patient_id: selectedPatient?.patient_id || "", balance: "0.00" });
+    setForm({ ...emptyTreatment, treatment_id: data.treatment_id, patient_id: selectedPatient?.patient_id || "", balance: "" });
+    setAttachments([]);
     setErrors({});
     setStatus("");
+  }
+
+  function refreshAttachments() {
+    if (!treatmentId) return Promise.resolve();
+    return getTreatmentAttachments(treatmentId)
+      .then(setAttachments)
+      .catch((error) => {
+        setAttachments([]);
+        throw error;
+      });
   }
 
   return (
@@ -151,6 +172,15 @@ export default function TreatmentFormPage({ mode = "create" }) {
               <p className="mt-2 text-sm text-slate-600">Select a patient first, then record the treatment details and financial balance clearly.</p>
             </div>
             <div className="no-print flex flex-wrap gap-3">
+              <BackButton
+                fallbackTo={
+                  mode === "edit" && treatmentId
+                    ? `/treatments/${treatmentId}`
+                    : selectedPatient?.patient_id
+                      ? `/patients/${selectedPatient.patient_id}`
+                      : "/patients"
+                }
+              />
               <button type="button" className="button-secondary" onClick={handleNewTreatment}>
                 New Treatment
               </button>
@@ -180,7 +210,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
             </div>
             <div className="status-strip">
               <p className="text-xs uppercase tracking-[0.2em] text-clinic-700">Current Balance</p>
-              <p className="mt-2 text-xl font-semibold text-clinic-900">{form.balance || "0.00"}</p>
+              <p className="mt-2 text-xl font-semibold text-clinic-900">{formatPesoAmount(form.balance || 0)}</p>
             </div>
           </div>
 
@@ -268,7 +298,23 @@ export default function TreatmentFormPage({ mode = "create" }) {
             </label>
             <label className="field-box">
               <span className="label-text">Procedure *</span>
-              <input className={inputClass(Boolean(errors.procedure))} value={form.procedure || ""} onChange={(event) => handleChange("procedure", event.target.value)} />
+              <div className="datalist-input-wrap">
+                <input
+                  className={`${inputClass(Boolean(errors.procedure))} pr-10`}
+                  list={procedureDatalistId}
+                  value={form.procedure || ""}
+                  onChange={(event) => handleChange("procedure", event.target.value)}
+                  placeholder="Choose or type procedure"
+                />
+                <span className="datalist-input-arrow" aria-hidden="true">
+                  ▾
+                </span>
+              </div>
+              <datalist id={procedureDatalistId}>
+                {suggestedTreatmentProcedures.map((procedure) => (
+                  <option key={procedure} value={procedure} />
+                ))}
+              </datalist>
               {errors.procedure && <p className="error-text">{errors.procedure}</p>}
             </label>
             <label className="field-box">
@@ -277,18 +323,22 @@ export default function TreatmentFormPage({ mode = "create" }) {
               {errors.dentists && <p className="error-text">{errors.dentists}</p>}
             </label>
             <label className="field-box">
-              <span className="label-text">Amount Charged</span>
+              <span className="label-text">Amount Charged *</span>
               <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_charged))} value={form.amount_charged || ""} onChange={(event) => handleChange("amount_charged", event.target.value)} />
+              <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.amount_charged || 0)}</p>
               {errors.amount_charged && <p className="error-text">{errors.amount_charged}</p>}
             </label>
             <label className="field-box">
-              <span className="label-text">Amount Paid</span>
+              <span className="label-text">Amount Paid *</span>
               <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_paid))} value={form.amount_paid || ""} onChange={(event) => handleChange("amount_paid", event.target.value)} />
+              <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.amount_paid || 0)}</p>
               {errors.amount_paid && <p className="error-text">{errors.amount_paid}</p>}
             </label>
             <label className="field-box">
-              <span className="label-text">Balance</span>
-              <input className="text-input" readOnly value={form.balance || "0.00"} />
+              <span className="label-text">Balance *</span>
+              <input className={inputClass(Boolean(errors.balance))} readOnly value={form.balance || ""} />
+              <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.balance || 0)}</p>
+              {errors.balance && <p className="error-text">{errors.balance}</p>}
             </label>
             <label className="field-box md:col-span-2 xl:col-span-3">
               <span className="label-text">Remarks</span>
@@ -299,6 +349,26 @@ export default function TreatmentFormPage({ mode = "create" }) {
 
         <Section title="Treatment History for Selected Patient" description="Only treatments under the selected patient are listed here.">
           <TreatmentHistoryTable treatments={history} />
+        </Section>
+
+        <Section title="Treatment Attachments" description="Upload images and documents linked only to this treatment record.">
+          {mode === "create" ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              Save the treatment first before uploading treatment attachments.
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <AttachmentUploadForm
+                patientId={selectedPatient?.patient_id || form.patient_id}
+                treatmentId={treatmentId}
+                onUploaded={refreshAttachments}
+                title="Upload Treatment Attachment"
+                uploadButtonLabel="Upload Attachment"
+                treatmentOnly
+              />
+              <AttachmentGallery attachments={attachments} title="Treatment Attachments" onDeleted={refreshAttachments} />
+            </div>
+          )}
         </Section>
       </form>
     </Layout>

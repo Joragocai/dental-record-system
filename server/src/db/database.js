@@ -11,7 +11,12 @@ const dbPath = path.join(dataDir, "dental.db");
 fs.mkdirSync(dataDir, { recursive: true });
 
 const db = new DatabaseSync(dbPath);
-db.exec("PRAGMA journal_mode = WAL;");
+
+try {
+  db.exec("PRAGMA journal_mode = WAL;");
+} catch {
+  // Some mounted filesystems reject journal mode changes; keep SQLite usable.
+}
 
 const patientColumns = `
   id INTEGER PRIMARY KEY AUTOINCREMENT,

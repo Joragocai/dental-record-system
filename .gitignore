@@ -36,3 +36,6 @@ Thumbs.db
 # Editor files
 .vscode/
 .idea/
+
+.agents
+.codex

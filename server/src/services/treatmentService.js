@@ -15,16 +15,48 @@ const treatmentFields = [
 ];
 
 export function listTreatments() {
-  return db.prepare("SELECT * FROM treatments ORDER BY treatment_date DESC, treatment_id DESC").all();
+  return db
+    .prepare(
+      `SELECT t.*,
+              (
+                SELECT COUNT(*)
+                FROM attachments a
+                WHERE a.treatment_id = t.treatment_id
+              ) AS attachment_count
+       FROM treatments t
+       ORDER BY t.treatment_date DESC, t.treatment_id DESC`
+    )
+    .all();
 }
 
 export function getTreatmentByTreatmentId(treatmentId) {
-  return db.prepare("SELECT * FROM treatments WHERE treatment_id = ?").get(treatmentId);
+  return db
+    .prepare(
+      `SELECT t.*,
+              (
+                SELECT COUNT(*)
+                FROM attachments a
+                WHERE a.treatment_id = t.treatment_id
+              ) AS attachment_count
+       FROM treatments t
+       WHERE t.treatment_id = ?`
+    )
+    .get(treatmentId);
 }
 
 export function getTreatmentsByPatientId(patientId) {
   return db
-    .prepare("SELECT * FROM treatments WHERE patient_id = ? ORDER BY treatment_date DESC, treatment_id DESC")
+    .prepare(
+      `SELECT t.*,
+              (
+                SELECT COUNT(*)
+                FROM attachments a
+                WHERE a.treatment_id = t.treatment_id
+              ) AS attachment_count
+       FROM treatments t
+       WHERE t.patient_id = ?
+       ORDER BY t.treatment_date DESC, t.treatment_id DESC`
+    )
     .all(patientId);
 }
 

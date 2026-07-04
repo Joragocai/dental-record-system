@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { formatPesoAmount } from "../lib/formatters";
 
 export default function TreatmentHistoryTable({ treatments }) {
   return (
@@ -10,6 +11,10 @@ export default function TreatmentHistoryTable({ treatments }) {
             <th className="px-4 py-3">Procedure</th>
             <th className="px-4 py-3">Dentist/s</th>
             <th className="px-4 py-3">Treatment ID</th>
+            <th className="px-4 py-3">Charged</th>
+            <th className="px-4 py-3">Paid</th>
+            <th className="px-4 py-3">Balance</th>
+            <th className="px-4 py-3">Attachments</th>
             <th className="px-4 py-3">Action</th>
           </tr>
         </thead>
@@ -20,6 +25,18 @@ export default function TreatmentHistoryTable({ treatments }) {
               <td className="px-4 py-3">{treatment.procedure}</td>
               <td className="px-4 py-3">{treatment.dentists}</td>
               <td className="px-4 py-3">{treatment.treatment_id}</td>
+              <td className="px-4 py-3">{formatPesoAmount(treatment.amount_charged)}</td>
+              <td className="px-4 py-3">{formatPesoAmount(treatment.amount_paid)}</td>
+              <td className="px-4 py-3 font-medium text-slate-900">{formatPesoAmount(treatment.balance)}</td>
+              <td className="px-4 py-3">
+                {Number(treatment.attachment_count || 0) > 0 ? (
+                  <Link to={`/treatments/${treatment.treatment_id}`} className="text-clinic-700 underline">
+                    View Attachments ({treatment.attachment_count})
+                  </Link>
+                ) : (
+                  <span className="text-slate-500">No attachments</span>
+                )}
+              </td>
               <td className="px-4 py-3">
                 <Link to={`/treatments/${treatment.treatment_id}`} className="button-secondary">
                   Load Treatment
@@ -29,7 +46,7 @@ export default function TreatmentHistoryTable({ treatments }) {
           ))}
           {!treatments.length && (
             <tr>
-              <td className="px-4 py-4 text-slate-500" colSpan="5">
+              <td className="px-4 py-4 text-slate-500" colSpan="9">
                 No treatment records yet for this patient.
               </td>
             </tr>

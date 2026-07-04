@@ -1,22 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import { medicalConditionFields } from "../lib/forms";
+import { formatAttachmentType } from "../lib/attachments";
 import { getPatient, getPatientAttachments, getUploadUrl } from "../lib/api";
+import { downloadElementAsPdf } from "../lib/pdf";
 
 function PrintField({ label, value }) {
   return (
-    <div className="print-field">
-      <strong>{label}:</strong> {value || "-"}
+    <div className="document-field">
+      <span className="document-field-label">{label}</span>
+      <span className="document-field-value">{value || "-"}</span>
     </div>
   );
 }
 
 function PrintSection({ title, children }) {
   return (
-    <section className="print-section">
-      <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-      <div className="mt-4">{children}</div>
+    <section className="document-section">
+      <h2 className="document-section-title">{title}</h2>
+      <div className="mt-3">{children}</div>
     </section>
   );
 }
@@ -26,16 +30,16 @@ function PrintableAttachments({ attachments }) {
 
   return (
     <PrintSection title="Uploaded Images and Files">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="attachment-sheet-grid">
         {attachments.map((attachment) => (
-          <div key={attachment.id} className="rounded-2xl border border-slate-200 p-3">
+          <div key={attachment.id} className="attachment-sheet-item">
             {attachment.mime_type?.startsWith("image/") ? (
-              <img src={getUploadUrl(attachment.file_path)} alt={attachment.original_filename} className="h-40 w-full rounded-xl object-cover" />
+              <img src={getUploadUrl(attachment.file_path)} alt={attachment.original_filename} className="attachment-sheet-image" />
             ) : (
-              <div className="flex h-40 items-center justify-center rounded-xl bg-slate-100 text-sm text-slate-500">File Preview Not Available</div>
+              <div className="attachment-sheet-placeholder">File Preview Not Available</div>
             )}
-            <p className="mt-2 text-sm font-medium">{attachment.original_filename}</p>
-            <p className="text-xs text-slate-500">{attachment.attachment_type}</p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">{formatAttachmentType(attachment.attachment_type)}</p>
+            <p className="text-xs text-slate-600">{attachment.original_filename}</p>
           </div>
         ))}
       </div>
@@ -47,13 +51,44 @@ export default function PrintPatientPage() {
   const { patientId } = useParams();
   const [patient, setPatient] = useState(null);
   const [attachments, setAttachments] = useState([]);
+  const [status, setStatus] = useState("");
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const printableRef = useRef(null);
 
   useEffect(() => {
     getPatient(patientId).then(setPatient).catch(() => setPatient(null));
     getPatientAttachments(patientId).then(setAttachments).catch(() => setAttachments([]));
   }, [patientId]);
 
+  useEffect(() => {
+    if (!patient) return undefined;
+
+    const previousTitle = document.title;
+    document.title = `patient_${patient.patient_id}_record.pdf`;
+
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [patient]);
+
+  async function handleDownloadPdf() {
+    if (!patient) return;
+
+    setStatus("");
+    setIsDownloadingPdf(true);
+
+    try {
+      await downloadElementAsPdf(printableRef.current, `patient_${patient.patient_id}_record.pdf`);
+    } catch (error) {
+      setStatus(error.message || "Unable to download patient PDF.");
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  }
+
   if (!patient) return <Layout><section className="page-card">Loading...</section></Layout>;
+
+  const hasMedicalAlert = Boolean(patient.medical_alert_summary);
 
   return (
     <Layout>
@@ -61,21 +96,46 @@ export default function PrintPatientPage() {
         <section className="page-card">
           <div className="mb-6 flex items-center justify-between no-print">
             <h1 className="text-2xl font-bold text-slate-900">Patient Record Printout</h1>
-            <button className="button-primary" onClick={() => window.print()}>
-              Print
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <BackButton fallbackTo={`/patients/${patientId}`} />
+              <button className="button-primary" onClick={() => window.print()}>
+                Print
+              </button>
+              <button className="button-secondary" onClick={handleDownloadPdf} disabled={isDownloadingPdf}>
+                {isDownloadingPdf ? "Preparing PDF..." : "Download PDF"}
+              </button>
+            </div>
           </div>
-          <header className="rounded-2xl border border-slate-300 p-5">
-            <h1 className="text-3xl font-bold">Patient Record</h1>
-            <p className="mt-2 text-lg font-medium">{patient.display_name}</p>
-            <p className="mt-1 text-sm">{patient.patient_id} | Date Registered {patient.date_registered}</p>
-            <p className="mt-3 rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-              Medical Alert Summary: {patient.medical_alert_summary || "No major medical alerts recorded."}
-            </p>
+          {status && (
+            <div className="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 no-print">
+              {status}
+            </div>
+          )}
+          <div ref={printableRef} className="document-sheet">
+          <header className="document-header">
+            <p className="document-kicker">Electronic Dental Record System</p>
+            <div className="document-header-row">
+              <div>
+                <h1 className="document-title">Patient Record</h1>
+                <p className="document-name">{patient.display_name}</p>
+              </div>
+              <div className="document-meta">
+                <span>Patient ID: {patient.patient_id}</span>
+                <span>Date Registered: {patient.date_registered}</span>
+                <span>Mobile Number: {patient.mobile_number || "-"}</span>
+              </div>
+            </div>
+            <div
+              className={`document-alert ${
+                hasMedicalAlert ? "document-alert-danger" : "document-alert-neutral"
+              }`}
+            >
+              <strong>Medical Alert Summary:</strong> <span>{patient.medical_alert_summary || "No major medical alerts generated yet."}</span>
+            </div>
           </header>
 
           <PrintSection title="Basic Information">
-            <div className="print-field-grid">
+            <div className="document-grid document-grid-3">
               <PrintField label="Patient ID" value={patient.patient_id} />
               <PrintField label="Date Registered" value={patient.date_registered} />
               <PrintField label="Last Name" value={patient.last_name} />
@@ -107,7 +167,7 @@ export default function PrintPatientPage() {
           </PrintSection>
 
           <PrintSection title="Medical History">
-            <div className="print-field-grid">
+            <div className="document-grid document-grid-3">
               <PrintField label="Are you in good health?" value={patient.good_health} />
               <PrintField label="Under medical treatment now?" value={patient.under_medical_treatment} />
               <PrintField label="Medical Treatment Details" value={patient.medical_treatment_details} />
@@ -130,7 +190,7 @@ export default function PrintPatientPage() {
           </PrintSection>
 
           <PrintSection title="Allergies and Medical Risk">
-            <div className="print-field-grid">
+            <div className="document-grid document-grid-3">
               <PrintField label="Allergic to any listed items?" value={patient.allergic_to_items} />
               <PrintField label="Blood Type" value={patient.blood_type} />
               <PrintField label="Blood Pressure" value={patient.blood_pressure} />
@@ -148,17 +208,18 @@ export default function PrintPatientPage() {
           </PrintSection>
 
           <PrintSection title="Medical Condition Checklist">
-            <div className="print-checklist">
+            <div className="document-checklist">
               {medicalConditionFields.map(([fieldName, label]) => (
-                <div key={fieldName} className="print-check-item">
-                  <strong>{patient[fieldName] ? "[X]" : "[ ]"}</strong> {label}
+                <div key={fieldName} className="document-check-item">
+                  <strong>{patient[fieldName] ? "[X]" : "[ ]"}</strong>
+                  <span>{label}</span>
                 </div>
               ))}
             </div>
           </PrintSection>
+          <PrintableAttachments attachments={attachments} />
+          </div>
         </section>
-
-        <PrintableAttachments attachments={attachments} />
       </div>
     </Layout>
   );

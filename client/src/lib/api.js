@@ -83,6 +83,20 @@ export async function uploadAttachment(formData) {
   return data;
 }
 
+export async function uploadTreatmentAttachment(treatmentId, formData) {
+  const { data } = await api.post(`/treatments/${treatmentId}/attachments`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
+  });
+  return data;
+}
+
+export async function deleteAttachment(attachmentId) {
+  const { data } = await api.delete(`/attachments/${attachmentId}`);
+  return data;
+}
+
 export async function createBackup() {
   const { data } = await api.post("/backup");
   return data;
@@ -94,6 +108,10 @@ export function getExportUrl(path) {
 
 export function getUploadUrl(filePath) {
   return `http://127.0.0.1:3002${filePath}`;
+}
+
+export function getAttachmentDownloadUrl(attachmentId) {
+  return `http://127.0.0.1:3002/api/attachments/${attachmentId}/download`;
 }
 
 export default api;

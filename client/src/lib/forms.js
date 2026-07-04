@@ -223,3 +223,24 @@ export const emptyTreatment = {
   balance: "",
   remarks: ""
 };
+
+export const suggestedTreatmentProcedures = [
+  "Oral Prophylaxis / Cleaning",
+  "Tooth Extraction",
+  "Dental Restoration / Pasta",
+  "Tooth Filling",
+  "Root Canal Treatment",
+  "Denture Adjustment",
+  "Denture Installation",
+  "Crown Installation",
+  "Bridge Installation",
+  "Teeth Whitening",
+  "Fluoride Treatment",
+  "Dental Consultation",
+  "Orthodontic Adjustment",
+  "Braces Installation",
+  "X-ray",
+  "Surgery",
+  "Follow-up Checkup",
+  "Emergency Treatment"
+];

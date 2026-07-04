@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import AttachmentGallery from "../components/AttachmentGallery";
 import AttachmentUploadForm from "../components/AttachmentUploadForm";
+import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import { getExportUrl, getPatient, getTreatment, getTreatmentAttachments } from "../lib/api";
+import { formatPesoAmount } from "../lib/formatters";
 
 export default function TreatmentDetailPage() {
   const { treatmentId } = useParams();
@@ -23,7 +25,12 @@ export default function TreatmentDetailPage() {
   }, [treatmentId]);
 
   function refreshAttachments() {
-    getTreatmentAttachments(treatmentId).then(setAttachments).catch(() => setAttachments([]));
+    return getTreatmentAttachments(treatmentId)
+      .then(setAttachments)
+      .catch((error) => {
+        setAttachments([]);
+        throw error;
+      });
   }
 
   if (!treatment) {
@@ -48,11 +55,12 @@ export default function TreatmentDetailPage() {
             </p>
           </div>
           <div className="no-print flex flex-wrap gap-3">
-            <Link to={`/treatments/${treatmentId}/edit`} className="button-primary">
+            <BackButton fallbackTo={patient ? `/patients/${patient.patient_id}` : "/patients"} />
+            <Link to={`/treatments/${treatmentId}/edit`} className="button-secondary">
               Edit Treatment
             </Link>
             <Link to={`/print/treatments/${treatmentId}`} className="button-secondary">
-              Print Treatment
+              Print Treatment Record
             </Link>
             {patient && (
               <a className="button-secondary" href={getExportUrl(`/api/export/patients/${patient.patient_id}/treatments`)}>
@@ -79,15 +87,15 @@ export default function TreatmentDetailPage() {
           </div>
           <div>
             <p className="text-sm text-slate-500">Amount Charged</p>
-            <p className="font-semibold text-slate-900">{treatment.amount_charged}</p>
+            <p className="font-semibold text-slate-900">{formatPesoAmount(treatment.amount_charged)}</p>
           </div>
           <div>
             <p className="text-sm text-slate-500">Amount Paid</p>
-            <p className="font-semibold text-slate-900">{treatment.amount_paid}</p>
+            <p className="font-semibold text-slate-900">{formatPesoAmount(treatment.amount_paid)}</p>
           </div>
           <div>
             <p className="text-sm text-slate-500">Balance</p>
-            <p className="font-semibold text-slate-900">{treatment.balance}</p>
+            <p className="font-semibold text-slate-900">{formatPesoAmount(treatment.balance)}</p>
           </div>
         </div>
         <div className="mt-4">
@@ -97,10 +105,17 @@ export default function TreatmentDetailPage() {
       </section>
 
       <div className="mt-6">
-        <AttachmentUploadForm patientId={treatment.patient_id} treatmentId={treatmentId} onUploaded={refreshAttachments} />
+        <AttachmentUploadForm
+          patientId={treatment.patient_id}
+          treatmentId={treatmentId}
+          onUploaded={refreshAttachments}
+          title="Upload Treatment Attachment"
+          uploadButtonLabel="Upload Attachment"
+          treatmentOnly
+        />
       </div>
       <div className="mt-6">
-        <AttachmentGallery attachments={attachments} title="Treatment Attachments" />
+        <AttachmentGallery attachments={attachments} title="Treatment Attachments" onDeleted={refreshAttachments} />
       </div>
     </Layout>
   );

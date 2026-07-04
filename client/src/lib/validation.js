@@ -27,6 +27,14 @@ function trimValue(value) {
   return typeof value === "string" ? value.trim() : value;
 }
 
+function parseAmount(value) {
+  if (value === undefined || value === null) return { isBlank: true, numberValue: null };
+  if (typeof value === "string" && value.trim() === "") return { isBlank: true, numberValue: null };
+
+  const numberValue = Number(value);
+  return { isBlank: false, numberValue };
+}
+
 export function validatePatientForm(form) {
   const errors = {};
   const normalized = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, trimValue(value)]));
@@ -60,8 +68,9 @@ export function validatePatientForm(form) {
 export function validateTreatmentForm(form, selectedPatient) {
   const errors = {};
   const normalized = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, trimValue(value)]));
-  normalized.amount_charged = normalized.amount_charged === "" ? 0 : Number(normalized.amount_charged);
-  normalized.amount_paid = normalized.amount_paid === "" ? 0 : Number(normalized.amount_paid);
+  const amountCharged = parseAmount(normalized.amount_charged);
+  const amountPaid = parseAmount(normalized.amount_paid);
+  const balance = parseAmount(normalized.balance);
 
   if (!selectedPatient?.patient_id) errors.patient_id = "Select a patient first.";
   if (!/^T-\d{4}-\d{4}$/.test(normalized.treatment_id || "")) errors.treatment_id = "Treatment ID format must be T-YYYY-0001.";
@@ -71,11 +80,38 @@ export function validateTreatmentForm(form, selectedPatient) {
   if (normalized.next_appointment && normalized.treatment_date && normalized.next_appointment < normalized.treatment_date) errors.next_appointment = "Next Appointment cannot be earlier than Treatment Date.";
   if (!normalized.procedure) errors.procedure = "Procedure is required.";
   if (!normalized.dentists) errors.dentists = "Dentist/s is required.";
-  if (Number.isNaN(normalized.amount_charged) || normalized.amount_charged < 0) errors.amount_charged = "Amount Charged must be 0 or greater.";
-  if (Number.isNaN(normalized.amount_paid) || normalized.amount_paid < 0) errors.amount_paid = "Amount Paid must be 0 or greater.";
-  if (!errors.amount_charged && !errors.amount_paid && normalized.amount_paid > normalized.amount_charged) errors.amount_paid = "Amount Paid cannot be greater than Amount Charged.";
+  if (amountCharged.isBlank) {
+    errors.amount_charged = "Amount Charged is required.";
+  } else if (Number.isNaN(amountCharged.numberValue) || amountCharged.numberValue < 0) {
+    errors.amount_charged = "Amount Charged must be a valid number that is 0 or greater.";
+  }
+  if (amountPaid.isBlank) {
+    errors.amount_paid = "Amount Paid is required.";
+  } else if (Number.isNaN(amountPaid.numberValue) || amountPaid.numberValue < 0) {
+    errors.amount_paid = "Amount Paid must be a valid number that is 0 or greater.";
+  }
+  if (balance.isBlank) {
+    errors.balance = "Balance is required.";
+  } else if (Number.isNaN(balance.numberValue)) {
+    errors.balance = "Balance must be a valid number.";
+  }
 
-  normalized.balance = (normalized.amount_charged - normalized.amount_paid).toFixed(2);
+  if (!errors.amount_charged && !errors.amount_paid && amountPaid.numberValue > amountCharged.numberValue) {
+    errors.amount_paid = "Amount Paid cannot be greater than Amount Charged.";
+  }
+
+  if (!errors.amount_charged && !errors.amount_paid) {
+    normalized.amount_charged = Number(amountCharged.numberValue.toFixed(2));
+    normalized.amount_paid = Number(amountPaid.numberValue.toFixed(2));
+    normalized.balance = Number((normalized.amount_charged - normalized.amount_paid).toFixed(2));
+
+    if (!errors.balance && Number(normalized.balance.toFixed(2)) !== Number(balance.numberValue.toFixed(2))) {
+      errors.balance = "Balance must equal Amount Charged minus Amount Paid.";
+    }
+  } else {
+    normalized.amount_charged = normalized.amount_charged;
+    normalized.amount_paid = normalized.amount_paid;
+  }
 
   return { errors, normalized, isValid: Object.keys(errors).length === 0 };
 }
