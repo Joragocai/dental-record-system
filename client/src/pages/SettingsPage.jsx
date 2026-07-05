@@ -35,7 +35,7 @@ export default function SettingsPage() {
           </div>
         {status && (
           <p
-            className={`mt-5 rounded-xl px-4 py-3 text-sm ${
+            className={`feedback-message mt-5 rounded-xl px-4 py-3 text-sm ${
               statusTone === "success"
                 ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
                 : "bg-rose-50 text-rose-700 ring-1 ring-rose-200"

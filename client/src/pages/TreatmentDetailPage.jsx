@@ -37,7 +37,7 @@ export default function TreatmentDetailPage() {
     return (
       <Layout>
         <section className="page-card">
-          <p className="text-sm text-slate-500">Loading treatment record...</p>
+          <p className="ui-loading text-sm text-slate-500">Loading treatment record...</p>
         </section>
       </Layout>
     );

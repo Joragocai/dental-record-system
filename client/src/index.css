@@ -2,6 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --ui-duration-fast: 160ms;
+  --ui-duration-standard: 220ms;
+  --ui-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes ui-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ui-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ui-soft-pulse {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
 body {
   @apply bg-slate-100 text-slate-900;
 }
@@ -11,6 +62,11 @@ body {
 }
 
 .page-card {
+  animation: ui-fade-up var(--ui-duration-standard) var(--ui-ease-standard);
+  transition:
+    box-shadow var(--ui-duration-standard) var(--ui-ease-standard),
+    border-color var(--ui-duration-standard) var(--ui-ease-standard),
+    transform var(--ui-duration-standard) var(--ui-ease-standard);
   @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm;
 }
 
@@ -33,29 +89,83 @@ body {
 }
 
 .button-primary {
-  @apply rounded-xl bg-clinic-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-clinic-900;
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-ease-standard),
+    box-shadow var(--ui-duration-fast) var(--ui-ease-standard),
+    transform var(--ui-duration-fast) var(--ui-ease-standard);
+  @apply rounded-xl bg-clinic-700 px-4 py-2 text-sm font-semibold text-white;
 }
 
 .button-secondary {
-  @apply rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50;
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-ease-standard),
+    border-color var(--ui-duration-fast) var(--ui-ease-standard),
+    box-shadow var(--ui-duration-fast) var(--ui-ease-standard),
+    transform var(--ui-duration-fast) var(--ui-ease-standard);
+  @apply rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700;
 }
 
 .button-danger {
-  @apply rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700;
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-ease-standard),
+    box-shadow var(--ui-duration-fast) var(--ui-ease-standard),
+    transform var(--ui-duration-fast) var(--ui-ease-standard);
+  @apply rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white;
 }
 
 .button-danger-outline {
-  @apply rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60;
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-ease-standard),
+    border-color var(--ui-duration-fast) var(--ui-ease-standard),
+    box-shadow var(--ui-duration-fast) var(--ui-ease-standard),
+    transform var(--ui-duration-fast) var(--ui-ease-standard);
+  @apply rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .button-download {
-  @apply inline-flex items-center rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100;
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-ease-standard),
+    border-color var(--ui-duration-fast) var(--ui-ease-standard),
+    box-shadow var(--ui-duration-fast) var(--ui-ease-standard),
+    transform var(--ui-duration-fast) var(--ui-ease-standard);
+  @apply inline-flex items-center rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800;
+}
+
+.button-primary:hover,
+.button-secondary:hover,
+.button-danger:hover,
+.button-danger-outline:hover,
+.button-download:hover {
+  transform: translateY(-1px);
+}
+
+.button-primary:active,
+.button-secondary:active,
+.button-danger:active,
+.button-danger-outline:active,
+.button-download:active {
+  transform: translateY(0);
+}
+
+.button-primary:focus-visible,
+.button-secondary:focus-visible,
+.button-danger:focus-visible,
+.button-danger-outline:focus-visible,
+.button-download:focus-visible,
+.file-picker-button:focus-visible,
+.attachment-preview-close:focus-visible {
+  outline: 2px solid rgb(148 163 184 / 0.9);
+  outline-offset: 2px;
 }
 .section-title {
   @apply text-lg font-semibold text-slate-900;
 }
 
 .form-section {
+  animation: ui-fade-up var(--ui-duration-standard) var(--ui-ease-standard);
+  transition:
+    box-shadow var(--ui-duration-standard) var(--ui-ease-standard),
+    border-color var(--ui-duration-standard) var(--ui-ease-standard);
   @apply overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm;
 }
 
@@ -76,10 +186,12 @@ body {
 }
 
 .error-text {
+  animation: ui-fade-in var(--ui-duration-fast) var(--ui-ease-standard);
   @apply mt-1 text-xs font-medium text-rose-600;
 }
 
 .status-strip {
+  animation: ui-fade-up var(--ui-duration-standard) var(--ui-ease-standard);
   @apply rounded-2xl border border-clinic-100 bg-clinic-50 p-4;
 }
 
@@ -88,6 +200,11 @@ body {
 }
 
 .record-tile {
+  animation: ui-fade-up var(--ui-duration-standard) var(--ui-ease-standard);
+  transition:
+    box-shadow var(--ui-duration-standard) var(--ui-ease-standard),
+    border-color var(--ui-duration-standard) var(--ui-ease-standard),
+    transform var(--ui-duration-standard) var(--ui-ease-standard);
   @apply rounded-2xl border border-slate-200 bg-slate-50 p-4;
 }
 
@@ -100,11 +217,19 @@ body {
 }
 
 .file-picker-wrap {
+  transition:
+    border-color var(--ui-duration-fast) var(--ui-ease-standard),
+    box-shadow var(--ui-duration-fast) var(--ui-ease-standard),
+    background-color var(--ui-duration-fast) var(--ui-ease-standard);
   @apply flex min-h-[44px] flex-wrap items-center gap-3 rounded-xl border border-slate-300 bg-white px-3 py-2 shadow-sm focus-within:border-clinic-500 focus-within:ring-2 focus-within:ring-clinic-100;
 }
 
 .file-picker-button {
-  @apply inline-flex h-9 items-center rounded-xl border border-slate-300 bg-slate-50 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100;
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-ease-standard),
+    border-color var(--ui-duration-fast) var(--ui-ease-standard),
+    transform var(--ui-duration-fast) var(--ui-ease-standard);
+  @apply inline-flex h-9 items-center rounded-xl border border-slate-300 bg-slate-50 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-100;
 }
 
 .file-picker-name {
@@ -112,23 +237,93 @@ body {
 }
 
 .file-picker-remove {
-  @apply text-sm font-semibold text-rose-700 underline underline-offset-2 transition hover:text-rose-800;
+  transition:
+    color var(--ui-duration-fast) var(--ui-ease-standard),
+    opacity var(--ui-duration-fast) var(--ui-ease-standard);
+  @apply text-sm font-semibold text-rose-700 underline underline-offset-2 hover:text-rose-800;
 }
 
 .attachment-preview-overlay {
+  animation: ui-fade-in var(--ui-duration-standard) var(--ui-ease-standard);
   @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4;
 }
 
 .attachment-preview-panel {
+  animation: ui-scale-in var(--ui-duration-standard) var(--ui-ease-standard);
   @apply relative max-h-[90vh] w-full max-w-5xl overflow-auto rounded-3xl bg-white p-4 shadow-2xl;
 }
 
 .attachment-preview-close {
-  @apply absolute right-4 top-4 rounded-full border border-slate-300 bg-white px-3 py-1 text-lg font-semibold text-slate-700 transition hover:bg-slate-50;
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-ease-standard),
+    border-color var(--ui-duration-fast) var(--ui-ease-standard),
+    transform var(--ui-duration-fast) var(--ui-ease-standard);
+  @apply absolute right-4 top-4 rounded-full border border-slate-300 bg-white px-3 py-1 text-lg font-semibold text-slate-700 hover:bg-slate-50;
 }
 
 .attachment-preview-image {
+  animation: ui-scale-in var(--ui-duration-standard) var(--ui-ease-standard);
   @apply mx-auto max-h-[75vh] w-auto max-w-full rounded-2xl object-contain;
+}
+
+.dashboard-action-card {
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-ease-standard),
+    border-color var(--ui-duration-fast) var(--ui-ease-standard),
+    box-shadow var(--ui-duration-standard) var(--ui-ease-standard),
+    transform var(--ui-duration-standard) var(--ui-ease-standard);
+}
+
+.dashboard-action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px -20px rgba(15, 23, 42, 0.45);
+}
+
+.dashboard-action-card:active {
+  transform: translateY(-1px);
+}
+
+.feedback-message {
+  animation: ui-fade-up var(--ui-duration-standard) var(--ui-ease-standard);
+}
+
+.attachment-gallery-card {
+  transition:
+    border-color var(--ui-duration-fast) var(--ui-ease-standard),
+    box-shadow var(--ui-duration-standard) var(--ui-ease-standard),
+    transform var(--ui-duration-standard) var(--ui-ease-standard);
+}
+
+.attachment-gallery-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -24px rgba(15, 23, 42, 0.35);
+}
+
+.attachment-preview-trigger {
+  transition:
+    transform var(--ui-duration-fast) var(--ui-ease-standard),
+    opacity var(--ui-duration-fast) var(--ui-ease-standard);
+}
+
+.attachment-preview-trigger:hover {
+  transform: translateY(-1px);
+}
+
+.nav-link-ui {
+  transition:
+    background-color var(--ui-duration-fast) var(--ui-ease-standard),
+    color var(--ui-duration-fast) var(--ui-ease-standard),
+    border-color var(--ui-duration-fast) var(--ui-ease-standard),
+    box-shadow var(--ui-duration-fast) var(--ui-ease-standard),
+    transform var(--ui-duration-fast) var(--ui-ease-standard);
+}
+
+.nav-link-ui:hover {
+  transform: translateY(-1px);
+}
+
+.ui-loading {
+  animation: ui-soft-pulse 1.25s ease-in-out infinite;
 }
 
 .print-document {
@@ -356,6 +551,14 @@ body {
   .document-name {
     font-size: 14px;
   }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
 }
 
 .pdf-export-mode .document-sheet {
@@ -400,4 +603,46 @@ body {
 
 .pdf-export-mode .document-name {
   font-size: 14px;
+}
+
+.pdf-export-mode *,
+.pdf-export-mode *::before,
+.pdf-export-mode *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .page-card,
+  .form-section,
+  .record-tile,
+  .status-strip,
+  .attachment-preview-overlay,
+  .attachment-preview-panel,
+  .attachment-preview-image,
+  .feedback-message,
+  .ui-loading {
+    animation: none !important;
+  }
+
+  .dashboard-action-card:hover,
+  .attachment-gallery-card:hover,
+  .attachment-preview-trigger:hover,
+  .nav-link-ui:hover,
+  .button-primary:hover,
+  .button-secondary:hover,
+  .button-danger:hover,
+  .button-danger-outline:hover,
+  .button-download:hover {
+    transform: none !important;
+  }
 }

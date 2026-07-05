@@ -29,7 +29,7 @@ export default function Layout({ children }) {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  className={`rounded-xl px-3 py-2 text-sm font-medium ${isActive ? "bg-clinic-700 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"}`}
+                  className={`nav-link-ui rounded-xl px-3 py-2 text-sm font-medium ${isActive ? "bg-clinic-700 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"}`}
                 >
                   {item.label}
                 </NavLink>

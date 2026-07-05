@@ -278,7 +278,7 @@ export default function PatientFormPage({ mode = "create" }) {
             </p>
           </div>
 
-          {status && <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">{status}</p>}
+          {status && <p className="feedback-message mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">{status}</p>}
           {mode === "create" && status.includes("Unable to generate the next patient ID") && (
             <div className="mt-4">
               <button type="button" onClick={loadNewPatientMetadata} className="button-secondary">

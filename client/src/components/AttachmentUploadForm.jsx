@@ -210,7 +210,7 @@ export default function AttachmentUploadForm({
         </div>
         {status && (
           <div
-            className={`md:col-span-3 rounded-xl px-4 py-3 text-sm ${
+            className={`feedback-message md:col-span-3 rounded-xl px-4 py-3 text-sm ${
               statusTone === "success"
                 ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
                 : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"

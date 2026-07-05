@@ -73,7 +73,7 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
       </div>
       {status && (
         <div
-          className={`mb-4 rounded-xl px-4 py-3 text-sm ${
+          className={`feedback-message mb-4 rounded-xl px-4 py-3 text-sm ${
             statusTone === "success"
               ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
               : statusTone === "warning"
@@ -87,9 +87,9 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
       {!attachments.length && <p className="text-sm text-slate-500">No attachments uploaded.</p>}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {attachments.map((attachment) => (
-          <article key={attachment.id} className="rounded-2xl border border-slate-200 p-3">
+          <article key={attachment.id} className="attachment-gallery-card rounded-2xl border border-slate-200 p-3">
             {isImage(attachment.mime_type) ? (
-              <button type="button" className="block w-full" onClick={() => setPreviewAttachment(attachment)}>
+              <button type="button" className="attachment-preview-trigger block w-full" onClick={() => setPreviewAttachment(attachment)}>
                 <img
                   src={getUploadUrl(attachment.file_path)}
                   alt={attachment.original_filename}

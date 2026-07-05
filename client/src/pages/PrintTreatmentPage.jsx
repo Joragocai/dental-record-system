@@ -53,7 +53,7 @@ export default function PrintTreatmentPage() {
     }
   }
 
-  if (!treatment) return <Layout><section className="page-card">Loading...</section></Layout>;
+  if (!treatment) return <Layout><section className="page-card"><p className="ui-loading text-sm text-slate-500">Loading treatment print view...</p></section></Layout>;
 
   return (
     <Layout>
@@ -72,7 +72,7 @@ export default function PrintTreatmentPage() {
             </div>
           </div>
           {status && (
-            <div className="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 no-print">
+            <div className="feedback-message mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 no-print">
               {status}
             </div>
           )}

@@ -214,7 +214,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
             </div>
           </div>
 
-          {status && <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">{status}</p>}
+          {status && <p className="feedback-message rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">{status}</p>}
         </section>
 
         <Section title="Patient Selector" description="Search and select the patient before adding or updating treatment.">

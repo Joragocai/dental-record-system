@@ -46,7 +46,7 @@ export default function PrintPatientPage() {
     }
   }
 
-  if (!patient) return <Layout><section className="page-card">Loading...</section></Layout>;
+  if (!patient) return <Layout><section className="page-card"><p className="ui-loading text-sm text-slate-500">Loading patient print view...</p></section></Layout>;
 
   const hasMedicalAlert = Boolean(patient.medical_alert_summary);
 
@@ -67,7 +67,7 @@ export default function PrintPatientPage() {
             </div>
           </div>
           {status && (
-            <div className="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 no-print">
+            <div className="feedback-message mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 no-print">
               {status}
             </div>
           )}
