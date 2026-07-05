@@ -1,19 +1,23 @@
-# Electronic Dental Record System
+# Dental Record System
 
-Local web app for one-laptop dental clinic use. This project replaces an Excel/VBA prototype with a proper React, Express, and SQLite workflow.
+Local web-based dental record system for one-computer or clinic-local use. It manages patient records, treatment records, attachments, printing, PDF download, Excel export, and full system backup.
+
+This system replaces the earlier Excel/VBA approach with a React, Express, and SQLite workflow designed for local clinic operations.
 
 ## Stack
 
 - Frontend: React + Vite + Tailwind CSS
 - Backend: Node.js + Express
-- Database: SQLite with Node built-in `node:sqlite`
-- Excel export: `exceljs`
+- Database: SQLite using Node built-in `node:sqlite`
 - Uploads: local filesystem storage
+- Excel export: `exceljs`
+- PDF download: `html2canvas` and `jsPDF`
+- Local backup: database, uploads, and exports
 
 ## Project Structure
 
 ```text
-electronic_dental_record_system/
+dental-record-system/
   client/
   server/
   data/
@@ -31,42 +35,51 @@ electronic_dental_record_system/
 ## Windows Setup
 
 1. Install Node.js.
-2. Open Command Prompt in the project folder.
+2. Open Windows PowerShell in the project folder.
 3. Run:
 
-```bat
-npm install
+```powershell
+npm install --include=optional
 ```
 
-4. Start the local system with:
+4. Start the app using either:
 
-```bat
+```powershell
 Start Dental System.bat
 ```
 
-## Manual Commands
+or:
 
-Backend only:
-
-```bash
-npm run dev:server
-```
-
-Frontend only:
-
-```bash
-npm run dev:client
-```
-
-Both together:
-
-```bash
+```powershell
 npm run dev
 ```
 
-Backend URL: `http://127.0.0.1:3002`
+Important:
 
-Frontend URL: `http://localhost:5173`
+- Do not run `npm install` in WSL/Linux for this Windows project because it can install Linux-specific native dependencies and break Windows runs.
+- Do not run `Start Dental System.bat` and `npm run dev` at the same time because both use the same ports.
+- If port `5173` is already in use, close the old running app first before starting again.
+
+## Startup Behavior
+
+- Backend URL: `http://127.0.0.1:3002`
+- Frontend URL: `http://localhost:5173`
+
+The system is intended for local use on the clinic computer. The frontend talks to the local backend, and the backend uses the local SQLite database at `data/dental.db`.
+
+## Batch Files
+
+### Start Dental System.bat
+
+- Starts backend and frontend in separate command windows
+- Opens `http://localhost:5173`
+- Should remain inside the main project folder
+- Intended to start the system from the project folder where the batch file is kept
+
+### Backup Database.bat
+
+- Creates a timestamped backup folder
+- Backs up the database, uploads, and exports when present
 
 ## Local File Locations
 
@@ -76,18 +89,83 @@ Frontend URL: `http://localhost:5173`
 - Excel exports: `exports/`
 - Full system backups: `backups/`
 
+## Current Features
+
+- Dashboard
+- New Patient
+- Patient Search
+- New Treatment
+- Patient record view
+- Patient update/edit
+- Treatment record view
+- Treatment update/edit
+- Auto-generated Patient ID with yearly reset, example `P-2026-0001`
+- Auto-generated Treatment ID with yearly reset, example `T-2026-0001`
+- Patient search by Patient ID, name, or mobile number
+- Medical history fields
+- Medical condition checklist
+- Medical Alert Summary
+- Treatment amount validation
+- Amount Charged, Amount Paid, and Balance
+- Automatic balance calculation
+- Patient-level attachments
+- Treatment-level attachments
+- Attachment categories
+- Attachment preview
+- Image preview modal
+- Attachment download
+- Attachment delete
+- File type validation for attachments
+- Print Patient Record
+- Print Treatment Record
+- Print Patient Treatment History
+- Download PDF from print pages
+- Excel exports
+- Full system backup
+- Subtle UI transitions/animations
+- Local-only SQLite database
+
+## Attachments
+
+Patient-level attachments are stored in:
+
+- `uploads/patients/`
+
+Treatment-level attachments are stored in:
+
+- `uploads/treatments/`
+
+Allowed file types:
+
+- `jpg`
+- `jpeg`
+- `png`
+- `webp`
+- `pdf`
+- `doc`
+- `docx`
+- `txt`
+
+Blocked file examples:
+
+- `exe`
+- `msi`
+- `bat`
+- `cmd`
+- `sh`
+- `js`
+- `vbs`
+- `ps1`
+- `zip`
+- `rar`
+- `7z`
+- unsupported application files
+
+Attachment records are stored in the database, while uploaded files are stored in the `uploads/` folder. Both the database and the uploads folder must be backed up together.
+
 ## Backup
 
-Use either option:
-
-1. Open the app and use the `Backup` page.
-2. Run:
-
-```bat
-Backup Database.bat
-```
-
-Each backup creates a timestamped folder in `backups/` and includes:
+Backup protects:
 
 - `data/dental.db`
 - `data/dental.db-shm` if present
@@ -97,32 +175,41 @@ Each backup creates a timestamped folder in `backups/` and includes:
 - other upload subfolders under `uploads/`
 - `exports/` if present
 
-Backup is intended to protect both the database and uploaded files. Before any major system update, click `Create Backup` first. For real clinic use, copy the created backup folder to an external drive or cloud storage after backup completes.
+Use either option:
 
-## Database Creation
+1. Open the app and use the `Backup` page.
+2. Run:
 
-The SQLite database file is created automatically when the backend starts for the first time.
+```powershell
+Backup Database.bat
+```
 
-## Current Features
+Each backup creates a timestamped folder in `backups/`.
 
-- Dashboard
-- Patient CRUD
-- Stronger patient and treatment validation on both client and server
-- Patient ID generation with yearly reset
-- Patient search with partial matching
-- Treatment CRUD
-- Treatment ID generation with yearly reset
-- Treatment history filtered by selected patient
-- Expanded print-friendly patient, treatment, and treatment history pages
-- Excel export endpoints
-- Local backup endpoint for database and uploaded files
-- Local attachment storage and preview support
-- Basic attachment upload forms on patient and treatment record pages
-- Windows start and backup batch files
+Important:
+
+- A backup is incomplete if it includes only the database but not the uploads folder.
+- For real clinic use, copy the backup folder to an external drive, another computer, or secure cloud storage after backup completes.
+
+## Print and PDF
+
+Document-style print pages are available for:
+
+- Patient Record
+- Treatment Record
+- Patient Treatment History
+
+The print pages include:
+
+- Back button
+- Print button
+- Download PDF button
+
+Print and PDF output are designed for Letter paper with safe margins. Downloaded PDFs should not include the action buttons shown on screen.
 
 ## API Endpoints
 
-Patients:
+### Patients
 
 - `GET /api/patients`
 - `GET /api/patients/next-id`
@@ -133,7 +220,7 @@ Patients:
 - `GET /api/patients/:patientId/treatments`
 - `GET /api/patients/:patientId/attachments`
 
-Treatments:
+### Treatments
 
 - `GET /api/treatments`
 - `GET /api/treatments/next-id`
@@ -141,74 +228,56 @@ Treatments:
 - `GET /api/treatments/:treatmentId/attachments`
 - `POST /api/treatments`
 - `PUT /api/treatments/:treatmentId`
+- `POST /api/treatments/:treatmentId/attachments`
 
-Attachments:
+### Attachments
 
 - `POST /api/attachments`
+- `GET /api/attachments/:id/download`
+- `DELETE /api/attachments/:id`
+- `GET /api/patients/:patientId/attachments`
+- `GET /api/treatments/:treatmentId/attachments`
 - `GET /uploads/...`
 
-Exports:
+### Exports
 
 - `GET /api/export/patients`
 - `GET /api/export/treatments`
 - `GET /api/export/patients/:patientId/full-record`
 - `GET /api/export/patients/:patientId/treatments`
 
-Backup:
+### Backup
 
 - `POST /api/backup`
 
 ## Test Flow
 
-### Add a patient
-
-1. Run `Start Dental System.bat` or start backend and frontend manually.
-2. Open `http://127.0.0.1:5173`.
-3. Go to `New Patient`.
-4. Confirm the generated Patient ID looks like `P-2026-0001`.
-5. Fill in required fields and save.
-
-### Add a treatment
-
-1. Open the saved patient record.
-2. Click `Add Treatment`.
-3. Confirm the patient is selected.
-4. Fill in required treatment fields and save.
-5. Confirm the generated Treatment ID looks like `T-2026-0001`.
-
-### Test patient search
-
-1. Open `Patient Search`.
-2. Search by last name, first name, Patient ID, or mobile number.
-3. Try a partial value such as `Del`.
-4. Open the matching result.
-
-### Test print buttons
-
-1. Open a patient record and click `Print Patient Record`.
-2. Open a treatment record and click `Print Treatment`.
-3. Open a patient treatment history page and click `Print Full History`.
-4. Confirm the patient printout shows full patient, medical, allergy, checklist, and alert sections.
-5. Confirm the treatment printout shows patient details, amounts, balance, remarks, and attachment previews when available.
-
-### Test Excel export
-
-1. From a patient record, click `Export Full Record` or `Export Treatments`.
-2. Confirm the exported files are saved in the local `exports/` folder with timestamped filenames.
-
-### Test backup
-
-1. Open the `Backup` page.
-2. Click `Create Backup`.
-3. Confirm a new folder appears in `backups/`.
-4. Confirm that folder contains `data/` and `uploads/`.
-5. Confirm patient and treatment attachment files are present inside the backup copy.
+1. Start the system.
+2. Add a patient.
+3. Search for a patient.
+4. Edit a patient.
+5. Add a treatment.
+6. Edit a treatment.
+7. Add a patient attachment.
+8. Add a treatment attachment.
+9. Preview an image attachment.
+10. Download an attachment.
+11. Delete an attachment.
+12. Print Patient Record.
+13. Download Patient PDF.
+14. Print Treatment Record.
+15. Download Treatment PDF.
+16. Export Excel.
+17. Create backup.
+18. Verify the backup contains both `data/` and `uploads/`.
 
 ## Notes
 
 - The app is localhost-only.
-- SQLite remains a local file at `data/dental.db`.
-- The database contains patient and treatment records.
-- The `uploads/` folder contains patient and treatment images/attachments.
-- Restore is not implemented yet.
+- SQLite database is local at `data/dental.db`.
+- Uploaded files are local in `uploads/`.
+- Database and uploads must be backed up together.
 - Authentication is not implemented yet.
+- Restore is not implemented yet.
+- Do not delete `data/` or `uploads/` if real clinic records exist.
+- Do not run `npm audit fix --force` unless carefully reviewed.
