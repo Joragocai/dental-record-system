@@ -7,48 +7,56 @@ import {
   attachmentUpload,
   buildAttachmentPath,
   deleteAttachmentFileIfPresent,
+  deleteUploadedFileByAbsolutePath,
   normalizeAttachmentType,
   resolveAttachmentAbsolutePath
 } from "../utils/attachmentUtils.js";
 const router = express.Router();
 
-router.post("/", attachmentUpload.single("file"), (req, res) => {
-  if (!req.file) {
-    res.status(400).json({ message: "File upload is required." });
-    return;
+router.post("/", attachmentUpload.single("file"), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ message: "File upload is required." });
+      return;
+    }
+
+    if (!req.body.patient_id || !getPatientByPatientId(req.body.patient_id)) {
+      await deleteUploadedFileByAbsolutePath(req.file.path);
+      res.status(400).json({ message: "A valid patient ID is required." });
+      return;
+    }
+
+    if (req.body.treatment_id && !getTreatmentByTreatmentId(req.body.treatment_id)) {
+      await deleteUploadedFileByAbsolutePath(req.file.path);
+      res.status(400).json({ message: "Treatment ID is not valid." });
+      return;
+    }
+
+    const attachmentTypeResult = normalizeAttachmentType(req.body.attachment_type);
+    if (attachmentTypeResult.error) {
+      await deleteUploadedFileByAbsolutePath(req.file.path);
+      res.status(400).json({ message: attachmentTypeResult.error });
+      return;
+    }
+
+    const relativePath = buildAttachmentPath(req.file.filename, req.body.treatment_id);
+
+    const attachment = createAttachment({
+      patient_id: req.body.patient_id,
+      treatment_id: req.body.treatment_id || null,
+      attachment_type: attachmentTypeResult.value,
+      original_filename: req.file.originalname,
+      stored_filename: req.file.filename,
+      file_path: relativePath,
+      mime_type: req.file.mimetype,
+      file_size: req.file.size,
+      uploaded_at: new Date().toISOString()
+    });
+
+    res.status(201).json({ message: "Attachment uploaded.", attachment, file_path: relativePath });
+  } catch (error) {
+    next(error);
   }
-
-  if (!req.body.patient_id || !getPatientByPatientId(req.body.patient_id)) {
-    res.status(400).json({ message: "A valid patient ID is required." });
-    return;
-  }
-
-  if (req.body.treatment_id && !getTreatmentByTreatmentId(req.body.treatment_id)) {
-    res.status(400).json({ message: "Treatment ID is not valid." });
-    return;
-  }
-
-  const attachmentTypeResult = normalizeAttachmentType(req.body.attachment_type);
-  if (attachmentTypeResult.error) {
-    res.status(400).json({ message: attachmentTypeResult.error });
-    return;
-  }
-
-  const relativePath = buildAttachmentPath(req.file.filename, req.body.treatment_id);
-
-  const attachment = createAttachment({
-    patient_id: req.body.patient_id,
-    treatment_id: req.body.treatment_id || null,
-    attachment_type: attachmentTypeResult.value,
-    original_filename: req.file.originalname,
-    stored_filename: req.file.filename,
-    file_path: relativePath,
-    mime_type: req.file.mimetype,
-    file_size: req.file.size,
-    uploaded_at: new Date().toISOString()
-  });
-
-  res.status(201).json({ message: "Attachment uploaded.", attachment, file_path: relativePath });
 });
 
 router.get("/treatments/:treatmentId", (req, res) => {

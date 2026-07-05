@@ -2,50 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
+import { PrintField, PrintableAttachments, PrintSection } from "../components/PrintableDocument";
 import { medicalConditionFields } from "../lib/forms";
-import { formatAttachmentType } from "../lib/attachments";
-import { getPatient, getPatientAttachments, getUploadUrl } from "../lib/api";
+import { getPatient, getPatientAttachments } from "../lib/api";
 import { downloadElementAsPdf } from "../lib/pdf";
-
-function PrintField({ label, value }) {
-  return (
-    <div className="document-field">
-      <span className="document-field-label">{label}</span>
-      <span className="document-field-value">{value || "-"}</span>
-    </div>
-  );
-}
-
-function PrintSection({ title, children }) {
-  return (
-    <section className="document-section">
-      <h2 className="document-section-title">{title}</h2>
-      <div className="mt-3">{children}</div>
-    </section>
-  );
-}
-
-function PrintableAttachments({ attachments }) {
-  if (!attachments.length) return null;
-
-  return (
-    <PrintSection title="Uploaded Images and Files">
-      <div className="attachment-sheet-grid">
-        {attachments.map((attachment) => (
-          <div key={attachment.id} className="attachment-sheet-item">
-            {attachment.mime_type?.startsWith("image/") ? (
-              <img src={getUploadUrl(attachment.file_path)} alt={attachment.original_filename} className="attachment-sheet-image" />
-            ) : (
-              <div className="attachment-sheet-placeholder">File Preview Not Available</div>
-            )}
-            <p className="mt-2 text-sm font-semibold text-slate-900">{formatAttachmentType(attachment.attachment_type)}</p>
-            <p className="text-xs text-slate-600">{attachment.original_filename}</p>
-          </div>
-        ))}
-      </div>
-    </PrintSection>
-  );
-}
 
 export default function PrintPatientPage() {
   const { patientId } = useParams();
@@ -111,7 +71,7 @@ export default function PrintPatientPage() {
               {status}
             </div>
           )}
-          <div ref={printableRef} className="document-sheet">
+          <div ref={printableRef} className="document-sheet" data-print-root="patient-record">
           <header className="document-header">
             <p className="document-kicker">Electronic Dental Record System</p>
             <div className="document-header-row">

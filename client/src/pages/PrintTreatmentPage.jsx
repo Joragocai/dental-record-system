@@ -2,28 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
-import { getPatient, getTreatment, getTreatmentAttachments, getUploadUrl } from "../lib/api";
-import { formatAttachmentType, formatUploadedAt } from "../lib/attachments";
+import { PrintField, PrintableAttachments, PrintSection } from "../components/PrintableDocument";
+import { getPatient, getTreatment, getTreatmentAttachments } from "../lib/api";
 import { formatPesoAmount } from "../lib/formatters";
 import { downloadElementAsPdf } from "../lib/pdf";
-
-function PrintField({ label, value }) {
-  return (
-    <div className="document-field">
-      <span className="document-field-label">{label}</span>
-      <span className="document-field-value">{value || "-"}</span>
-    </div>
-  );
-}
-
-function PrintSection({ title, children }) {
-  return (
-    <section className="document-section">
-      <h2 className="document-section-title">{title}</h2>
-      <div className="mt-3">{children}</div>
-    </section>
-  );
-}
 
 export default function PrintTreatmentPage() {
   const { treatmentId } = useParams();
@@ -94,7 +76,7 @@ export default function PrintTreatmentPage() {
               {status}
             </div>
           )}
-          <div ref={printableRef} className="document-sheet">
+          <div ref={printableRef} className="document-sheet" data-print-root="treatment-record">
           <header className="document-header">
             <p className="document-kicker">Electronic Dental Record System</p>
             <div className="document-header-row">
@@ -141,31 +123,7 @@ export default function PrintTreatmentPage() {
             </div>
           </PrintSection>
 
-          {attachments.length > 0 && (
-            <PrintSection title="Attachment Previews">
-              <div className="attachment-sheet-grid">
-                {attachments.map((attachment) => (
-                  <div key={attachment.id} className="attachment-sheet-item">
-                    {attachment.mime_type?.startsWith("image/") ? (
-                      <img src={getUploadUrl(attachment.file_path)} alt={attachment.original_filename} className="attachment-sheet-image" />
-                    ) : (
-                      <div className="attachment-sheet-placeholder">File Preview Not Available</div>
-                    )}
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatAttachmentType(attachment.attachment_type)}</p>
-                    <p className="text-xs text-slate-600">Uploaded: {formatUploadedAt(attachment.uploaded_at)}</p>
-                    <p className="text-xs text-slate-500">{attachment.original_filename}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 space-y-1.5 text-sm">
-                {attachments.map((attachment) => (
-                  <div key={`list-${attachment.id}`} className="document-attachment-line">
-                    <strong>Attachment Category:</strong> {formatAttachmentType(attachment.attachment_type)} | {attachment.original_filename} | Uploaded {formatUploadedAt(attachment.uploaded_at)}
-                  </div>
-                ))}
-              </div>
-            </PrintSection>
-          )}
+          <PrintableAttachments attachments={attachments} title="Attachment Previews" showUploadedAt />
           </div>
         </section>
       </div>

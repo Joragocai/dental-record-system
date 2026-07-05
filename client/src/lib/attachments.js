@@ -16,6 +16,35 @@ export const suggestedAttachmentTypes = [
   "Other Clinical Document"
 ];
 
+export const attachmentUploadErrorMessage = "Unsupported file type. Please upload an image or document file only.";
+export const allowedAttachmentMimeTypes = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain"
+];
+export const allowedAttachmentExtensions = [".jpg", ".jpeg", ".png", ".webp", ".pdf", ".doc", ".docx", ".txt"];
+export const attachmentFileInputAccept =
+  "image/jpeg,image/png,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain";
+
+export function isAllowedAttachmentFile(file) {
+  if (!file?.name) {
+    return false;
+  }
+
+  const lowerName = file.name.toLowerCase();
+  const hasAllowedExtension = allowedAttachmentExtensions.some((extension) => lowerName.endsWith(extension));
+
+  if (!hasAllowedExtension) {
+    return false;
+  }
+
+  return !file.type || allowedAttachmentMimeTypes.includes(file.type);
+}
+
 const legacyAttachmentTypeLabels = {
   profile_photo: "Profile Photo",
   pre_op_photo: "Pre-op Photo",

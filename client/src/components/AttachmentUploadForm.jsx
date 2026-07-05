@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { uploadAttachment, uploadTreatmentAttachment } from "../lib/api";
-import { suggestedAttachmentTypes } from "../lib/attachments";
+import {
+  attachmentFileInputAccept,
+  attachmentUploadErrorMessage,
+  isAllowedAttachmentFile,
+  suggestedAttachmentTypes
+} from "../lib/attachments";
 
 export default function AttachmentUploadForm({
   patientId,
@@ -41,6 +46,24 @@ export default function AttachmentUploadForm({
       fileInputRef.current.value = "";
     }
     setSelectedFileName("");
+  }
+
+  function handleFileSelection(event) {
+    const file = event.target.files?.[0];
+    setUploadError("");
+
+    if (!file) {
+      setSelectedFileName("");
+      return;
+    }
+
+    if (!isAllowedAttachmentFile(file)) {
+      clearSelectedFile();
+      setUploadError(attachmentUploadErrorMessage);
+      return;
+    }
+
+    setSelectedFileName(file.name);
   }
 
   async function handleUpload() {
@@ -154,11 +177,9 @@ export default function AttachmentUploadForm({
               id={datalistId + "-file"}
               className="sr-only"
               type="file"
+              accept={attachmentFileInputAccept}
               disabled={uploadDisabled}
-              onChange={(event) => {
-                setUploadError("");
-                setSelectedFileName(event.target.files?.[0]?.name || "");
-              }}
+              onChange={handleFileSelection}
             />
             <label htmlFor={datalistId + "-file"} className={`file-picker-button ${uploadDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}>
               Choose File

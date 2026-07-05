@@ -136,6 +136,11 @@ body {
 }
 
 .document-sheet {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(8.5in - 24mm);
+  margin: 0 auto;
+  overflow-x: hidden;
   @apply space-y-3 bg-white text-slate-900;
 }
 
@@ -192,6 +197,9 @@ body {
 }
 
 .document-field {
+  box-sizing: border-box;
+  min-width: 0;
+  overflow-wrap: anywhere;
   @apply border-b border-dashed border-slate-300 py-1 text-[13px] leading-snug;
 }
 
@@ -200,6 +208,7 @@ body {
 }
 
 .document-field-value {
+  overflow-wrap: anywhere;
   @apply mt-0.5 block text-[13px] text-slate-900;
 }
 
@@ -208,10 +217,14 @@ body {
 }
 
 .document-check-item {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  overflow-wrap: anywhere;
   @apply flex items-start gap-2 border-b border-dashed border-slate-200 py-1;
 }
 
 .document-remarks {
+  overflow-wrap: anywhere;
   @apply mt-3 border border-slate-200 px-3 py-2 text-sm leading-relaxed;
 }
 
@@ -220,11 +233,15 @@ body {
 }
 
 .attachment-sheet-item {
+  box-sizing: border-box;
+  min-width: 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
   @apply border border-slate-200 p-2.5;
 }
 
 .attachment-sheet-image {
-  @apply h-24 w-full object-cover;
+  @apply h-24 w-full object-contain;
 }
 
 .attachment-sheet-placeholder {
@@ -232,6 +249,7 @@ body {
 }
 
 .document-attachment-line {
+  overflow-wrap: anywhere;
   @apply border-b border-dashed border-slate-200 py-1;
 }
 
@@ -241,12 +259,20 @@ body {
 
 @media print {
   @page {
-    size: auto;
-    margin: 10mm;
+    size: letter;
+    margin: 12mm;
   }
 
+  html,
   body {
     background: white;
+  }
+
+  body,
+  .page-shell,
+  .print-document,
+  .document-sheet {
+    margin: 0;
   }
 
   .no-print {
@@ -268,6 +294,10 @@ body {
     padding: 0;
   }
 
+  .print-document {
+    max-width: none;
+  }
+
   .form-section {
     border: 1px solid #cbd5e1;
     box-shadow: none;
@@ -277,9 +307,17 @@ body {
     background: white;
   }
 
-  .document-section,
+  .document-section {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .document-header,
+  .document-alert,
+  .document-section-title,
   .attachment-sheet-item,
-  .document-remarks {
+  .document-remarks,
+  .document-check-item {
     break-inside: avoid;
     page-break-inside: avoid;
   }
@@ -291,7 +329,24 @@ body {
   }
 
   .document-sheet {
+    display: block;
+    box-sizing: border-box;
+    max-width: 100%;
+    width: 100%;
     gap: 10px;
+  }
+
+  .document-grid-3,
+  .document-checklist {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .attachment-sheet-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .document-meta {
+    text-align: right;
   }
 
   .document-title {
@@ -301,4 +356,48 @@ body {
   .document-name {
     font-size: 14px;
   }
+}
+
+.pdf-export-mode .document-sheet {
+  display: block;
+  box-sizing: border-box;
+  max-width: 100%;
+  width: 100%;
+  gap: 10px;
+}
+
+.pdf-export-mode .document-section {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+.pdf-export-mode .document-header,
+.pdf-export-mode .document-alert,
+.pdf-export-mode .document-section-title,
+.pdf-export-mode .attachment-sheet-item,
+.pdf-export-mode .document-remarks,
+.pdf-export-mode .document-check-item {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.pdf-export-mode .document-grid-3,
+.pdf-export-mode .document-checklist {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pdf-export-mode .attachment-sheet-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pdf-export-mode .document-meta {
+  text-align: right;
+}
+
+.pdf-export-mode .document-title {
+  font-size: 20px;
+}
+
+.pdf-export-mode .document-name {
+  font-size: 14px;
 }

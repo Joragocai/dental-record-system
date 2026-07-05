@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
+import { PrintSection } from "../components/PrintableDocument";
 import TreatmentHistoryTable from "../components/TreatmentHistoryTable";
 import { getPatient, getTreatmentsByPatient } from "../lib/api";
 
@@ -19,25 +20,41 @@ export default function PrintPatientHistoryPage() {
 
   return (
     <Layout>
-      <section className="page-card">
-        <div className="mb-6 flex items-center justify-between no-print">
-          <h1 className="text-2xl font-bold text-slate-900">Full Patient Treatment History Printout</h1>
-          <div className="flex flex-wrap gap-3">
-            <BackButton fallbackTo={`/patients/${patientId}/treatments`} />
-            <button className="button-primary" onClick={() => window.print()}>
-              Print
-            </button>
+      <div className="print-document">
+        <section className="page-card">
+          <div className="mb-6 flex items-center justify-between no-print">
+            <h1 className="text-2xl font-bold text-slate-900">Full Patient Treatment History Printout</h1>
+            <div className="flex flex-wrap gap-3">
+              <BackButton fallbackTo={`/patients/${patientId}/treatments`} />
+              <button className="button-primary" onClick={() => window.print()}>
+                Print
+              </button>
+            </div>
           </div>
-        </div>
-        <div className="mb-4">
-          <h2 className="text-2xl font-bold">Treatment History</h2>
-          <p>{patient ? `${patient.display_name} | ${patient.patient_id}` : "Loading patient"}</p>
-          <div className={`mt-3 rounded-xl px-4 py-3 text-sm ${hasMedicalAlert ? "bg-rose-50 font-semibold text-rose-700" : "bg-slate-50 text-slate-600"}`}>
-            <strong>Medical Alert Summary:</strong> <span className="whitespace-normal break-words">{patient?.medical_alert_summary || "No major medical alerts generated yet."}</span>
+          <div className="document-sheet">
+            <header className="document-header">
+              <p className="document-kicker">Electronic Dental Record System</p>
+              <div className="document-header-row">
+                <div>
+                  <h1 className="document-title">Treatment History</h1>
+                  <p className="document-name">{patient?.display_name || "Loading patient"}</p>
+                </div>
+                <div className="document-meta">
+                  <span>Patient ID: {patient?.patient_id || patientId}</span>
+                  <span>Total Treatments: {treatments.length}</span>
+                </div>
+              </div>
+              <div className={`document-alert ${hasMedicalAlert ? "document-alert-danger" : "document-alert-neutral"}`}>
+                <strong>Medical Alert Summary:</strong>{" "}
+                <span className="whitespace-normal break-words">{patient?.medical_alert_summary || "No major medical alerts generated yet."}</span>
+              </div>
+            </header>
+            <PrintSection title="Treatment History">
+              <TreatmentHistoryTable treatments={treatments} />
+            </PrintSection>
           </div>
-        </div>
-        <TreatmentHistoryTable treatments={treatments} />
-      </section>
+        </section>
+      </div>
     </Layout>
   );
 }

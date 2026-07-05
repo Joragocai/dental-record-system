@@ -41,6 +41,11 @@ app.use("/api/export", exportRouter);
 app.use("/api/backup", backupRouter);
 
 app.use((error, _req, res, _next) => {
+  if (error?.status) {
+    res.status(error.status).json({ message: error.message });
+    return;
+  }
+
   console.error(error);
   res.status(500).json({ message: "Internal server error." });
 });

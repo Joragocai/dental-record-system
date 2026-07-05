@@ -13,6 +13,31 @@ const uploadsRootDir = path.join(rootDir, "uploads");
 const patientUploadDir = path.join(rootDir, "uploads", "patients");
 const treatmentUploadDir = path.join(rootDir, "uploads", "treatments");
 
+export const ATTACHMENT_UPLOAD_ERROR_MESSAGE = "Unsupported file type. Please upload an image or document file only.";
+export const allowedAttachmentMimeTypes = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain"
+];
+
+const allowedAttachmentExtensionsByMimeType = new Map([
+  ["image/jpeg", [".jpg", ".jpeg"]],
+  ["image/png", [".png"]],
+  ["image/webp", [".webp"]],
+  ["application/pdf", [".pdf"]],
+  ["application/msword", [".doc"]],
+  ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", [".docx"]],
+  ["text/plain", [".txt"]]
+]);
+
+const allowedAttachmentExtensions = new Set(
+  [...allowedAttachmentExtensionsByMimeType.values()].flat()
+);
+
 fs.mkdirSync(patientUploadDir, { recursive: true });
 fs.mkdirSync(treatmentUploadDir, { recursive: true });
 
@@ -30,6 +55,21 @@ export function normalizeAttachmentType(value) {
   return { value: attachmentType };
 }
 
+export function isAllowedAttachmentFile(file) {
+  if (!file?.originalname || !file?.mimetype) {
+    return false;
+  }
+
+  const extension = path.extname(file.originalname).toLowerCase();
+  const allowedExtensionsForMimeType = allowedAttachmentExtensionsByMimeType.get(file.mimetype);
+
+  if (!allowedExtensionsForMimeType) {
+    return false;
+  }
+
+  return allowedExtensionsForMimeType.includes(extension) && allowedAttachmentExtensions.has(extension);
+}
+
 export const attachmentUpload = multer({
   storage: multer.diskStorage({
     destination(req, _file, callback) {
@@ -39,7 +79,17 @@ export const attachmentUpload = multer({
       const extension = path.extname(file.originalname);
       callback(null, `${Date.now()}-${crypto.randomUUID()}${extension}`);
     }
-  })
+  }),
+  fileFilter(_req, file, callback) {
+    if (isAllowedAttachmentFile(file)) {
+      callback(null, true);
+      return;
+    }
+
+    const error = new Error(ATTACHMENT_UPLOAD_ERROR_MESSAGE);
+    error.status = 400;
+    callback(error);
+  }
 });
 
 export function buildAttachmentPath(storedFilename, treatmentId) {
@@ -72,5 +122,14 @@ export async function deleteAttachmentFileIfPresent(filePath) {
   }
 
   await unlinkAsync(absolutePath);
+  return { deleted: true };
+}
+
+export async function deleteUploadedFileByAbsolutePath(filePath) {
+  if (!filePath || typeof filePath !== "string" || !fs.existsSync(filePath)) {
+    return { deleted: false, missing: true };
+  }
+
+  await unlinkAsync(filePath);
   return { deleted: true };
 }
