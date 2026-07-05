@@ -33,17 +33,26 @@ export default function DashboardPage() {
             Use patient search to open records, enter treatments under a selected patient, print clean clinic forms, and export data to Excel files stored locally.
           </p>
           <div className="grid gap-4 md:grid-cols-3">
-            <Link className="rounded-2xl bg-clinic-700 p-4 text-white" to="/patients/new">
+            <Link
+              className="rounded-2xl bg-clinic-700 p-4 text-white shadow-sm ring-1 ring-clinic-800/10 transition hover:-translate-y-0.5 hover:bg-clinic-800"
+              to="/patients/new"
+            >
               <p className="text-xs uppercase tracking-[0.2em] text-clinic-100">Create</p>
-              <p className="mt-2 text-lg font-semibold">New Patient</p>
+              <p className="mt-2 text-lg font-semibold text-white">New Patient</p>
             </Link>
-            <Link className="rounded-2xl bg-slate-900 p-4 text-white" to="/patients">
+            <Link
+              className="rounded-2xl bg-slate-900 p-4 text-white shadow-sm ring-1 ring-slate-950/10 transition hover:-translate-y-0.5 hover:bg-slate-800"
+              to="/patients"
+            >
               <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Find</p>
-              <p className="mt-2 text-lg font-semibold">Patient Search</p>
+              <p className="mt-2 text-lg font-semibold text-white">Patient Search</p>
             </Link>
-            <Link className="rounded-2xl bg-white p-4 ring-1 ring-slate-200" to="/treatments/new">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Record</p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">New Treatment</p>
+            <Link
+              className="rounded-2xl bg-teal-700 p-4 text-white shadow-sm ring-1 ring-teal-900/15 transition hover:-translate-y-0.5 hover:bg-teal-800"
+              to="/treatments/new"
+            >
+              <p className="text-xs uppercase tracking-[0.2em] text-teal-100">Record</p>
+              <p className="mt-2 text-lg font-semibold text-white">New Treatment</p>
             </Link>
           </div>
         </section>
