@@ -2,8 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { uploadAttachment, uploadTreatmentAttachment } from "../lib/api";
 import {
   attachmentFileInputAccept,
+  attachmentFileSizeErrorMessage,
   attachmentUploadErrorMessage,
   isAllowedAttachmentFile,
+  isAllowedAttachmentFileSize,
+  maxAttachmentFileSizeMb,
   suggestedAttachmentTypes
 } from "../lib/attachments";
 
@@ -63,6 +66,12 @@ export default function AttachmentUploadForm({
       return;
     }
 
+    if (!isAllowedAttachmentFileSize(file)) {
+      clearSelectedFile();
+      setUploadError(attachmentFileSizeErrorMessage);
+      return;
+    }
+
     setSelectedFileName(file.name);
   }
 
@@ -83,6 +92,15 @@ export default function AttachmentUploadForm({
       setUploadError("Select a file before uploading.");
       setStatus("");
       setStatusTone("info");
+      return;
+    }
+
+    if (!isAllowedAttachmentFileSize(file)) {
+      setFieldError("");
+      setUploadError(attachmentFileSizeErrorMessage);
+      setStatus("");
+      setStatusTone("info");
+      clearSelectedFile();
       return;
     }
 
@@ -144,11 +162,12 @@ export default function AttachmentUploadForm({
   return (
     <section className="page-card no-print">
       <h2 className="section-title">{title}</h2>
-      <div className="mt-4 grid gap-4 md:grid-cols-3">
-        <label>
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(280px,0.8fr)_minmax(320px,1.2fr)] lg:items-start">
+        <div className="space-y-4">
+          <label className="block">
           <span className="label-text">Attachment Category</span>
           <input
-            className={`text-input ${fieldError ? "input-error" : ""}`}
+            className={`text-input h-12 ${fieldError ? "input-error" : ""}`}
             list={datalistId}
             value={attachmentType}
             onChange={(event) => {
@@ -167,10 +186,17 @@ export default function AttachmentUploadForm({
               <option key={type} value={type} />
             ))}
           </datalist>
-        </label>
-        <div className="md:col-span-2">
+          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" className="button-primary" disabled={uploadDisabled} onClick={handleUpload}>
+              {uploadButtonLabel}
+            </button>
+            {uploadDisabled && <p className="text-sm text-amber-700">Save the treatment first before uploading treatment attachments.</p>}
+          </div>
+        </div>
+        <div className="max-w-3xl">
           <span className="label-text">File</span>
-          <div className="file-picker-wrap">
+          <div className="file-picker-wrap min-h-[48px]">
             <input
               ref={fileInputRef}
               name="file"
@@ -200,17 +226,14 @@ export default function AttachmentUploadForm({
               </button>
             )}
           </div>
-        </div>
-        <div className="md:col-span-3 flex flex-wrap items-center gap-3">
-          <button type="button" className="button-primary" disabled={uploadDisabled} onClick={handleUpload}>
-            {uploadButtonLabel}
-          </button>
-          {uploadDisabled && <p className="text-sm text-amber-700">Save the treatment first before uploading treatment attachments.</p>}
-          {uploadError && <p className="text-sm text-rose-600">{uploadError}</p>}
+          <p className="mt-2 text-xs text-slate-500">
+            Allowed files: images and documents only. Maximum size: {maxAttachmentFileSizeMb} MB.
+          </p>
+          {uploadError && <p className="mt-3 text-sm text-rose-600">{uploadError}</p>}
         </div>
         {status && (
           <div
-            className={`feedback-message md:col-span-3 rounded-xl px-4 py-3 text-sm ${
+            className={`feedback-message lg:col-span-2 rounded-xl px-4 py-3 text-sm ${
               statusTone === "success"
                 ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
                 : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"

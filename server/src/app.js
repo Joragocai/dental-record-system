@@ -8,6 +8,7 @@ import attachmentsRouter from "./routes/attachments.js";
 import exportRouter from "./routes/exports.js";
 import backupRouter from "./routes/backup.js";
 import dashboardRouter from "./routes/dashboard.js";
+import { ATTACHMENT_FILE_SIZE_ERROR_MESSAGE, deleteUploadedFileByAbsolutePath } from "./utils/attachmentUtils.js";
 
 const app = express();
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -40,7 +41,13 @@ app.use("/api/attachments", attachmentsRouter);
 app.use("/api/export", exportRouter);
 app.use("/api/backup", backupRouter);
 
-app.use((error, _req, res, _next) => {
+app.use(async (error, req, res, _next) => {
+  if (error?.code === "LIMIT_FILE_SIZE" || error?.name === "MulterError" && error?.code === "LIMIT_FILE_SIZE") {
+    await deleteUploadedFileByAbsolutePath(req.file?.path);
+    res.status(400).json({ message: ATTACHMENT_FILE_SIZE_ERROR_MESSAGE });
+    return;
+  }
+
   if (error?.status) {
     res.status(error.status).json({ message: error.message });
     return;

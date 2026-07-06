@@ -4,7 +4,7 @@ import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import { PrintField, PrintableAttachments, PrintSection } from "../components/PrintableDocument";
 import { getPatient, getTreatment, getTreatmentAttachments } from "../lib/api";
-import { formatPesoAmount } from "../lib/formatters";
+import { displayNone, formatPesoAmount, isPwdRelatedClassification } from "../lib/formatters";
 import { downloadElementAsPdf } from "../lib/pdf";
 
 export default function PrintTreatmentPage() {
@@ -101,7 +101,8 @@ export default function PrintTreatmentPage() {
               <PrintField label="Age" value={patient?.age} />
               <PrintField label="Gender" value={patient?.gender} />
               <PrintField label="Branch Location" value={patient?.branch_location} />
-              <PrintField label="Patient Discount Eligibility" value={patient?.discount_eligibility} />
+              <PrintField label="Patient Classification" value={displayNone(patient?.discount_eligibility)} />
+              {isPwdRelatedClassification(patient?.discount_eligibility) ? <PrintField label="Type of Disability" value={displayNone(patient?.disability_type)} /> : null}
               <PrintField label="Mobile Number" value={patient?.mobile_number} />
               <PrintField label="Home Address" value={patient?.home_address} />
               <PrintField label="Medical Alert Summary" value={patient?.medical_alert_summary} />

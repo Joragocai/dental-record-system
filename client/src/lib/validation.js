@@ -1,3 +1,5 @@
+import { isPwdRelatedClassification } from "./formatters";
+
 const mobilePattern = /^[0-9+\-\s()]{7,20}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const treatmentDiscountDefaults = {
@@ -94,6 +96,9 @@ export function validatePatientForm(form) {
   const normalized = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, trimValue(value)]));
   normalized.age = Number(calculateAgeFromBirthday(normalized.birthday) || 0);
   normalized.discount_eligibility = normalizePatientDiscountEligibility(normalized.discount_eligibility);
+  if (!isPwdRelatedClassification(normalized.discount_eligibility)) {
+    normalized.disability_type = "";
+  }
 
   if (!/^P-\d{4}-\d{4}$/.test(normalized.patient_id || "")) errors.patient_id = "Patient ID format must be P-YYYY-0001.";
   if (!isValidDateString(normalized.date_registered)) errors.date_registered = "Date Registered is required.";

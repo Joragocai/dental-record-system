@@ -292,7 +292,7 @@ export async function exportPatientsWorkbook() {
     { header: "Gender", key: "gender" },
     { header: "Mobile Number", key: "mobile_number" },
     { header: "Email Address", key: "email_address" },
-    { header: "Discount Eligibility", key: "discount_eligibility" },
+    { header: "Patient Classification", key: "discount_eligibility" },
     { header: "Type of Disability", key: "disability_type" },
     { header: "Home Address", key: "home_address" },
     { header: "Medical Alert Summary", key: "medical_alert_summary" }
@@ -439,6 +439,11 @@ export async function exportFullPatientRecordWorkbook(patientId) {
     treatments.map((treatment) => [treatment.treatment_id, allAttachments.filter((attachment) => attachment.treatment_id === treatment.treatment_id)])
   );
 
+  const patientFieldLabels = {
+    discount_eligibility: "Patient Classification",
+    disability_type: "Type of Disability"
+  };
+
   const patientSheet = workbook.addWorksheet("Patient Record");
   patientSheet.columns = [
     { header: "Field", key: "field", width: 28 },
@@ -447,7 +452,10 @@ export async function exportFullPatientRecordWorkbook(patientId) {
   styleHeader(patientSheet.getRow(1));
   Object.entries(patient || {}).forEach(([key, value]) => {
     if (["id", "created_at", "updated_at"].includes(key)) return;
-    const row = patientSheet.addRow({ field: key, value: key.includes("date") || key === "birthday" ? parseDateValue(value) : value ?? "" });
+    const row = patientSheet.addRow({
+      field: patientFieldLabels[key] || key,
+      value: key.includes("date") || key === "birthday" ? parseDateValue(value) : value ?? ""
+    });
     if (key.includes("date") || key === "birthday") {
       row.getCell("value").numFmt = "mm/dd/yyyy";
     }

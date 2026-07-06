@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import { emptyPatient, medicalConditionFields, patientFieldGroups } from "../lib/forms";
+import { isPwdRelatedClassification, shouldShowPatientClassificationInSummary } from "../lib/formatters";
 import { createPatient, getNextPatientId, getPatient, updatePatient } from "../lib/api";
 import { calculateAgeFromBirthday, validatePatientForm } from "../lib/validation";
 
@@ -45,11 +46,11 @@ function generateMedicalAlertSummary(form) {
     sections.push(`Blood Type: ${form.blood_type}`);
   }
 
-  if (form.discount_eligibility && form.discount_eligibility !== "None") {
-    sections.push(`Discount eligibility: ${form.discount_eligibility}`);
+  if (shouldShowPatientClassificationInSummary(form.discount_eligibility)) {
+    sections.push(`Patient classification: ${form.discount_eligibility}`);
   }
 
-  if (form.disability_type) {
+  if (isPwdRelatedClassification(form.discount_eligibility) && form.disability_type) {
     sections.push(`Type of disability: ${form.disability_type}`);
   }
 
@@ -102,7 +103,7 @@ function selectClassName(hasError, hasValue) {
 }
 
 function InputField({ field, value, onChange, error }) {
-  const [name, label, type, required, readOnly, options] = field;
+  const [name, label, type, required, readOnly, options, helperText] = field;
   const currentValue = value ?? "";
   const isFilled = hasFilledValue(currentValue);
   const selectOptions =
@@ -115,6 +116,7 @@ function InputField({ field, value, onChange, error }) {
       <label className="field-box">
         <span className="label-text">{label}{required ? " *" : ""}</span>
         <textarea className={textAreaClassName(Boolean(error), isFilled)} value={value ?? ""} onChange={(event) => onChange(name, event.target.value)} />
+        {helperText && <p className="mt-1 text-xs text-slate-500">{helperText}</p>}
         {error && <p className="error-text">{error}</p>}
       </label>
     );
@@ -131,6 +133,7 @@ function InputField({ field, value, onChange, error }) {
             </option>
           ))}
         </select>
+        {helperText && <p className="mt-1 text-xs text-slate-500">{helperText}</p>}
         {error && <p className="error-text">{error}</p>}
       </label>
     );
@@ -161,6 +164,7 @@ function InputField({ field, value, onChange, error }) {
             <option key={option} value={option} />
           ))}
         </datalist>
+        {helperText && <p className="mt-1 text-xs text-slate-500">{helperText}</p>}
         {error && <p className="error-text">{error}</p>}
       </label>
     );
@@ -180,6 +184,7 @@ function InputField({ field, value, onChange, error }) {
         required={Boolean(required)}
         onChange={(event) => onChange(name, event.target.value)}
       />
+      {helperText && <p className="mt-1 text-xs text-slate-500">{helperText}</p>}
       {error && <p className="error-text">{error}</p>}
     </label>
   );
@@ -239,12 +244,18 @@ export default function PatientFormPage({ mode = "create" }) {
     setForm((current) => {
       const next = { ...current, [name]: value };
       if (name === "birthday") next.age = calculateAgeFromBirthday(value);
+      if (name === "discount_eligibility" && !isPwdRelatedClassification(value)) {
+        next.disability_type = "";
+      }
       next.medical_alert_summary = generateMedicalAlertSummary(next);
       return next;
     });
     setErrors((current) => {
       const next = { ...current };
       delete next[name];
+      if (name === "discount_eligibility" && !isPwdRelatedClassification(value)) {
+        delete next.disability_type;
+      }
       return next;
     });
     setStatus("");
@@ -346,7 +357,9 @@ export default function PatientFormPage({ mode = "create" }) {
 
         <Section title="Medical History" description="Use Yes/No answers and complete the related details when a risk answer is Yes.">
           <div className="form-grid">
-            {patientFieldGroups[1].fields.map((field) => (
+            {patientFieldGroups[1].fields
+              .filter((field) => field[0] !== "disability_type" || isPwdRelatedClassification(form.discount_eligibility))
+              .map((field) => (
               <InputField key={field[0]} field={field} value={form[field[0]]} onChange={handleChange} error={errors[field[0]]} />
             ))}
           </div>

@@ -17,3 +17,17 @@ export function formatPesoAmount(value) {
 
   return pesoFormatter.format(numericValue);
 }
+
+export function displayNone(value) {
+  return value && String(value).trim() ? value : "None";
+}
+
+export function isPwdRelatedClassification(value) {
+  const normalized = String(value || "").trim();
+  return normalized === "PWD" || normalized === "Senior Citizen and PWD";
+}
+
+export function shouldShowPatientClassificationInSummary(value) {
+  const normalized = String(value || "").trim();
+  return normalized === "Senior Citizen" || normalized === "PWD" || normalized === "Senior Citizen and PWD";
+}

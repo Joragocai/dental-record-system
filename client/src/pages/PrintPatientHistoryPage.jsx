@@ -1,22 +1,52 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import { PrintSection } from "../components/PrintableDocument";
 import TreatmentHistoryTable from "../components/TreatmentHistoryTable";
 import { getPatient, getTreatmentsByPatient } from "../lib/api";
+import { downloadElementAsPdf } from "../lib/pdf";
 
 export default function PrintPatientHistoryPage() {
   const { patientId } = useParams();
   const [patient, setPatient] = useState(null);
   const [treatments, setTreatments] = useState([]);
+  const [status, setStatus] = useState("");
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const printableRef = useRef(null);
 
   useEffect(() => {
     getPatient(patientId).then(setPatient).catch(() => setPatient(null));
     getTreatmentsByPatient(patientId).then(setTreatments).catch(() => setTreatments([]));
   }, [patientId]);
 
+  useEffect(() => {
+    if (!patient) return undefined;
+
+    const previousTitle = document.title;
+    document.title = `patient-treatment-history-${patient.patient_id}.pdf`;
+
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [patient]);
+
   const hasMedicalAlert = Boolean(patient?.medical_alert_summary);
+
+  async function handleDownloadPdf() {
+    if (!printableRef.current) return;
+
+    setStatus("");
+    setIsDownloadingPdf(true);
+
+    try {
+      await downloadElementAsPdf(printableRef.current, `patient-treatment-history-${patient?.patient_id || patientId}.pdf`);
+    } catch (error) {
+      setStatus(error.message || "Unable to download treatment history PDF.");
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  }
 
   return (
     <Layout>
@@ -29,9 +59,17 @@ export default function PrintPatientHistoryPage() {
               <button className="button-primary" onClick={() => window.print()}>
                 Print
               </button>
+              <button className="button-secondary" onClick={handleDownloadPdf} disabled={isDownloadingPdf}>
+                {isDownloadingPdf ? "Preparing PDF..." : "Download PDF"}
+              </button>
             </div>
           </div>
-          <div className="document-sheet">
+          {status && (
+            <div className="feedback-message mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 no-print">
+              {status}
+            </div>
+          )}
+          <div ref={printableRef} className="document-sheet" data-print-root="patient-treatment-history">
             <header className="document-header">
               <p className="document-kicker">KHURANA CALILAP DENTAL RECORD SYSTEM</p>
               <div className="document-header-row">

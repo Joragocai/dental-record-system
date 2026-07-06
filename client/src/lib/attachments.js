@@ -17,6 +17,9 @@ export const suggestedAttachmentTypes = [
 ];
 
 export const attachmentUploadErrorMessage = "Unsupported file type. Please upload an image or document file only.";
+export const maxAttachmentFileSizeMb = 20;
+export const maxAttachmentFileSizeBytes = maxAttachmentFileSizeMb * 1024 * 1024;
+export const attachmentFileSizeErrorMessage = `File is too large. Maximum attachment size is ${maxAttachmentFileSizeMb} MB.`;
 export const allowedAttachmentMimeTypes = [
   "image/jpeg",
   "image/png",
@@ -43,6 +46,14 @@ export function isAllowedAttachmentFile(file) {
   }
 
   return !file.type || allowedAttachmentMimeTypes.includes(file.type);
+}
+
+export function isAllowedAttachmentFileSize(file) {
+  if (!file || typeof file.size !== "number") {
+    return false;
+  }
+
+  return file.size <= maxAttachmentFileSizeBytes;
 }
 
 const legacyAttachmentTypeLabels = {

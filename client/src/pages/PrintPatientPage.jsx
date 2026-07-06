@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import { PrintField, PrintableAttachments, PrintSection } from "../components/PrintableDocument";
+import { displayNone, isPwdRelatedClassification } from "../lib/formatters";
 import { medicalConditionFields } from "../lib/forms";
 import { getPatient, getPatientAttachments } from "../lib/api";
 import { downloadElementAsPdf } from "../lib/pdf";
@@ -111,7 +112,7 @@ export default function PrintPatientPage() {
               <PrintField label="Patient Occupation" value={patient.patient_occupation} />
               <PrintField label="Dental Insurance" value={patient.dental_insurance} />
               <PrintField label="Insurance Effective Date" value={patient.insurance_effective_date} />
-              <PrintField label="Patient Discount Eligibility" value={patient.discount_eligibility} />
+              <PrintField label="Patient Classification" value={displayNone(patient.discount_eligibility)} />
               <PrintField label="Previous Dentist" value={patient.previous_dentist} />
               <PrintField label="Last Dental Visit" value={patient.last_dental_visit} />
               <PrintField label="Cellphone/Mobile Number" value={patient.mobile_number} />
@@ -141,7 +142,7 @@ export default function PrintPatientPage() {
               <PrintField label="Medication Details" value={patient.medication_details} />
               <PrintField label="Use tobacco products?" value={patient.uses_tobacco} />
               <PrintField label="Use alcohol, cocaine, or dangerous drugs?" value={patient.uses_alcohol_or_drugs} />
-              <PrintField label="Type of Disability" value={patient.disability_type} />
+              {isPwdRelatedClassification(patient.discount_eligibility) ? <PrintField label="Type of Disability" value={displayNone(patient.disability_type)} /> : null}
               <PrintField label="Pregnant?" value={patient.pregnant} />
               <PrintField label="Nursing?" value={patient.nursing} />
               <PrintField label="Taking birth control pills?" value={patient.birth_control_pills} />

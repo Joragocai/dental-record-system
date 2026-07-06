@@ -5,6 +5,7 @@ import AttachmentUploadForm from "../components/AttachmentUploadForm";
 import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import TreatmentHistoryTable from "../components/TreatmentHistoryTable";
+import { displayNone, isPwdRelatedClassification } from "../lib/formatters";
 import {
   getExportUrl,
   getPatient,
@@ -56,11 +57,13 @@ export default function PatientDetailPage() {
               {patient.patient_id} | Registered {patient.date_registered} | Mobile {patient.mobile_number || "-"}
             </p>
             <p className="mt-1 text-sm text-slate-600">
-              Branch {patient.branch_location || "-"} | Discount Eligibility {patient.discount_eligibility || "None"}
+              Branch: {displayNone(patient.branch_location)} | Patient Classification: {displayNone(patient.discount_eligibility)}
             </p>
-            <p className="mt-1 text-sm text-slate-600">
-              Type of Disability {patient.disability_type || "-"}
-            </p>
+            {isPwdRelatedClassification(patient.discount_eligibility) && (
+              <p className="mt-1 text-sm text-slate-600">
+                Type of Disability: {displayNone(patient.disability_type)}
+              </p>
+            )}
           </div>
           <div className="no-print flex flex-wrap gap-3">
             <BackButton fallbackTo="/patients" />

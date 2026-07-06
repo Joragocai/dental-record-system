@@ -54,6 +54,16 @@ function hasDiscountEligibility(value) {
   return normalized && normalized !== "None";
 }
 
+function isPwdRelatedClassification(value) {
+  const normalized = String(value || "").trim();
+  return normalized === "PWD" || normalized === "Senior Citizen and PWD";
+}
+
+function shouldShowPatientClassificationInSummary(value) {
+  const normalized = String(value || "").trim();
+  return normalized === "Senior Citizen" || normalized === "PWD" || normalized === "Senior Citizen and PWD";
+}
+
 export function buildPatientDisplayName(patient) {
   return [patient.last_name, `${patient.first_name} ${patient.middle_name || ""}`.trim()]
     .filter(Boolean)
@@ -88,11 +98,11 @@ export function buildMedicalAlertSummary(patient) {
     sections.push(`Blood Type: ${patient.blood_type}`);
   }
 
-  if (hasDiscountEligibility(patient.discount_eligibility)) {
-    sections.push(`Discount eligibility: ${patient.discount_eligibility}`);
+  if (shouldShowPatientClassificationInSummary(patient.discount_eligibility)) {
+    sections.push(`Patient classification: ${patient.discount_eligibility}`);
   }
 
-  if (patient.disability_type) {
+  if (isPwdRelatedClassification(patient.discount_eligibility) && patient.disability_type) {
     sections.push(`Type of disability: ${patient.disability_type}`);
   }
 

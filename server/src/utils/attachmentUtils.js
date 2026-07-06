@@ -13,7 +13,10 @@ const uploadsRootDir = path.join(rootDir, "uploads");
 const patientUploadDir = path.join(rootDir, "uploads", "patients");
 const treatmentUploadDir = path.join(rootDir, "uploads", "treatments");
 
+export const MAX_ATTACHMENT_FILE_SIZE_MB = 10;
+export const MAX_ATTACHMENT_FILE_SIZE_BYTES = MAX_ATTACHMENT_FILE_SIZE_MB * 1024 * 1024;
 export const ATTACHMENT_UPLOAD_ERROR_MESSAGE = "Unsupported file type. Please upload an image or document file only.";
+export const ATTACHMENT_FILE_SIZE_ERROR_MESSAGE = `File is too large. Maximum attachment size is ${MAX_ATTACHMENT_FILE_SIZE_MB} MB.`;
 export const allowedAttachmentMimeTypes = [
   "image/jpeg",
   "image/png",
@@ -89,6 +92,9 @@ export const attachmentUpload = multer({
     const error = new Error(ATTACHMENT_UPLOAD_ERROR_MESSAGE);
     error.status = 400;
     callback(error);
+  },
+  limits: {
+    fileSize: MAX_ATTACHMENT_FILE_SIZE_BYTES
   }
 });
 

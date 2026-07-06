@@ -284,7 +284,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
               <p className="mt-2 text-xl font-semibold text-slate-900">{selectedPatient?.patient_id || form.patient_id || "-"}</p>
             </div>
             <div className="record-tile min-h-[86px]">
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Discount Status</p>
+              <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Patient Classification</p>
               <p className="mt-2 text-sm font-semibold text-slate-900">{selectedPatient?.discount_eligibility || "None"}</p>
             </div>
             <div className="status-strip min-h-[86px]">
@@ -342,7 +342,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
               <p className="font-semibold">Selected Patient</p>
               <p className="mt-1">{selectedPatient.display_name}</p>
               <p>{selectedPatient.patient_id} | Mobile {selectedPatient.mobile_number || "-"}</p>
-              <p>Discount Eligibility: {selectedPatient.discount_eligibility || "None"}</p>
+              <p>Patient Classification: {selectedPatient.discount_eligibility || "None"}</p>
               {selectedPatient.discount_eligibility === "Senior Citizen and PWD" && (
                 <p className="mt-2 text-xs text-amber-700">
                   Patient has both Senior Citizen and PWD eligibility. Apply only one discount basis unless the clinic confirms otherwise.

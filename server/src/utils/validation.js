@@ -97,6 +97,11 @@ function normalizeDiscountType(value) {
   return allowedTreatmentDiscountTypes.has(cleaned) ? cleaned : "None";
 }
 
+function isPwdRelatedClassification(value) {
+  const normalized = cleanString(value);
+  return normalized === "PWD" || normalized === "Senior Citizen and PWD";
+}
+
 export function validatePatientPayload(input) {
   const data = { ...input };
   const errors = [];
@@ -122,6 +127,9 @@ export function validatePatientPayload(input) {
   data.disability_type = cleanString(data.disability_type);
   data.is_minor = cleanString(data.is_minor) || "No";
   data.discount_eligibility = cleanString(data.discount_eligibility) || "None";
+  if (!isPwdRelatedClassification(data.discount_eligibility)) {
+    data.disability_type = "";
+  }
   data.medical_alert_summary = cleanString(data.medical_alert_summary);
 
   if (!patientIdPattern.test(data.patient_id)) errors.push("Patient ID format must be P-YYYY-0001.");
