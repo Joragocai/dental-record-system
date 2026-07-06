@@ -1,5 +1,12 @@
 const mobilePattern = /^[0-9+\-\s()]{7,20}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const treatmentDiscountDefaults = {
+  None: 0,
+  "Senior Citizen": 20,
+  PWD: 20,
+  "Senior Citizen/PWD": 20,
+  Custom: 0
+};
 
 export function calculateAgeFromBirthday(birthday) {
   if (!birthday) return "";
@@ -35,10 +42,58 @@ function parseAmount(value) {
   return { isBlank: false, numberValue };
 }
 
+function parsePercent(value) {
+  if (value === undefined || value === null) return { isBlank: true, numberValue: null };
+  if (typeof value === "string" && value.trim() === "") return { isBlank: true, numberValue: null };
+
+  const numberValue = Number(value);
+  return { isBlank: false, numberValue };
+}
+
+export function normalizePatientDiscountEligibility(value) {
+  return typeof value === "string" && value.trim() ? value.trim() : "None";
+}
+
+export function getTreatmentDiscountDefaultsFromEligibility(eligibility) {
+  const normalizedEligibility = normalizePatientDiscountEligibility(eligibility);
+
+  switch (normalizedEligibility) {
+    case "Senior Citizen":
+      return { discount_type: "Senior Citizen", discount_percent: "20.00" };
+    case "PWD":
+      return { discount_type: "PWD", discount_percent: "20.00" };
+    case "Senior Citizen and PWD":
+      return { discount_type: "Senior Citizen/PWD", discount_percent: "20.00" };
+    default:
+      return { discount_type: "None", discount_percent: "0.00" };
+  }
+}
+
+export function calculateTreatmentAmounts({ amount_charged, discount_percent, amount_paid, discount_type }) {
+  const charged = Number(amount_charged);
+  const resolvedPercent = discount_type === "None" ? 0 : Number(discount_percent);
+  const paid = Number(amount_paid);
+
+  if (Number.isNaN(charged) || charged < 0) {
+    return { discount_amount: "", net_amount_due: "", balance: "" };
+  }
+
+  const safePercent = Number.isNaN(resolvedPercent) || resolvedPercent < 0 ? 0 : Math.min(resolvedPercent, 100);
+  const discountAmount = Number((charged * safePercent / 100).toFixed(2));
+  const netAmountDue = Number((charged - discountAmount).toFixed(2));
+
+  return {
+    discount_amount: discountAmount.toFixed(2),
+    net_amount_due: netAmountDue.toFixed(2),
+    balance: Number.isNaN(paid) || paid < 0 ? "" : (netAmountDue - paid).toFixed(2)
+  };
+}
+
 export function validatePatientForm(form) {
   const errors = {};
   const normalized = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, trimValue(value)]));
   normalized.age = Number(calculateAgeFromBirthday(normalized.birthday) || 0);
+  normalized.discount_eligibility = normalizePatientDiscountEligibility(normalized.discount_eligibility);
 
   if (!/^P-\d{4}-\d{4}$/.test(normalized.patient_id || "")) errors.patient_id = "Patient ID format must be P-YYYY-0001.";
   if (!isValidDateString(normalized.date_registered)) errors.date_registered = "Date Registered is required.";
@@ -70,6 +125,10 @@ export function validateTreatmentForm(form, selectedPatient) {
   const normalized = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, trimValue(value)]));
   const amountCharged = parseAmount(normalized.amount_charged);
   const amountPaid = parseAmount(normalized.amount_paid);
+  const discountPercent = parsePercent(normalized.discount_percent);
+  const discountAmount = parseAmount(normalized.discount_amount);
+  const netAmountDue = parseAmount(normalized.net_amount_due);
+  normalized.discount_type = normalized.discount_type || "None";
   const balance = parseAmount(normalized.balance);
 
   if (!selectedPatient?.patient_id) errors.patient_id = "Select a patient first.";
@@ -90,23 +149,46 @@ export function validateTreatmentForm(form, selectedPatient) {
   } else if (Number.isNaN(amountPaid.numberValue) || amountPaid.numberValue < 0) {
     errors.amount_paid = "Amount Paid must be a valid number that is 0 or greater.";
   }
+  if (discountPercent.isBlank && normalized.discount_type === "Custom") {
+    errors.discount_percent = "Discount Percent is required for a custom discount.";
+  } else if (!discountPercent.isBlank && (Number.isNaN(discountPercent.numberValue) || discountPercent.numberValue < 0 || discountPercent.numberValue > 100)) {
+    errors.discount_percent = "Discount Percent must be a valid number from 0 to 100.";
+  }
   if (balance.isBlank) {
     errors.balance = "Balance is required.";
   } else if (Number.isNaN(balance.numberValue)) {
     errors.balance = "Balance must be a valid number.";
   }
 
-  if (!errors.amount_charged && !errors.amount_paid && amountPaid.numberValue > amountCharged.numberValue) {
-    errors.amount_paid = "Amount Paid cannot be greater than Amount Charged.";
-  }
-
   if (!errors.amount_charged && !errors.amount_paid) {
     normalized.amount_charged = Number(amountCharged.numberValue.toFixed(2));
+    normalized.discount_percent = Number(
+      (normalized.discount_type === "None"
+        ? 0
+        : discountPercent.isBlank
+          ? treatmentDiscountDefaults[normalized.discount_type] ?? 0
+          : discountPercent.numberValue
+      ).toFixed(2)
+    );
+    normalized.discount_amount = Number((normalized.amount_charged * normalized.discount_percent / 100).toFixed(2));
+    normalized.net_amount_due = Number((normalized.amount_charged - normalized.discount_amount).toFixed(2));
     normalized.amount_paid = Number(amountPaid.numberValue.toFixed(2));
-    normalized.balance = Number((normalized.amount_charged - normalized.amount_paid).toFixed(2));
+    normalized.balance = Number((normalized.net_amount_due - normalized.amount_paid).toFixed(2));
+
+    if (normalized.amount_paid > normalized.net_amount_due) {
+      errors.amount_paid = "Amount Paid cannot be greater than Net Amount Due.";
+    }
+
+    if (!discountAmount.isBlank && Number(normalized.discount_amount.toFixed(2)) !== Number(discountAmount.numberValue.toFixed(2))) {
+      errors.discount_amount = "Discount Amount must equal Amount Charged multiplied by Discount Percent.";
+    }
+
+    if (!netAmountDue.isBlank && Number(normalized.net_amount_due.toFixed(2)) !== Number(netAmountDue.numberValue.toFixed(2))) {
+      errors.net_amount_due = "Net Amount Due must equal Amount Charged minus Discount Amount.";
+    }
 
     if (!errors.balance && Number(normalized.balance.toFixed(2)) !== Number(balance.numberValue.toFixed(2))) {
-      errors.balance = "Balance must equal Amount Charged minus Amount Paid.";
+      errors.balance = "Balance must equal Net Amount Due minus Amount Paid.";
     }
   } else {
     normalized.amount_charged = normalized.amount_charged;

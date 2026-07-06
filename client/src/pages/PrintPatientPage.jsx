@@ -73,7 +73,7 @@ export default function PrintPatientPage() {
           )}
           <div ref={printableRef} className="document-sheet" data-print-root="patient-record">
           <header className="document-header">
-            <p className="document-kicker">Electronic Dental Record System</p>
+            <p className="document-kicker">KHURANA CALILAP DENTAL RECORD SYSTEM</p>
             <div className="document-header-row">
               <div>
                 <h1 className="document-title">Patient Record</h1>
@@ -98,6 +98,7 @@ export default function PrintPatientPage() {
             <div className="document-grid document-grid-3">
               <PrintField label="Patient ID" value={patient.patient_id} />
               <PrintField label="Date Registered" value={patient.date_registered} />
+              <PrintField label="Branch Location" value={patient.branch_location} />
               <PrintField label="Last Name" value={patient.last_name} />
               <PrintField label="First Name" value={patient.first_name} />
               <PrintField label="Middle Name" value={patient.middle_name} />
@@ -110,6 +111,7 @@ export default function PrintPatientPage() {
               <PrintField label="Patient Occupation" value={patient.patient_occupation} />
               <PrintField label="Dental Insurance" value={patient.dental_insurance} />
               <PrintField label="Insurance Effective Date" value={patient.insurance_effective_date} />
+              <PrintField label="Patient Discount Eligibility" value={patient.discount_eligibility} />
               <PrintField label="Previous Dentist" value={patient.previous_dentist} />
               <PrintField label="Last Dental Visit" value={patient.last_dental_visit} />
               <PrintField label="Cellphone/Mobile Number" value={patient.mobile_number} />
@@ -139,6 +141,7 @@ export default function PrintPatientPage() {
               <PrintField label="Medication Details" value={patient.medication_details} />
               <PrintField label="Use tobacco products?" value={patient.uses_tobacco} />
               <PrintField label="Use alcohol, cocaine, or dangerous drugs?" value={patient.uses_alcohol_or_drugs} />
+              <PrintField label="Type of Disability" value={patient.disability_type} />
               <PrintField label="Pregnant?" value={patient.pregnant} />
               <PrintField label="Nursing?" value={patient.nursing} />
               <PrintField label="Taking birth control pills?" value={patient.birth_control_pills} />

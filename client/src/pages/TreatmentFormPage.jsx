@@ -5,7 +5,7 @@ import AttachmentUploadForm from "../components/AttachmentUploadForm";
 import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import TreatmentHistoryTable from "../components/TreatmentHistoryTable";
-import { emptyTreatment, suggestedTreatmentProcedures } from "../lib/forms";
+import { emptyTreatment, suggestedDentists, suggestedTreatmentProcedures, treatmentDiscountTypes } from "../lib/forms";
 import {
   createTreatment,
   getNextTreatmentId,
@@ -17,14 +17,54 @@ import {
   updateTreatment
 } from "../lib/api";
 import { formatPesoAmount } from "../lib/formatters";
-import { validateTreatmentForm } from "../lib/validation";
+import { calculateTreatmentAmounts, getTreatmentDiscountDefaultsFromEligibility, validateTreatmentForm } from "../lib/validation";
 
-function inputClass(hasError) {
-  return hasError ? "text-input input-error" : "text-input";
+function hasFilledValue(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return value.trim() !== "";
+  return true;
 }
 
-function areaClass(hasError) {
-  return hasError ? "text-area input-error" : "text-area";
+function inputClass(hasError, hasValue) {
+  if (hasError) return "text-input input-error";
+  return hasValue ? "text-input input-filled" : "text-input";
+}
+
+function areaClass(hasError, hasValue) {
+  if (hasError) return "text-area input-error";
+  return hasValue ? "text-area input-filled" : "text-area";
+}
+
+function selectClass(hasError, hasValue) {
+  if (hasError) return "select-input input-error";
+  return hasValue ? "select-input input-filled" : "select-input";
+}
+
+function formatEditableAmount(value, fallback = "") {
+  if (value === null || value === undefined || value === "") return fallback;
+  const numeric = Number(value);
+  return Number.isNaN(numeric) ? String(value) : numeric.toFixed(2);
+}
+
+function buildTreatmentFormState(current, updates = {}) {
+  const next = { ...current, ...updates };
+  const computed = calculateTreatmentAmounts(next);
+  return { ...next, ...computed };
+}
+
+function normalizeTreatmentForm(data) {
+  return buildTreatmentFormState(
+    {
+      ...emptyTreatment,
+      ...data,
+      amount_charged: formatEditableAmount(data.amount_charged),
+      discount_percent: formatEditableAmount(data.discount_percent, "0.00"),
+      amount_paid: formatEditableAmount(data.amount_paid),
+      discount_amount: formatEditableAmount(data.discount_amount, "0.00"),
+      net_amount_due: formatEditableAmount(data.net_amount_due, formatEditableAmount(data.amount_charged, "0.00")),
+      balance: formatEditableAmount(data.balance)
+    }
+  );
 }
 
 function Section({ title, description, children }) {
@@ -44,6 +84,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const procedureDatalistId = "suggested-treatment-procedures";
+  const dentistDatalistId = "suggested-treatment-dentists";
   const [patientQuery, setPatientQuery] = useState("");
   const [patientResults, setPatientResults] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -58,7 +99,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
     if (mode === "edit" && treatmentId) {
       getTreatment(treatmentId)
         .then(async (data) => {
-          setForm({ ...data, balance: Number(data.balance || 0).toFixed(2) });
+          setForm(normalizeTreatmentForm(data));
           const patient = await getPatient(data.patient_id);
           setSelectedPatient(patient);
         })
@@ -84,9 +125,19 @@ export default function TreatmentFormPage({ mode = "create" }) {
       setHistory([]);
       return;
     }
-    setForm((current) => ({ ...current, patient_id: selectedPatient.patient_id }));
+    setForm((current) => {
+      const next = { ...current, patient_id: selectedPatient.patient_id };
+      if (mode === "create") {
+        // Common clinic billing rules often use 20% for Senior Citizen/PWD covered services.
+        // VAT treatment and final billing policy should still be verified with the clinic/accountant.
+        const defaults = getTreatmentDiscountDefaultsFromEligibility(selectedPatient.discount_eligibility);
+        next.discount_type = defaults.discount_type;
+        next.discount_percent = defaults.discount_percent;
+      }
+      return buildTreatmentFormState(next);
+    });
     getTreatmentsByPatient(selectedPatient.patient_id).then(setHistory).catch(() => setHistory([]));
-  }, [selectedPatient]);
+  }, [mode, selectedPatient]);
 
   useEffect(() => {
     if (!patientQuery.trim()) {
@@ -99,17 +150,31 @@ export default function TreatmentFormPage({ mode = "create" }) {
   function handleChange(name, value) {
     setForm((current) => {
       const next = { ...current, [name]: value };
-      const charged = name === "amount_charged" ? value : current.amount_charged;
-      const paid = name === "amount_paid" ? value : current.amount_paid;
-      const amountCharged = charged === "" ? Number.NaN : Number(charged);
-      const amountPaid = paid === "" ? Number.NaN : Number(paid);
-      next.balance = Number.isNaN(amountCharged) || Number.isNaN(amountPaid) ? "" : (amountCharged - amountPaid).toFixed(2);
-      return next;
+
+      if (name === "discount_type") {
+        if (value === "Senior Citizen" || value === "PWD" || value === "Senior Citizen/PWD") {
+          next.discount_percent = "20.00";
+        } else if (value === "None") {
+          next.discount_percent = "0.00";
+        } else if (!current.discount_percent) {
+          next.discount_percent = "0.00";
+        }
+      }
+
+      if (name === "discount_percent" && value === "") {
+        next.discount_percent = "";
+      }
+
+      return buildTreatmentFormState(next);
     });
     setErrors((current) => {
       const next = { ...current };
       delete next[name];
-      if (name === "amount_charged" || name === "amount_paid") delete next.balance;
+      if (["amount_charged", "amount_paid", "discount_percent", "discount_type"].includes(name)) {
+        delete next.discount_amount;
+        delete next.net_amount_due;
+        delete next.balance;
+      }
       return next;
     });
     setStatus("");
@@ -145,7 +210,17 @@ export default function TreatmentFormPage({ mode = "create" }) {
 
   async function handleNewTreatment() {
     const data = await getNextTreatmentId();
-    setForm({ ...emptyTreatment, treatment_id: data.treatment_id, patient_id: selectedPatient?.patient_id || "", balance: "" });
+    const discountDefaults = getTreatmentDiscountDefaultsFromEligibility(selectedPatient?.discount_eligibility);
+    setForm(
+      buildTreatmentFormState({
+        ...emptyTreatment,
+        treatment_id: data.treatment_id,
+        patient_id: selectedPatient?.patient_id || "",
+        discount_type: discountDefaults.discount_type,
+        discount_percent: discountDefaults.discount_percent,
+        amount_paid: ""
+      })
+    );
     setAttachments([]);
     setErrors({});
     setStatus("");
@@ -195,20 +270,24 @@ export default function TreatmentFormPage({ mode = "create" }) {
             </div>
           </div>
 
-          <div className="record-grid">
-            <div className="record-tile">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="record-tile min-h-[86px]">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Treatment ID</p>
               <p className="mt-2 text-xl font-semibold text-slate-900">{form.treatment_id || "-"}</p>
             </div>
-            <div className="record-tile">
+            <div className="record-tile min-h-[86px]">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Selected Patient</p>
-              <p className="mt-2 text-sm font-semibold text-slate-900">{selectedPatient?.display_name || "No patient selected yet"}</p>
+              <p className="mt-2 break-words text-sm font-semibold text-slate-900">{selectedPatient?.display_name || "No patient selected yet"}</p>
             </div>
-            <div className="record-tile">
+            <div className="record-tile min-h-[86px]">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Patient ID</p>
               <p className="mt-2 text-xl font-semibold text-slate-900">{selectedPatient?.patient_id || form.patient_id || "-"}</p>
             </div>
-            <div className="status-strip">
+            <div className="record-tile min-h-[86px]">
+              <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Discount Status</p>
+              <p className="mt-2 text-sm font-semibold text-slate-900">{selectedPatient?.discount_eligibility || "None"}</p>
+            </div>
+            <div className="status-strip min-h-[86px]">
               <p className="text-xs uppercase tracking-[0.2em] text-clinic-700">Current Balance</p>
               <p className="mt-2 text-xl font-semibold text-clinic-900">{formatPesoAmount(form.balance || 0)}</p>
             </div>
@@ -221,7 +300,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
           <label className="field-box block">
             <span className="label-text">Search Patient</span>
             <input
-              className={inputClass(Boolean(errors.patient_id))}
+              className={inputClass(Boolean(errors.patient_id), hasFilledValue(patientQuery))}
               value={patientQuery}
               onChange={(event) => setPatientQuery(event.target.value)}
               placeholder="Search by patient name, patient ID, or mobile number"
@@ -263,6 +342,12 @@ export default function TreatmentFormPage({ mode = "create" }) {
               <p className="font-semibold">Selected Patient</p>
               <p className="mt-1">{selectedPatient.display_name}</p>
               <p>{selectedPatient.patient_id} | Mobile {selectedPatient.mobile_number || "-"}</p>
+              <p>Discount Eligibility: {selectedPatient.discount_eligibility || "None"}</p>
+              {selectedPatient.discount_eligibility === "Senior Citizen and PWD" && (
+                <p className="mt-2 text-xs text-amber-700">
+                  Patient has both Senior Citizen and PWD eligibility. Apply only one discount basis unless the clinic confirms otherwise.
+                </p>
+              )}
             </div>
           )}
         </Section>
@@ -271,36 +356,36 @@ export default function TreatmentFormPage({ mode = "create" }) {
           <div className="form-grid">
             <label className="field-box">
               <span className="label-text">Treatment ID</span>
-              <input className="text-input" readOnly value={form.treatment_id} />
+              <input className={inputClass(false, hasFilledValue(form.treatment_id))} readOnly value={form.treatment_id} />
               {errors.treatment_id && <p className="error-text">{errors.treatment_id}</p>}
             </label>
             <label className="field-box">
               <span className="label-text">Patient ID</span>
-              <input className="text-input" readOnly value={selectedPatient?.patient_id || form.patient_id} />
+              <input className={inputClass(false, hasFilledValue(selectedPatient?.patient_id || form.patient_id))} readOnly value={selectedPatient?.patient_id || form.patient_id} />
             </label>
             <label className="field-box">
               <span className="label-text">Patient Name</span>
-              <input className="text-input" readOnly value={selectedPatient?.display_name || ""} />
+              <input className={inputClass(false, hasFilledValue(selectedPatient?.display_name || ""))} readOnly value={selectedPatient?.display_name || ""} />
             </label>
             <label className="field-box">
               <span className="label-text">Date *</span>
-              <input type="date" className={inputClass(Boolean(errors.treatment_date))} value={form.treatment_date || ""} onChange={(event) => handleChange("treatment_date", event.target.value)} />
+              <input type="date" className={inputClass(Boolean(errors.treatment_date), hasFilledValue(form.treatment_date))} value={form.treatment_date || ""} onChange={(event) => handleChange("treatment_date", event.target.value)} />
               {errors.treatment_date && <p className="error-text">{errors.treatment_date}</p>}
             </label>
             <label className="field-box">
               <span className="label-text">Tooth No./s</span>
-              <input className={inputClass(Boolean(errors.tooth_numbers))} value={form.tooth_numbers || ""} onChange={(event) => handleChange("tooth_numbers", event.target.value)} />
+              <input className={inputClass(Boolean(errors.tooth_numbers), hasFilledValue(form.tooth_numbers))} value={form.tooth_numbers || ""} onChange={(event) => handleChange("tooth_numbers", event.target.value)} />
             </label>
             <label className="field-box">
               <span className="label-text">Next Appointment</span>
-              <input type="date" className={inputClass(Boolean(errors.next_appointment))} value={form.next_appointment || ""} onChange={(event) => handleChange("next_appointment", event.target.value)} />
+              <input type="date" className={inputClass(Boolean(errors.next_appointment), hasFilledValue(form.next_appointment))} value={form.next_appointment || ""} onChange={(event) => handleChange("next_appointment", event.target.value)} />
               {errors.next_appointment && <p className="error-text">{errors.next_appointment}</p>}
             </label>
             <label className="field-box">
               <span className="label-text">Procedure *</span>
               <div className="datalist-input-wrap">
                 <input
-                  className={`${inputClass(Boolean(errors.procedure))} pr-10`}
+                  className={`${inputClass(Boolean(errors.procedure), hasFilledValue(form.procedure))} pr-10`}
                   list={procedureDatalistId}
                   value={form.procedure || ""}
                   onChange={(event) => handleChange("procedure", event.target.value)}
@@ -319,30 +404,78 @@ export default function TreatmentFormPage({ mode = "create" }) {
             </label>
             <label className="field-box">
               <span className="label-text">Dentist/s *</span>
-              <input className={inputClass(Boolean(errors.dentists))} value={form.dentists || ""} onChange={(event) => handleChange("dentists", event.target.value)} />
+              <div className="datalist-input-wrap">
+                <input
+                  className={`${inputClass(Boolean(errors.dentists), hasFilledValue(form.dentists))} pr-10`}
+                  list={dentistDatalistId}
+                  value={form.dentists || ""}
+                  onChange={(event) => handleChange("dentists", event.target.value)}
+                  placeholder="Choose or type dentist"
+                />
+                <span className="datalist-input-arrow" aria-hidden="true">
+                  ▾
+                </span>
+              </div>
+              <datalist id={dentistDatalistId}>
+                {suggestedDentists.map((dentist) => (
+                  <option key={dentist} value={dentist} />
+                ))}
+              </datalist>
               {errors.dentists && <p className="error-text">{errors.dentists}</p>}
             </label>
             <label className="field-box">
               <span className="label-text">Amount Charged *</span>
-              <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_charged))} value={form.amount_charged || ""} onChange={(event) => handleChange("amount_charged", event.target.value)} />
+              <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_charged), hasFilledValue(form.amount_charged))} value={form.amount_charged || ""} onChange={(event) => handleChange("amount_charged", event.target.value)} />
               <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.amount_charged || 0)}</p>
               {errors.amount_charged && <p className="error-text">{errors.amount_charged}</p>}
             </label>
             <label className="field-box">
+              <span className="label-text">Discount Type</span>
+              <select className={selectClass(Boolean(errors.discount_type), hasFilledValue(form.discount_type))} value={form.discount_type || "None"} onChange={(event) => handleChange("discount_type", event.target.value)}>
+                {treatmentDiscountTypes.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-slate-500">
+                Patient may have both Senior Citizen and PWD IDs, but the discount should not be doubled. Use only one applicable discount basis unless the clinic confirms otherwise.
+              </p>
+              {errors.discount_type && <p className="error-text">{errors.discount_type}</p>}
+            </label>
+            <label className="field-box">
+              <span className="label-text">Discount Percent</span>
+              <input type="number" step="0.01" min="0" max="100" className={inputClass(Boolean(errors.discount_percent), hasFilledValue(form.discount_percent))} value={form.discount_percent || ""} onChange={(event) => handleChange("discount_percent", event.target.value)} />
+              <p className="mt-2 text-xs font-medium text-slate-500">{Number(form.discount_percent || 0).toFixed(2)}%</p>
+              {errors.discount_percent && <p className="error-text">{errors.discount_percent}</p>}
+            </label>
+            <label className="field-box">
+              <span className="label-text">Discount Amount</span>
+              <input className={inputClass(Boolean(errors.discount_amount), hasFilledValue(form.discount_amount))} readOnly value={form.discount_amount || ""} />
+              <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.discount_amount || 0)}</p>
+              {errors.discount_amount && <p className="error-text">{errors.discount_amount}</p>}
+            </label>
+            <label className="field-box">
+              <span className="label-text">Net Amount Due</span>
+              <input className={inputClass(Boolean(errors.net_amount_due), hasFilledValue(form.net_amount_due))} readOnly value={form.net_amount_due || ""} />
+              <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.net_amount_due || 0)}</p>
+              {errors.net_amount_due && <p className="error-text">{errors.net_amount_due}</p>}
+            </label>
+            <label className="field-box">
               <span className="label-text">Amount Paid *</span>
-              <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_paid))} value={form.amount_paid || ""} onChange={(event) => handleChange("amount_paid", event.target.value)} />
+              <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_paid), hasFilledValue(form.amount_paid))} value={form.amount_paid || ""} onChange={(event) => handleChange("amount_paid", event.target.value)} />
               <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.amount_paid || 0)}</p>
               {errors.amount_paid && <p className="error-text">{errors.amount_paid}</p>}
             </label>
             <label className="field-box">
               <span className="label-text">Balance *</span>
-              <input className={inputClass(Boolean(errors.balance))} readOnly value={form.balance || ""} />
+              <input className={inputClass(Boolean(errors.balance), hasFilledValue(form.balance))} readOnly value={form.balance || ""} />
               <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.balance || 0)}</p>
               {errors.balance && <p className="error-text">{errors.balance}</p>}
             </label>
             <label className="field-box md:col-span-2 xl:col-span-3">
               <span className="label-text">Remarks</span>
-              <textarea className={areaClass(Boolean(errors.remarks))} value={form.remarks || ""} onChange={(event) => handleChange("remarks", event.target.value)} />
+              <textarea className={areaClass(Boolean(errors.remarks), hasFilledValue(form.remarks))} value={form.remarks || ""} onChange={(event) => handleChange("remarks", event.target.value)} />
             </label>
           </div>
         </Section>

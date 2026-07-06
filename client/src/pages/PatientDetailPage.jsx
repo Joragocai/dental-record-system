@@ -55,6 +55,12 @@ export default function PatientDetailPage() {
             <p className="mt-2 text-sm text-slate-600">
               {patient.patient_id} | Registered {patient.date_registered} | Mobile {patient.mobile_number || "-"}
             </p>
+            <p className="mt-1 text-sm text-slate-600">
+              Branch {patient.branch_location || "-"} | Discount Eligibility {patient.discount_eligibility || "None"}
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              Type of Disability {patient.disability_type || "-"}
+            </p>
           </div>
           <div className="no-print flex flex-wrap gap-3">
             <BackButton fallbackTo="/patients" />

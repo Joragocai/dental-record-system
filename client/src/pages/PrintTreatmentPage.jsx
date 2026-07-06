@@ -78,7 +78,7 @@ export default function PrintTreatmentPage() {
           )}
           <div ref={printableRef} className="document-sheet" data-print-root="treatment-record">
           <header className="document-header">
-            <p className="document-kicker">Electronic Dental Record System</p>
+            <p className="document-kicker">KHURANA CALILAP DENTAL RECORD SYSTEM</p>
             <div className="document-header-row">
               <div>
                 <h1 className="document-title">Treatment Record</h1>
@@ -100,6 +100,8 @@ export default function PrintTreatmentPage() {
               <PrintField label="Birthday" value={patient?.birthday} />
               <PrintField label="Age" value={patient?.age} />
               <PrintField label="Gender" value={patient?.gender} />
+              <PrintField label="Branch Location" value={patient?.branch_location} />
+              <PrintField label="Patient Discount Eligibility" value={patient?.discount_eligibility} />
               <PrintField label="Mobile Number" value={patient?.mobile_number} />
               <PrintField label="Home Address" value={patient?.home_address} />
               <PrintField label="Medical Alert Summary" value={patient?.medical_alert_summary} />
@@ -115,6 +117,10 @@ export default function PrintTreatmentPage() {
               <PrintField label="Tooth No./s" value={treatment.tooth_numbers} />
               <PrintField label="Next Appointment" value={treatment.next_appointment} />
               <PrintField label="Amount Charged" value={formatPesoAmount(treatment.amount_charged)} />
+              <PrintField label="Discount Type" value={treatment.discount_type} />
+              <PrintField label="Discount Percent" value={`${Number(treatment.discount_percent || 0).toFixed(2)}%`} />
+              <PrintField label="Discount Amount" value={formatPesoAmount(treatment.discount_amount)} />
+              <PrintField label="Net Amount Due" value={formatPesoAmount(treatment.net_amount_due)} />
               <PrintField label="Amount Paid" value={formatPesoAmount(treatment.amount_paid)} />
               <PrintField label="Balance" value={formatPesoAmount(treatment.balance)} />
             </div>

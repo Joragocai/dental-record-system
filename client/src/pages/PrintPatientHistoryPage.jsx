@@ -33,7 +33,7 @@ export default function PrintPatientHistoryPage() {
           </div>
           <div className="document-sheet">
             <header className="document-header">
-              <p className="document-kicker">Electronic Dental Record System</p>
+              <p className="document-kicker">KHURANA CALILAP DENTAL RECORD SYSTEM</p>
               <div className="document-header-row">
                 <div>
                   <h1 className="document-title">Treatment History</h1>

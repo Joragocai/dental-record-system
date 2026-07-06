@@ -9,10 +9,34 @@ const treatmentFields = [
   "procedure",
   "dentists",
   "amount_charged",
+  "discount_type",
+  "discount_percent",
+  "discount_amount",
+  "net_amount_due",
   "amount_paid",
   "balance",
   "remarks"
 ];
+
+function decorateTreatment(row) {
+  if (!row) return null;
+
+  const amountCharged = Number(row.amount_charged || 0);
+  const discountPercent = Number(row.discount_percent || 0);
+  const discountAmount = row.discount_amount === null || row.discount_amount === undefined ? Number((amountCharged * discountPercent / 100).toFixed(2)) : Number(row.discount_amount || 0);
+  const netAmountDue = row.net_amount_due === null || row.net_amount_due === undefined || row.net_amount_due === "" ? Number((amountCharged - discountAmount).toFixed(2)) : Number(row.net_amount_due || 0);
+  const amountPaid = Number(row.amount_paid || 0);
+  const balance = row.balance === null || row.balance === undefined || row.balance === "" ? Number((netAmountDue - amountPaid).toFixed(2)) : Number(row.balance || 0);
+
+  return {
+    ...row,
+    discount_type: row.discount_type || "None",
+    discount_percent: Number.isFinite(discountPercent) ? discountPercent : 0,
+    discount_amount: Number.isFinite(discountAmount) ? discountAmount : 0,
+    net_amount_due: Number.isFinite(netAmountDue) ? netAmountDue : amountCharged,
+    balance: Number.isFinite(balance) ? balance : 0
+  };
+}
 
 export function listTreatments() {
   return db
@@ -26,11 +50,13 @@ export function listTreatments() {
        FROM treatments t
        ORDER BY t.treatment_date DESC, t.treatment_id DESC`
     )
-    .all();
+    .all()
+    .map(decorateTreatment);
 }
 
 export function getTreatmentByTreatmentId(treatmentId) {
-  return db
+  return decorateTreatment(
+    db
     .prepare(
       `SELECT t.*,
               (
@@ -41,7 +67,8 @@ export function getTreatmentByTreatmentId(treatmentId) {
        FROM treatments t
        WHERE t.treatment_id = ?`
     )
-    .get(treatmentId);
+    .get(treatmentId)
+  );
 }
 
 export function getTreatmentsByPatientId(patientId) {
@@ -57,7 +84,8 @@ export function getTreatmentsByPatientId(patientId) {
        WHERE t.patient_id = ?
        ORDER BY t.treatment_date DESC, t.treatment_id DESC`
     )
-    .all(patientId);
+    .all(patientId)
+    .map(decorateTreatment);
 }
 
 export function createTreatment(treatment, now) {

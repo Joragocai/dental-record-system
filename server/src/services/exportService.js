@@ -283,6 +283,7 @@ export async function exportPatientsWorkbook() {
   sheet.columns = [
     { header: "Patient ID", key: "patient_id" },
     { header: "Date Registered", key: "date_registered" },
+    { header: "Branch Location", key: "branch_location" },
     { header: "Last Name", key: "last_name" },
     { header: "First Name", key: "first_name" },
     { header: "Middle Name", key: "middle_name" },
@@ -291,6 +292,8 @@ export async function exportPatientsWorkbook() {
     { header: "Gender", key: "gender" },
     { header: "Mobile Number", key: "mobile_number" },
     { header: "Email Address", key: "email_address" },
+    { header: "Discount Eligibility", key: "discount_eligibility" },
+    { header: "Type of Disability", key: "disability_type" },
     { header: "Home Address", key: "home_address" },
     { header: "Medical Alert Summary", key: "medical_alert_summary" }
   ];
@@ -333,6 +336,10 @@ export async function exportTreatmentsWorkbook() {
     { header: "Procedure", key: "procedure" },
     { header: "Dentist/s", key: "dentists" },
     { header: "Amount Charged", key: "amount_charged" },
+    { header: "Discount Type", key: "discount_type" },
+    { header: "Discount Percent", key: "discount_percent" },
+    { header: "Discount Amount", key: "discount_amount" },
+    { header: "Net Amount Due", key: "net_amount_due" },
     { header: "Amount Paid", key: "amount_paid" },
     { header: "Balance", key: "balance" },
     { header: "Remarks", key: "remarks" }
@@ -345,7 +352,7 @@ export async function exportTreatmentsWorkbook() {
     })
   );
   applyDateFormats(sheet, ["treatment_date"]);
-  applyAmountFormats(sheet, ["amount_charged", "amount_paid", "balance"]);
+  applyAmountFormats(sheet, ["amount_charged", "discount_percent", "discount_amount", "net_amount_due", "amount_paid", "balance"]);
   autoWidth(sheet);
 
   const attachmentSheet = workbook.addWorksheet("Treatment Attachments");
@@ -383,6 +390,10 @@ export async function exportPatientTreatmentsWorkbook(patientId) {
     { header: "Dentist/s", key: "dentists" },
     { header: "Tooth No./s", key: "tooth_numbers" },
     { header: "Amount Charged", key: "amount_charged" },
+    { header: "Discount Type", key: "discount_type" },
+    { header: "Discount Percent", key: "discount_percent" },
+    { header: "Discount Amount", key: "discount_amount" },
+    { header: "Net Amount Due", key: "net_amount_due" },
     { header: "Amount Paid", key: "amount_paid" },
     { header: "Balance", key: "balance" },
     { header: "Remarks", key: "remarks" }
@@ -395,7 +406,7 @@ export async function exportPatientTreatmentsWorkbook(patientId) {
     })
   );
   applyDateFormats(sheet, ["treatment_date"]);
-  applyAmountFormats(sheet, ["amount_charged", "amount_paid", "balance"]);
+  applyAmountFormats(sheet, ["amount_charged", "discount_percent", "discount_amount", "net_amount_due", "amount_paid", "balance"]);
   autoWidth(sheet);
 
   const attachmentSheet = workbook.addWorksheet("Treatment Attachments");
@@ -449,6 +460,10 @@ export async function exportFullPatientRecordWorkbook(patientId) {
     { header: "Procedure", key: "procedure" },
     { header: "Dentist/s", key: "dentists" },
     { header: "Amount Charged", key: "amount_charged" },
+    { header: "Discount Type", key: "discount_type" },
+    { header: "Discount Percent", key: "discount_percent" },
+    { header: "Discount Amount", key: "discount_amount" },
+    { header: "Net Amount Due", key: "net_amount_due" },
     { header: "Amount Paid", key: "amount_paid" },
     { header: "Balance", key: "balance" },
     { header: "Remarks", key: "remarks" }
@@ -461,7 +476,7 @@ export async function exportFullPatientRecordWorkbook(patientId) {
     })
   );
   applyDateFormats(treatmentSheet, ["treatment_date"]);
-  applyAmountFormats(treatmentSheet, ["amount_charged", "amount_paid", "balance"]);
+  applyAmountFormats(treatmentSheet, ["amount_charged", "discount_percent", "discount_amount", "net_amount_due", "amount_paid", "balance"]);
   autoWidth(treatmentSheet);
 
   const patientAttachmentSheet = workbook.addWorksheet("Patient Attachments");

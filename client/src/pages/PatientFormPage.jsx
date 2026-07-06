@@ -45,6 +45,14 @@ function generateMedicalAlertSummary(form) {
     sections.push(`Blood Type: ${form.blood_type}`);
   }
 
+  if (form.discount_eligibility && form.discount_eligibility !== "None") {
+    sections.push(`Discount eligibility: ${form.discount_eligibility}`);
+  }
+
+  if (form.disability_type) {
+    sections.push(`Type of disability: ${form.disability_type}`);
+  }
+
   if (form.pregnant === "Yes") {
     sections.push("Pregnancy: Pregnant");
   }
@@ -72,21 +80,31 @@ function generateMedicalAlertSummary(form) {
   return sections.join(" | ");
 }
 
-function fieldClassName(hasError) {
-  return hasError ? "text-input input-error" : "text-input";
+function hasFilledValue(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return value.trim() !== "";
+  return true;
 }
 
-function textAreaClassName(hasError) {
-  return hasError ? "text-area input-error" : "text-area";
+function fieldClassName(hasError, hasValue) {
+  if (hasError) return "text-input input-error";
+  return hasValue ? "text-input input-filled" : "text-input";
 }
 
-function selectClassName(hasError) {
-  return hasError ? "select-input input-error" : "select-input";
+function textAreaClassName(hasError, hasValue) {
+  if (hasError) return "text-area input-error";
+  return hasValue ? "text-area input-filled" : "text-area";
+}
+
+function selectClassName(hasError, hasValue) {
+  if (hasError) return "select-input input-error";
+  return hasValue ? "select-input input-filled" : "select-input";
 }
 
 function InputField({ field, value, onChange, error }) {
   const [name, label, type, required, readOnly, options] = field;
   const currentValue = value ?? "";
+  const isFilled = hasFilledValue(currentValue);
   const selectOptions =
     type === "select" && currentValue && !options.includes(currentValue)
       ? [...options, currentValue]
@@ -96,7 +114,7 @@ function InputField({ field, value, onChange, error }) {
     return (
       <label className="field-box">
         <span className="label-text">{label}{required ? " *" : ""}</span>
-        <textarea className={textAreaClassName(Boolean(error))} value={value ?? ""} onChange={(event) => onChange(name, event.target.value)} />
+        <textarea className={textAreaClassName(Boolean(error), isFilled)} value={value ?? ""} onChange={(event) => onChange(name, event.target.value)} />
         {error && <p className="error-text">{error}</p>}
       </label>
     );
@@ -106,13 +124,43 @@ function InputField({ field, value, onChange, error }) {
     return (
       <label className="field-box">
         <span className="label-text">{label}{required ? " *" : ""}</span>
-        <select className={selectClassName(Boolean(error))} value={currentValue} onChange={(event) => onChange(name, event.target.value)}>
+        <select className={selectClassName(Boolean(error), isFilled)} value={currentValue} onChange={(event) => onChange(name, event.target.value)}>
           {selectOptions.map((option) => (
             <option key={option} value={option}>
               {option || "Select"}
             </option>
           ))}
         </select>
+        {error && <p className="error-text">{error}</p>}
+      </label>
+    );
+  }
+
+  if (type === "datalist") {
+    const datalistId = `patient-${name}-options`;
+
+    return (
+      <label className="field-box">
+        <span className="label-text">{label}{required ? " *" : ""}</span>
+        <div className="datalist-input-wrap">
+          <input
+            type="text"
+            list={datalistId}
+            className={`${fieldClassName(Boolean(error), isFilled)} pr-10`}
+            value={currentValue}
+            readOnly={Boolean(readOnly)}
+            required={Boolean(required)}
+            onChange={(event) => onChange(name, event.target.value)}
+          />
+          <span className="datalist-input-arrow" aria-hidden="true">
+            ▾
+          </span>
+        </div>
+        <datalist id={datalistId}>
+          {options?.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
         {error && <p className="error-text">{error}</p>}
       </label>
     );
@@ -126,7 +174,7 @@ function InputField({ field, value, onChange, error }) {
       </span>
       <input
         type={type}
-        className={fieldClassName(Boolean(error))}
+        className={fieldClassName(Boolean(error), isFilled)}
         value={value ?? ""}
         readOnly={Boolean(readOnly)}
         required={Boolean(required)}

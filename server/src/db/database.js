@@ -38,6 +38,8 @@ const patientColumns = `
   last_dental_visit TEXT,
   mobile_number TEXT NOT NULL,
   email_address TEXT,
+  branch_location TEXT,
+  discount_eligibility TEXT DEFAULT 'None',
   home_address TEXT,
   home_number TEXT,
   office_number TEXT,
@@ -58,6 +60,7 @@ const patientColumns = `
   medication_details TEXT,
   uses_tobacco TEXT,
   uses_alcohol_or_drugs TEXT,
+  disability_type TEXT,
   pregnant TEXT,
   nursing TEXT,
   birth_control_pills TEXT,
@@ -132,6 +135,10 @@ export function initializeDatabase() {
       procedure TEXT NOT NULL,
       dentists TEXT NOT NULL,
       amount_charged REAL DEFAULT 0,
+      discount_type TEXT DEFAULT 'None',
+      discount_percent REAL DEFAULT 0,
+      discount_amount REAL DEFAULT 0,
+      net_amount_due REAL DEFAULT 0,
       amount_paid REAL DEFAULT 0,
       balance REAL DEFAULT 0,
       remarks TEXT,
@@ -155,6 +162,38 @@ export function initializeDatabase() {
       FOREIGN KEY (treatment_id) REFERENCES treatments(treatment_id)
     );
   `);
+
+  ensureColumn("patients", "branch_location", "TEXT");
+  ensureColumn("patients", "discount_eligibility", "TEXT DEFAULT 'None'");
+  ensureColumn("patients", "disability_type", "TEXT");
+  ensureColumn("treatments", "discount_type", "TEXT DEFAULT 'None'");
+  ensureColumn("treatments", "discount_percent", "REAL DEFAULT 0");
+  ensureColumn("treatments", "discount_amount", "REAL DEFAULT 0");
+  ensureColumn("treatments", "net_amount_due", "REAL DEFAULT 0");
+
+  db.exec(`
+    UPDATE patients
+    SET discount_eligibility = 'None'
+    WHERE discount_eligibility IS NULL OR trim(discount_eligibility) = '';
+
+    UPDATE treatments
+    SET
+      discount_type = 'None',
+      discount_percent = 0,
+      discount_amount = 0,
+      net_amount_due = amount_charged,
+      balance = round(amount_charged - amount_paid, 2)
+    WHERE discount_type IS NULL OR trim(discount_type) = '';
+  `);
+}
+
+function ensureColumn(tableName, columnName, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  if (columns.some((column) => column.name === columnName)) {
+    return;
+  }
+
+  db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
 }
 
 export default db;

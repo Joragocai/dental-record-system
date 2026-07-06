@@ -90,6 +90,22 @@ export default function TreatmentDetailPage() {
             <p className="font-semibold text-slate-900">{formatPesoAmount(treatment.amount_charged)}</p>
           </div>
           <div>
+            <p className="text-sm text-slate-500">Discount Type</p>
+            <p className="font-semibold text-slate-900">{treatment.discount_type || "None"}</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-500">Discount Percent</p>
+            <p className="font-semibold text-slate-900">{Number(treatment.discount_percent || 0).toFixed(2)}%</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-500">Discount Amount</p>
+            <p className="font-semibold text-slate-900">{formatPesoAmount(treatment.discount_amount)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-500">Net Amount Due</p>
+            <p className="font-semibold text-slate-900">{formatPesoAmount(treatment.net_amount_due)}</p>
+          </div>
+          <div>
             <p className="text-sm text-slate-500">Amount Paid</p>
             <p className="font-semibold text-slate-900">{formatPesoAmount(treatment.amount_paid)}</p>
           </div>

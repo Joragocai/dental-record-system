@@ -4,6 +4,7 @@ export const patientFieldGroups = [
     fields: [
       ["patient_id", "Patient ID", "text", true, true],
       ["date_registered", "Date Registered", "date", true, true],
+      ["branch_location", "Branch Location", "datalist", false, false, ["Lilac", "Marikina Public Market"]],
       ["last_name", "Last Name", "text", true],
       ["first_name", "First Name", "text", true],
       ["middle_name", "Middle Name", "text"],
@@ -20,6 +21,7 @@ export const patientFieldGroups = [
       ["last_dental_visit", "Last Dental Visit", "date"],
       ["mobile_number", "Cellphone/Mobile Number", "text", true],
       ["email_address", "Email Address", "email"],
+      ["discount_eligibility", "Patient Discount Eligibility", "datalist", false, false, ["None", "Senior Citizen", "PWD", "Senior Citizen and PWD", "Other"]],
       ["home_address", "Home Address", "textarea"],
       ["home_number", "Home Number", "text"],
       ["office_number", "Office Number", "text"],
@@ -45,6 +47,7 @@ export const patientFieldGroups = [
       ["medication_details", "Medication Details", "textarea"],
       ["uses_tobacco", "Do you use tobacco products?", "select", false, false, ["", "Yes", "No"]],
       ["uses_alcohol_or_drugs", "Do you use alcohol, cocaine, or other dangerous drugs?", "select", false, false, ["", "Yes", "No"]],
+      ["disability_type", "Type of Disability", "datalist", false, false, ["Physical Disability", "Visual Disability", "Hearing Disability", "Speech and Language Disability", "Psychosocial Disability", "Intellectual Disability", "Learning Disability", "Mental Disability", "Cancer", "Rare Disease", "Others"]],
       ["pregnant", "Are you pregnant?", "select", false, false, ["", "Yes", "No", "Not Applicable"]],
       ["nursing", "Are you nursing?", "select", false, false, ["", "Yes", "No", "Not Applicable"]],
       ["birth_control_pills", "Are you taking birth control pills?", "select", false, false, ["", "Yes", "No", "Not Applicable"]],
@@ -132,6 +135,7 @@ export const emptyPatient = {
   last_dental_visit: "",
   mobile_number: "",
   email_address: "",
+  branch_location: "",
   home_address: "",
   home_number: "",
   office_number: "",
@@ -152,6 +156,8 @@ export const emptyPatient = {
   medication_details: "",
   uses_tobacco: "",
   uses_alcohol_or_drugs: "",
+  discount_eligibility: "None",
+  disability_type: "",
   pregnant: "",
   nursing: "",
   birth_control_pills: "",
@@ -218,11 +224,19 @@ export const emptyTreatment = {
   next_appointment: "",
   procedure: "",
   dentists: "",
+  discount_type: "None",
+  discount_percent: "0.00",
+  discount_amount: "0.00",
+  net_amount_due: "0.00",
   amount_charged: "",
   amount_paid: "",
   balance: "",
   remarks: ""
 };
+
+export const suggestedDentists = ["Dr. Arlen C. Khurana"];
+
+export const treatmentDiscountTypes = ["None", "Senior Citizen", "PWD", "Senior Citizen/PWD", "Custom"];
 
 export const suggestedTreatmentProcedures = [
   "Oral Prophylaxis / Cleaning",

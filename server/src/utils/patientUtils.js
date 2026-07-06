@@ -49,6 +49,11 @@ function isChecked(value) {
   return value === "Yes" || value === 1 || value === true || value === "1";
 }
 
+function hasDiscountEligibility(value) {
+  const normalized = String(value || "").trim();
+  return normalized && normalized !== "None";
+}
+
 export function buildPatientDisplayName(patient) {
   return [patient.last_name, `${patient.first_name} ${patient.middle_name || ""}`.trim()]
     .filter(Boolean)
@@ -81,6 +86,14 @@ export function buildMedicalAlertSummary(patient) {
 
   if (patient.blood_type) {
     sections.push(`Blood Type: ${patient.blood_type}`);
+  }
+
+  if (hasDiscountEligibility(patient.discount_eligibility)) {
+    sections.push(`Discount eligibility: ${patient.discount_eligibility}`);
+  }
+
+  if (patient.disability_type) {
+    sections.push(`Type of disability: ${patient.disability_type}`);
   }
 
   if (patient.pregnant === "Yes") {

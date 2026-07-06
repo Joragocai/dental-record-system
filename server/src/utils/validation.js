@@ -4,6 +4,14 @@ const mobilePattern = /^[0-9+\-\s()]{7,20}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const patientIdPattern = /^P-\d{4}-\d{4}$/;
 const treatmentIdPattern = /^T-\d{4}-\d{4}$/;
+const allowedTreatmentDiscountTypes = new Set(["None", "Senior Citizen", "PWD", "Senior Citizen/PWD", "Custom"]);
+const treatmentDiscountDefaults = {
+  None: 0,
+  "Senior Citizen": 20,
+  PWD: 20,
+  "Senior Citizen/PWD": 20,
+  Custom: 0
+};
 
 const patientConditionFields = [
   "condition_high_blood_pressure",
@@ -76,6 +84,19 @@ function parseAmount(value) {
   return { isBlank: false, numberValue };
 }
 
+function parsePercent(value) {
+  if (value === undefined || value === null) return { isBlank: true, numberValue: null };
+  if (typeof value === "string" && value.trim() === "") return { isBlank: true, numberValue: null };
+
+  const numberValue = Number(value);
+  return { isBlank: false, numberValue };
+}
+
+function normalizeDiscountType(value) {
+  const cleaned = cleanString(value);
+  return allowedTreatmentDiscountTypes.has(cleaned) ? cleaned : "None";
+}
+
 export function validatePatientPayload(input) {
   const data = { ...input };
   const errors = [];
@@ -97,7 +118,10 @@ export function validatePatientPayload(input) {
   data.gender = cleanString(data.gender);
   data.mobile_number = cleanString(data.mobile_number);
   data.email_address = cleanString(data.email_address);
+  data.branch_location = cleanString(data.branch_location);
+  data.disability_type = cleanString(data.disability_type);
   data.is_minor = cleanString(data.is_minor) || "No";
+  data.discount_eligibility = cleanString(data.discount_eligibility) || "None";
   data.medical_alert_summary = cleanString(data.medical_alert_summary);
 
   if (!patientIdPattern.test(data.patient_id)) errors.push("Patient ID format must be P-YYYY-0001.");
@@ -142,10 +166,14 @@ export function validateTreatmentPayload(input) {
   data.next_appointment = cleanString(data.next_appointment);
   data.procedure = cleanString(data.procedure);
   data.dentists = cleanString(data.dentists);
+  data.discount_type = normalizeDiscountType(data.discount_type);
   data.tooth_numbers = cleanString(data.tooth_numbers);
   data.remarks = cleanString(data.remarks);
   const amountCharged = parseAmount(data.amount_charged);
   const amountPaid = parseAmount(data.amount_paid);
+  const discountPercent = parsePercent(data.discount_percent);
+  const discountAmount = parseAmount(data.discount_amount);
+  const netAmountDue = parseAmount(data.net_amount_due);
   const balance = parseAmount(data.balance);
 
   if (!treatmentIdPattern.test(data.treatment_id)) errors.push("Treatment ID format must be T-YYYY-0001.");
@@ -166,6 +194,11 @@ export function validateTreatmentPayload(input) {
   } else if (Number.isNaN(amountPaid.numberValue) || amountPaid.numberValue < 0) {
     errors.push("Amount Paid must be a valid number that is 0 or greater.");
   }
+  if (discountPercent.isBlank && data.discount_type === "Custom") {
+    errors.push("Discount Percent is required for a custom discount.");
+  } else if (!discountPercent.isBlank && (Number.isNaN(discountPercent.numberValue) || discountPercent.numberValue < 0 || discountPercent.numberValue > 100)) {
+    errors.push("Discount Percent must be a valid number from 0 to 100.");
+  }
   if (balance.isBlank) {
     errors.push("Balance is required.");
   } else if (Number.isNaN(balance.numberValue)) {
@@ -180,18 +213,46 @@ export function validateTreatmentPayload(input) {
     amountCharged.numberValue >= 0 &&
     amountPaid.numberValue >= 0
   ) {
-    if (amountPaid.numberValue > amountCharged.numberValue) {
-      errors.push("Amount Paid cannot be greater than Amount Charged.");
+    let resolvedDiscountPercent =
+      discountPercent.isBlank
+        ? treatmentDiscountDefaults[data.discount_type] ?? 0
+        : discountPercent.numberValue;
+    if (data.discount_type === "None") {
+      resolvedDiscountPercent = 0;
     }
 
-    const computedBalance = Number((amountCharged.numberValue - amountPaid.numberValue).toFixed(2));
+    const computedDiscountAmount = Number((amountCharged.numberValue * resolvedDiscountPercent / 100).toFixed(2));
+    const computedNetAmountDue = Number((amountCharged.numberValue - computedDiscountAmount).toFixed(2));
+
+    if (amountPaid.numberValue > computedNetAmountDue) {
+      errors.push("Amount Paid cannot be greater than Net Amount Due.");
+    }
+
+    if (!discountAmount.isBlank && !Number.isNaN(discountAmount.numberValue) && Number(discountAmount.numberValue.toFixed(2)) !== computedDiscountAmount) {
+      errors.push("Discount Amount must equal Amount Charged multiplied by Discount Percent.");
+    }
+
+    if (!netAmountDue.isBlank && !Number.isNaN(netAmountDue.numberValue) && Number(netAmountDue.numberValue.toFixed(2)) !== computedNetAmountDue) {
+      errors.push("Net Amount Due must equal Amount Charged minus Discount Amount.");
+    }
+
+    const computedBalance = Number((computedNetAmountDue - amountPaid.numberValue).toFixed(2));
     if (!balance.isBlank && !Number.isNaN(balance.numberValue) && Number(balance.numberValue.toFixed(2)) !== computedBalance) {
-      errors.push("Balance must equal Amount Charged minus Amount Paid.");
+      errors.push("Balance must equal Net Amount Due minus Amount Paid.");
     }
 
     data.amount_charged = Number(amountCharged.numberValue.toFixed(2));
+    data.discount_percent = Number(resolvedDiscountPercent.toFixed(2));
+    data.discount_amount = computedDiscountAmount;
+    data.net_amount_due = computedNetAmountDue;
     data.amount_paid = Number(amountPaid.numberValue.toFixed(2));
     data.balance = computedBalance;
+  } else {
+    data.discount_percent = discountPercent.isBlank ? 0 : discountPercent.numberValue;
+  }
+
+  if (data.discount_type === "None") {
+    data.discount_percent = 0;
   }
 
   return { errors, data };
