@@ -4,7 +4,7 @@ import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import { PrintField, PrintableAttachments, PrintSection } from "../components/PrintableDocument";
 import { getPatient, getTreatment, getTreatmentAttachments } from "../lib/api";
-import { displayNone, formatPesoAmount, isPwdRelatedClassification } from "../lib/formatters";
+import { displayNoFinalTime, displayNone, formatPesoAmount, isPwdRelatedClassification } from "../lib/formatters";
 import { downloadElementAsPdf } from "../lib/pdf";
 
 export default function PrintTreatmentPage() {
@@ -116,7 +116,11 @@ export default function PrintTreatmentPage() {
               <PrintField label="Procedure" value={treatment.procedure} />
               <PrintField label="Dentist/s" value={treatment.dentists} />
               <PrintField label="Tooth No./s" value={treatment.tooth_numbers} />
-              <PrintField label="Next Appointment" value={treatment.next_appointment} />
+              <PrintField label="Next Appointment Date" value={treatment.next_appointment_date || treatment.next_appointment} />
+              <PrintField
+                label="Next Appointment Time"
+                value={treatment.next_appointment_date || treatment.next_appointment ? displayNoFinalTime(treatment.next_appointment_time) : ""}
+              />
               <PrintField label="Amount Charged" value={formatPesoAmount(treatment.amount_charged)} />
               <PrintField label="Discount Type" value={treatment.discount_type} />
               <PrintField label="Discount Percent" value={`${Number(treatment.discount_percent || 0).toFixed(2)}%`} />

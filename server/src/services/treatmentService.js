@@ -6,6 +6,8 @@ const treatmentFields = [
   "treatment_date",
   "tooth_numbers",
   "next_appointment",
+  "next_appointment_date",
+  "next_appointment_time",
   "procedure",
   "dentists",
   "amount_charged",
@@ -30,6 +32,9 @@ function decorateTreatment(row) {
 
   return {
     ...row,
+    next_appointment_date: row.next_appointment_date || row.next_appointment || "",
+    next_appointment_time: row.next_appointment_time || "",
+    next_appointment: row.next_appointment_date || row.next_appointment || "",
     discount_type: row.discount_type || "None",
     discount_percent: Number.isFinite(discountPercent) ? discountPercent : 0,
     discount_amount: Number.isFinite(discountAmount) ? discountAmount : 0,

@@ -9,6 +9,11 @@ export async function getDashboardSummary() {
   return data;
 }
 
+export async function getDashboardSchedule() {
+  const { data } = await api.get("/dashboard/schedule");
+  return data;
+}
+
 export async function searchPatients(query) {
   const { data } = await api.get("/patients/search", { params: { q: query } });
   return data;
@@ -71,6 +76,31 @@ export async function getPatientAttachments(patientId) {
 
 export async function getTreatmentAttachments(treatmentId) {
   const { data } = await api.get(`/treatments/${treatmentId}/attachments`);
+  return data;
+}
+
+export async function getPatientAppointments(patientId) {
+  const { data } = await api.get(`/patients/${patientId}/appointments`);
+  return data;
+}
+
+export async function createPatientAppointment(patientId, payload) {
+  const { data } = await api.post(`/patients/${patientId}/appointments`, payload);
+  return data;
+}
+
+export async function getAppointment(appointmentId) {
+  const { data } = await api.get(`/appointments/${appointmentId}`);
+  return data;
+}
+
+export async function updateAppointment(appointmentId, payload) {
+  const { data } = await api.patch(`/appointments/${appointmentId}`, payload);
+  return data;
+}
+
+export async function updateAppointmentStatus(appointmentId, status) {
+  const { data } = await api.patch(`/appointments/${appointmentId}/status`, { status });
   return data;
 }
 

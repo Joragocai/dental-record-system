@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import AppointmentFormPage from "./pages/AppointmentFormPage";
 import DashboardPage from "./pages/DashboardPage";
 import PatientDetailPage from "./pages/PatientDetailPage";
 import PatientFormPage from "./pages/PatientFormPage";
@@ -20,6 +21,8 @@ export default function App() {
       <Route path="/patients/new" element={<PatientFormPage mode="create" />} />
       <Route path="/patients/:patientId" element={<PatientDetailPage />} />
       <Route path="/patients/:patientId/edit" element={<PatientFormPage mode="edit" />} />
+      <Route path="/patients/:patientId/appointments/new" element={<AppointmentFormPage />} />
+      <Route path="/patients/:patientId/appointments/:appointmentId/edit" element={<AppointmentFormPage mode="edit" />} />
       <Route path="/patients/:patientId/treatments" element={<PatientTreatmentHistoryPage />} />
       <Route path="/treatments/new" element={<TreatmentFormPage mode="create" />} />
       <Route path="/treatments/:treatmentId" element={<TreatmentDetailPage />} />

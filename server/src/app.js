@@ -8,6 +8,7 @@ import attachmentsRouter from "./routes/attachments.js";
 import exportRouter from "./routes/exports.js";
 import backupRouter from "./routes/backup.js";
 import dashboardRouter from "./routes/dashboard.js";
+import appointmentsRouter from "./routes/appointments.js";
 import { ATTACHMENT_FILE_SIZE_ERROR_MESSAGE, deleteUploadedFileByAbsolutePath } from "./utils/attachmentUtils.js";
 
 const app = express();
@@ -37,6 +38,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/patients", patientsRouter);
 app.use("/api/treatments", treatmentsRouter);
+app.use("/api/appointments", appointmentsRouter);
 app.use("/api/attachments", attachmentsRouter);
 app.use("/api/export", exportRouter);
 app.use("/api/backup", backupRouter);

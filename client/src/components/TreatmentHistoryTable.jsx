@@ -3,9 +3,9 @@ import { formatPesoAmount } from "../lib/formatters";
 
 export default function TreatmentHistoryTable({ treatments }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200">
+    <div className="max-h-[360px] overflow-auto rounded-2xl border border-slate-200">
       <table className="min-w-full divide-y divide-slate-200 text-sm">
-        <thead className="bg-slate-50 text-left text-slate-600">
+        <thead className="sticky top-0 z-10 bg-slate-50 text-left text-slate-600">
           <tr>
             <th className="px-4 py-3">Date</th>
             <th className="px-4 py-3">Procedure</th>

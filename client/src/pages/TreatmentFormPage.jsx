@@ -46,6 +46,10 @@ function formatEditableAmount(value, fallback = "") {
   return Number.isNaN(numeric) ? String(value) : numeric.toFixed(2);
 }
 
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function buildTreatmentFormState(current, updates = {}) {
   const next = { ...current, ...updates };
   const computed = calculateTreatmentAmounts(next);
@@ -57,6 +61,9 @@ function normalizeTreatmentForm(data) {
     {
       ...emptyTreatment,
       ...data,
+      treatment_date: data.treatment_date || todayIsoDate(),
+      next_appointment_date: data.next_appointment_date || data.next_appointment || "",
+      next_appointment_time: data.next_appointment_time || "",
       amount_charged: formatEditableAmount(data.amount_charged),
       discount_percent: formatEditableAmount(data.discount_percent, "0.00"),
       amount_paid: formatEditableAmount(data.amount_paid),
@@ -109,7 +116,15 @@ export default function TreatmentFormPage({ mode = "create" }) {
     }
 
     getNextTreatmentId()
-      .then((data) => setForm((current) => ({ ...current, treatment_id: data.treatment_id })))
+      .then((data) =>
+        setForm((current) =>
+          buildTreatmentFormState({
+            ...current,
+            treatment_id: data.treatment_id,
+            treatment_date: current.treatment_date || todayIsoDate()
+          })
+        )
+      )
       .catch(() => setStatus("Unable to generate the next treatment ID."));
     setAttachments([]);
 
@@ -134,6 +149,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
         next.discount_type = defaults.discount_type;
         next.discount_percent = defaults.discount_percent;
       }
+      next.treatment_date = next.treatment_date || todayIsoDate();
       return buildTreatmentFormState(next);
     });
     getTreatmentsByPatient(selectedPatient.patient_id).then(setHistory).catch(() => setHistory([]));
@@ -216,6 +232,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
         ...emptyTreatment,
         treatment_id: data.treatment_id,
         patient_id: selectedPatient?.patient_id || "",
+        treatment_date: todayIsoDate(),
         discount_type: discountDefaults.discount_type,
         discount_percent: discountDefaults.discount_percent,
         amount_paid: ""
@@ -352,131 +369,185 @@ export default function TreatmentFormPage({ mode = "create" }) {
           )}
         </Section>
 
-        <Section title="Treatment Entry Form" description="Record treatment details, payment information, and remarks.">
-          <div className="form-grid">
-            <label className="field-box">
-              <span className="label-text">Treatment ID</span>
-              <input className={inputClass(false, hasFilledValue(form.treatment_id))} readOnly value={form.treatment_id} />
-              {errors.treatment_id && <p className="error-text">{errors.treatment_id}</p>}
-            </label>
-            <label className="field-box">
-              <span className="label-text">Patient ID</span>
-              <input className={inputClass(false, hasFilledValue(selectedPatient?.patient_id || form.patient_id))} readOnly value={selectedPatient?.patient_id || form.patient_id} />
-            </label>
-            <label className="field-box">
-              <span className="label-text">Patient Name</span>
-              <input className={inputClass(false, hasFilledValue(selectedPatient?.display_name || ""))} readOnly value={selectedPatient?.display_name || ""} />
-            </label>
-            <label className="field-box">
-              <span className="label-text">Date *</span>
-              <input type="date" className={inputClass(Boolean(errors.treatment_date), hasFilledValue(form.treatment_date))} value={form.treatment_date || ""} onChange={(event) => handleChange("treatment_date", event.target.value)} />
-              {errors.treatment_date && <p className="error-text">{errors.treatment_date}</p>}
-            </label>
-            <label className="field-box">
-              <span className="label-text">Tooth No./s</span>
-              <input className={inputClass(Boolean(errors.tooth_numbers), hasFilledValue(form.tooth_numbers))} value={form.tooth_numbers || ""} onChange={(event) => handleChange("tooth_numbers", event.target.value)} />
-            </label>
-            <label className="field-box">
-              <span className="label-text">Next Appointment</span>
-              <input type="date" className={inputClass(Boolean(errors.next_appointment), hasFilledValue(form.next_appointment))} value={form.next_appointment || ""} onChange={(event) => handleChange("next_appointment", event.target.value)} />
-              {errors.next_appointment && <p className="error-text">{errors.next_appointment}</p>}
-            </label>
-            <label className="field-box">
-              <span className="label-text">Procedure *</span>
-              <div className="datalist-input-wrap">
-                <input
-                  className={`${inputClass(Boolean(errors.procedure), hasFilledValue(form.procedure))} pr-10`}
-                  list={procedureDatalistId}
-                  value={form.procedure || ""}
-                  onChange={(event) => handleChange("procedure", event.target.value)}
-                  placeholder="Choose or type procedure"
-                />
-                <span className="datalist-input-arrow" aria-hidden="true">
-                  ▾
-                </span>
+        <Section title="Treatment Entry Form" description="Record treatment details, follow-up information, and payment details in clearly separated sections.">
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-600">Record Information</h3>
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <label className="field-box">
+                  <span className="label-text">Treatment ID</span>
+                  <input className={inputClass(false, hasFilledValue(form.treatment_id))} readOnly value={form.treatment_id} />
+                  {errors.treatment_id && <p className="error-text">{errors.treatment_id}</p>}
+                </label>
+                <label className="field-box">
+                  <span className="label-text">Patient ID</span>
+                  <input className={inputClass(false, hasFilledValue(selectedPatient?.patient_id || form.patient_id))} readOnly value={selectedPatient?.patient_id || form.patient_id} />
+                </label>
+                <label className="field-box">
+                  <span className="label-text">Patient Name</span>
+                  <input className={inputClass(false, hasFilledValue(selectedPatient?.display_name || ""))} readOnly value={selectedPatient?.display_name || ""} />
+                </label>
               </div>
-              <datalist id={procedureDatalistId}>
-                {suggestedTreatmentProcedures.map((procedure) => (
-                  <option key={procedure} value={procedure} />
-                ))}
-              </datalist>
-              {errors.procedure && <p className="error-text">{errors.procedure}</p>}
-            </label>
-            <label className="field-box">
-              <span className="label-text">Dentist/s *</span>
-              <div className="datalist-input-wrap">
-                <input
-                  className={`${inputClass(Boolean(errors.dentists), hasFilledValue(form.dentists))} pr-10`}
-                  list={dentistDatalistId}
-                  value={form.dentists || ""}
-                  onChange={(event) => handleChange("dentists", event.target.value)}
-                  placeholder="Choose or type dentist"
-                />
-                <span className="datalist-input-arrow" aria-hidden="true">
-                  ▾
-                </span>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-600">Treatment Details</h3>
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <label className="field-box">
+                  <span className="label-text">Treatment Date *</span>
+                  <input
+                    type="date"
+                    max={todayIsoDate()}
+                    className={inputClass(Boolean(errors.treatment_date), hasFilledValue(form.treatment_date))}
+                    value={form.treatment_date || ""}
+                    onChange={(event) => handleChange("treatment_date", event.target.value)}
+                  />
+                  {errors.treatment_date && <p className="error-text">{errors.treatment_date}</p>}
+                </label>
+                <label className="field-box">
+                  <span className="label-text">Procedure *</span>
+                  <div className="datalist-input-wrap">
+                    <input
+                      className={`${inputClass(Boolean(errors.procedure), hasFilledValue(form.procedure))} pr-10`}
+                      list={procedureDatalistId}
+                      value={form.procedure || ""}
+                      onChange={(event) => handleChange("procedure", event.target.value)}
+                      placeholder="Choose or type procedure"
+                    />
+                    <span className="datalist-input-arrow" aria-hidden="true">
+                      ▾
+                    </span>
+                  </div>
+                  <datalist id={procedureDatalistId}>
+                    {suggestedTreatmentProcedures.map((procedure) => (
+                      <option key={procedure} value={procedure} />
+                    ))}
+                  </datalist>
+                  {errors.procedure && <p className="error-text">{errors.procedure}</p>}
+                </label>
+                <label className="field-box">
+                  <span className="label-text">Dentist/s *</span>
+                  <div className="datalist-input-wrap">
+                    <input
+                      className={`${inputClass(Boolean(errors.dentists), hasFilledValue(form.dentists))} pr-10`}
+                      list={dentistDatalistId}
+                      value={form.dentists || ""}
+                      onChange={(event) => handleChange("dentists", event.target.value)}
+                      placeholder="Choose or type dentist"
+                    />
+                    <span className="datalist-input-arrow" aria-hidden="true">
+                      ▾
+                    </span>
+                  </div>
+                  <datalist id={dentistDatalistId}>
+                    {suggestedDentists.map((dentist) => (
+                      <option key={dentist} value={dentist} />
+                    ))}
+                  </datalist>
+                  {errors.dentists && <p className="error-text">{errors.dentists}</p>}
+                </label>
               </div>
-              <datalist id={dentistDatalistId}>
-                {suggestedDentists.map((dentist) => (
-                  <option key={dentist} value={dentist} />
-                ))}
-              </datalist>
-              {errors.dentists && <p className="error-text">{errors.dentists}</p>}
-            </label>
-            <label className="field-box">
-              <span className="label-text">Amount Charged *</span>
-              <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_charged), hasFilledValue(form.amount_charged))} value={form.amount_charged || ""} onChange={(event) => handleChange("amount_charged", event.target.value)} />
-              <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.amount_charged || 0)}</p>
-              {errors.amount_charged && <p className="error-text">{errors.amount_charged}</p>}
-            </label>
-            <label className="field-box">
-              <span className="label-text">Discount Type</span>
-              <select className={selectClass(Boolean(errors.discount_type), hasFilledValue(form.discount_type))} value={form.discount_type || "None"} onChange={(event) => handleChange("discount_type", event.target.value)}>
-                {treatmentDiscountTypes.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-2 text-xs text-slate-500">
-                Patient may have both Senior Citizen and PWD IDs, but the discount should not be doubled. Use only one applicable discount basis unless the clinic confirms otherwise.
-              </p>
-              {errors.discount_type && <p className="error-text">{errors.discount_type}</p>}
-            </label>
-            <label className="field-box">
-              <span className="label-text">Discount Percent</span>
-              <input type="number" step="0.01" min="0" max="100" className={inputClass(Boolean(errors.discount_percent), hasFilledValue(form.discount_percent))} value={form.discount_percent || ""} onChange={(event) => handleChange("discount_percent", event.target.value)} />
-              <p className="mt-2 text-xs font-medium text-slate-500">{Number(form.discount_percent || 0).toFixed(2)}%</p>
-              {errors.discount_percent && <p className="error-text">{errors.discount_percent}</p>}
-            </label>
-            <label className="field-box">
-              <span className="label-text">Discount Amount</span>
-              <input className={inputClass(Boolean(errors.discount_amount), hasFilledValue(form.discount_amount))} readOnly value={form.discount_amount || ""} />
-              <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.discount_amount || 0)}</p>
-              {errors.discount_amount && <p className="error-text">{errors.discount_amount}</p>}
-            </label>
-            <label className="field-box">
-              <span className="label-text">Net Amount Due</span>
-              <input className={inputClass(Boolean(errors.net_amount_due), hasFilledValue(form.net_amount_due))} readOnly value={form.net_amount_due || ""} />
-              <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.net_amount_due || 0)}</p>
-              {errors.net_amount_due && <p className="error-text">{errors.net_amount_due}</p>}
-            </label>
-            <label className="field-box">
-              <span className="label-text">Amount Paid *</span>
-              <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_paid), hasFilledValue(form.amount_paid))} value={form.amount_paid || ""} onChange={(event) => handleChange("amount_paid", event.target.value)} />
-              <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.amount_paid || 0)}</p>
-              {errors.amount_paid && <p className="error-text">{errors.amount_paid}</p>}
-            </label>
-            <label className="field-box">
-              <span className="label-text">Balance *</span>
-              <input className={inputClass(Boolean(errors.balance), hasFilledValue(form.balance))} readOnly value={form.balance || ""} />
-              <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.balance || 0)}</p>
-              {errors.balance && <p className="error-text">{errors.balance}</p>}
-            </label>
-            <label className="field-box md:col-span-2 xl:col-span-3">
-              <span className="label-text">Remarks</span>
-              <textarea className={areaClass(Boolean(errors.remarks), hasFilledValue(form.remarks))} value={form.remarks || ""} onChange={(event) => handleChange("remarks", event.target.value)} />
-            </label>
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <label className="field-box md:col-span-1">
+                  <span className="label-text">Tooth No./s</span>
+                  <input className={inputClass(Boolean(errors.tooth_numbers), hasFilledValue(form.tooth_numbers))} value={form.tooth_numbers || ""} onChange={(event) => handleChange("tooth_numbers", event.target.value)} />
+                </label>
+              </div>
+              <div className="mt-4">
+                <label className="field-box">
+                  <span className="label-text">Remarks</span>
+                  <textarea className={areaClass(Boolean(errors.remarks), hasFilledValue(form.remarks))} value={form.remarks || ""} onChange={(event) => handleChange("remarks", event.target.value)} />
+                </label>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-clinic-100 bg-clinic-50/50 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-clinic-700">Follow-up Appointment</h3>
+              <p className="mt-2 text-sm text-slate-600">Use this only if the patient already has a planned next visit.</p>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <label className="field-box">
+                  <span className="label-text">Next Appointment Date</span>
+                  <input
+                    type="date"
+                    className={inputClass(Boolean(errors.next_appointment_date), hasFilledValue(form.next_appointment_date))}
+                    value={form.next_appointment_date || ""}
+                    onChange={(event) => handleChange("next_appointment_date", event.target.value)}
+                  />
+                  {errors.next_appointment_date && <p className="error-text">{errors.next_appointment_date}</p>}
+                </label>
+                <label className="field-box">
+                  <span className="label-text">Next Appointment Time</span>
+                  <input
+                    type="time"
+                    className={inputClass(Boolean(errors.next_appointment_time), hasFilledValue(form.next_appointment_time))}
+                    value={form.next_appointment_time || ""}
+                    onChange={(event) => handleChange("next_appointment_time", event.target.value)}
+                  />
+                  <p className="mt-1 text-xs text-slate-500">Leave time blank if the exact appointment time is not yet final.</p>
+                  {errors.next_appointment_time && <p className="error-text">{errors.next_appointment_time}</p>}
+                </label>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-600">Payment Details</h3>
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <label className="field-box">
+                  <span className="label-text">Amount Charged *</span>
+                  <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_charged), hasFilledValue(form.amount_charged))} value={form.amount_charged || ""} onChange={(event) => handleChange("amount_charged", event.target.value)} />
+                  <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.amount_charged || 0)}</p>
+                  {errors.amount_charged && <p className="error-text">{errors.amount_charged}</p>}
+                </label>
+                <label className="field-box">
+                  <span className="label-text">Discount Type</span>
+                  <select className={selectClass(Boolean(errors.discount_type), hasFilledValue(form.discount_type))} value={form.discount_type || "None"} onChange={(event) => handleChange("discount_type", event.target.value)}>
+                    {treatmentDiscountTypes.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Patient may have both Senior Citizen and PWD IDs, but the discount should not be doubled. Use only one applicable discount basis unless the clinic confirms otherwise.
+                  </p>
+                  {errors.discount_type && <p className="error-text">{errors.discount_type}</p>}
+                </label>
+                <label className="field-box">
+                  <span className="label-text">Discount Percent</span>
+                  <input type="number" step="0.01" min="0" max="100" className={inputClass(Boolean(errors.discount_percent), hasFilledValue(form.discount_percent))} value={form.discount_percent || ""} onChange={(event) => handleChange("discount_percent", event.target.value)} />
+                  <p className="mt-2 text-xs font-medium text-slate-500">{Number(form.discount_percent || 0).toFixed(2)}%</p>
+                  {errors.discount_percent && <p className="error-text">{errors.discount_percent}</p>}
+                </label>
+              </div>
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <label className="field-box">
+                  <span className="label-text">Discount Amount</span>
+                  <input className={inputClass(Boolean(errors.discount_amount), hasFilledValue(form.discount_amount))} readOnly value={form.discount_amount || ""} />
+                  <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.discount_amount || 0)}</p>
+                  {errors.discount_amount && <p className="error-text">{errors.discount_amount}</p>}
+                </label>
+                <label className="field-box">
+                  <span className="label-text">Net Amount Due</span>
+                  <input className={inputClass(Boolean(errors.net_amount_due), hasFilledValue(form.net_amount_due))} readOnly value={form.net_amount_due || ""} />
+                  <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.net_amount_due || 0)}</p>
+                  {errors.net_amount_due && <p className="error-text">{errors.net_amount_due}</p>}
+                </label>
+                <label className="field-box">
+                  <span className="label-text">Amount Paid *</span>
+                  <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_paid), hasFilledValue(form.amount_paid))} value={form.amount_paid || ""} onChange={(event) => handleChange("amount_paid", event.target.value)} />
+                  <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.amount_paid || 0)}</p>
+                  {errors.amount_paid && <p className="error-text">{errors.amount_paid}</p>}
+                </label>
+              </div>
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <label className="field-box md:col-span-1">
+                  <span className="label-text">Balance *</span>
+                  <input className={inputClass(Boolean(errors.balance), hasFilledValue(form.balance))} readOnly value={form.balance || ""} />
+                  <p className="mt-2 text-sm font-semibold text-clinic-900">{formatPesoAmount(form.balance || 0)}</p>
+                  {errors.balance && <p className="error-text">{errors.balance}</p>}
+                </label>
+              </div>
+            </div>
           </div>
         </Section>
 

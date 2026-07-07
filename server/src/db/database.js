@@ -132,6 +132,8 @@ export function initializeDatabase() {
       treatment_date TEXT NOT NULL,
       tooth_numbers TEXT,
       next_appointment TEXT,
+      next_appointment_date TEXT,
+      next_appointment_time TEXT,
       procedure TEXT NOT NULL,
       dentists TEXT NOT NULL,
       amount_charged REAL DEFAULT 0,
@@ -142,6 +144,19 @@ export function initializeDatabase() {
       amount_paid REAL DEFAULT 0,
       balance REAL DEFAULT 0,
       remarks TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (patient_id) REFERENCES patients(patient_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS appointments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_id TEXT NOT NULL,
+      appointment_date TEXT NOT NULL,
+      appointment_time TEXT,
+      planned_procedure TEXT,
+      notes TEXT,
+      status TEXT DEFAULT 'Scheduled',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY (patient_id) REFERENCES patients(patient_id)
@@ -166,10 +181,18 @@ export function initializeDatabase() {
   ensureColumn("patients", "branch_location", "TEXT");
   ensureColumn("patients", "discount_eligibility", "TEXT DEFAULT 'None'");
   ensureColumn("patients", "disability_type", "TEXT");
+  ensureColumn("treatments", "next_appointment_date", "TEXT");
+  ensureColumn("treatments", "next_appointment_time", "TEXT");
   ensureColumn("treatments", "discount_type", "TEXT DEFAULT 'None'");
   ensureColumn("treatments", "discount_percent", "REAL DEFAULT 0");
   ensureColumn("treatments", "discount_amount", "REAL DEFAULT 0");
   ensureColumn("treatments", "net_amount_due", "REAL DEFAULT 0");
+  ensureColumn("appointments", "appointment_time", "TEXT");
+  ensureColumn("appointments", "planned_procedure", "TEXT");
+  ensureColumn("appointments", "notes", "TEXT");
+  ensureColumn("appointments", "status", "TEXT DEFAULT 'Scheduled'");
+  ensureColumn("appointments", "created_at", "TEXT");
+  ensureColumn("appointments", "updated_at", "TEXT");
 
   db.exec(`
     UPDATE patients
@@ -184,6 +207,24 @@ export function initializeDatabase() {
       net_amount_due = amount_charged,
       balance = round(amount_charged - amount_paid, 2)
     WHERE discount_type IS NULL OR trim(discount_type) = '';
+
+    UPDATE treatments
+    SET next_appointment_date = next_appointment
+    WHERE (next_appointment_date IS NULL OR trim(next_appointment_date) = '')
+      AND next_appointment IS NOT NULL
+      AND trim(next_appointment) GLOB '????-??-??';
+
+    UPDATE appointments
+    SET status = 'Scheduled'
+    WHERE status IS NULL OR trim(status) = '';
+
+    UPDATE appointments
+    SET created_at = COALESCE(created_at, updated_at, CURRENT_TIMESTAMP)
+    WHERE created_at IS NULL OR trim(created_at) = '';
+
+    UPDATE appointments
+    SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+    WHERE updated_at IS NULL OR trim(updated_at) = '';
   `);
 }
 

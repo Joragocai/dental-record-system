@@ -5,6 +5,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const patientIdPattern = /^P-\d{4}-\d{4}$/;
 const treatmentIdPattern = /^T-\d{4}-\d{4}$/;
 const allowedTreatmentDiscountTypes = new Set(["None", "Senior Citizen", "PWD", "Senior Citizen/PWD", "Custom"]);
+const allowedAppointmentStatuses = new Set(["Scheduled", "Completed", "Cancelled", "No-show"]);
 const treatmentDiscountDefaults = {
   None: 0,
   "Senior Citizen": 20,
@@ -64,6 +65,10 @@ function isValidDateString(value) {
 
 function isFutureDate(value) {
   return isValidDateString(value) && value > new Date().toISOString().slice(0, 10);
+}
+
+function isValidTimeString(value) {
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(String(value || "").trim());
 }
 
 function calculateAge(birthday) {
@@ -172,6 +177,8 @@ export function validateTreatmentPayload(input) {
   data.patient_id = cleanString(data.patient_id);
   data.treatment_date = cleanString(data.treatment_date);
   data.next_appointment = cleanString(data.next_appointment);
+  data.next_appointment_date = cleanString(data.next_appointment_date) || data.next_appointment;
+  data.next_appointment_time = cleanString(data.next_appointment_time);
   data.procedure = cleanString(data.procedure);
   data.dentists = cleanString(data.dentists);
   data.discount_type = normalizeDiscountType(data.discount_type);
@@ -188,8 +195,10 @@ export function validateTreatmentPayload(input) {
   if (!data.patient_id) errors.push("Patient ID is required.");
   if (!isValidDateString(data.treatment_date)) errors.push("Treatment Date is required and must be valid.");
   if (isFutureDate(data.treatment_date)) errors.push("Treatment Date cannot be in the future.");
-  if (data.next_appointment && !isValidDateString(data.next_appointment)) errors.push("Next Appointment must be a valid date.");
-  if (data.next_appointment && data.treatment_date && data.next_appointment < data.treatment_date) errors.push("Next Appointment cannot be earlier than Treatment Date.");
+  if (data.next_appointment_date && !isValidDateString(data.next_appointment_date)) errors.push("Next Appointment Date must be a valid date.");
+  if (data.next_appointment_date && data.treatment_date && data.next_appointment_date < data.treatment_date) errors.push("Next Appointment Date cannot be earlier than Treatment Date.");
+  if (data.next_appointment_time && !data.next_appointment_date) errors.push("Next Appointment Date is required when Next Appointment Time is set.");
+  if (data.next_appointment_time && !isValidTimeString(data.next_appointment_time)) errors.push("Next Appointment Time must be a valid time.");
   if (!data.procedure) errors.push("Procedure is required.");
   if (!data.dentists) errors.push("Dentist/s is required.");
   if (amountCharged.isBlank) {
@@ -262,6 +271,31 @@ export function validateTreatmentPayload(input) {
   if (data.discount_type === "None") {
     data.discount_percent = 0;
   }
+
+  data.next_appointment = data.next_appointment_date;
+
+  return { errors, data };
+}
+
+export function validateAppointmentPayload(input) {
+  const data = { ...input };
+  const errors = [];
+
+  Object.keys(data).forEach((key) => {
+    if (typeof data[key] === "string") data[key] = cleanString(data[key]);
+  });
+
+  data.patient_id = cleanString(data.patient_id);
+  data.appointment_date = cleanString(data.appointment_date);
+  data.appointment_time = cleanString(data.appointment_time);
+  data.planned_procedure = cleanString(data.planned_procedure);
+  data.notes = cleanString(data.notes);
+  data.status = cleanString(data.status) || "Scheduled";
+
+  if (!data.patient_id) errors.push("Patient ID is required.");
+  if (!isValidDateString(data.appointment_date)) errors.push("Appointment Date is required and must be valid.");
+  if (data.appointment_time && !isValidTimeString(data.appointment_time)) errors.push("Appointment Time must be a valid time.");
+  if (!allowedAppointmentStatuses.has(data.status)) errors.push("Appointment Status is not valid.");
 
   return { errors, data };
 }

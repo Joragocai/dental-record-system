@@ -335,6 +335,8 @@ export async function exportTreatmentsWorkbook() {
     { header: "Treatment Date", key: "treatment_date" },
     { header: "Procedure", key: "procedure" },
     { header: "Dentist/s", key: "dentists" },
+    { header: "Next Appointment Date", key: "next_appointment_date" },
+    { header: "Next Appointment Time", key: "next_appointment_time" },
     { header: "Amount Charged", key: "amount_charged" },
     { header: "Discount Type", key: "discount_type" },
     { header: "Discount Percent", key: "discount_percent" },
@@ -348,10 +350,11 @@ export async function exportTreatmentsWorkbook() {
   treatments.forEach((treatment) =>
     sheet.addRow({
       ...treatment,
-      treatment_date: parseDateValue(treatment.treatment_date)
+      treatment_date: parseDateValue(treatment.treatment_date),
+      next_appointment_date: parseDateValue(treatment.next_appointment_date || treatment.next_appointment)
     })
   );
-  applyDateFormats(sheet, ["treatment_date"]);
+  applyDateFormats(sheet, ["treatment_date", "next_appointment_date"]);
   applyAmountFormats(sheet, ["amount_charged", "discount_percent", "discount_amount", "net_amount_due", "amount_paid", "balance"]);
   autoWidth(sheet);
 
@@ -389,6 +392,8 @@ export async function exportPatientTreatmentsWorkbook(patientId) {
     { header: "Procedure", key: "procedure" },
     { header: "Dentist/s", key: "dentists" },
     { header: "Tooth No./s", key: "tooth_numbers" },
+    { header: "Next Appointment Date", key: "next_appointment_date" },
+    { header: "Next Appointment Time", key: "next_appointment_time" },
     { header: "Amount Charged", key: "amount_charged" },
     { header: "Discount Type", key: "discount_type" },
     { header: "Discount Percent", key: "discount_percent" },
@@ -402,10 +407,11 @@ export async function exportPatientTreatmentsWorkbook(patientId) {
   treatments.forEach((treatment) =>
     sheet.addRow({
       ...treatment,
-      treatment_date: parseDateValue(treatment.treatment_date)
+      treatment_date: parseDateValue(treatment.treatment_date),
+      next_appointment_date: parseDateValue(treatment.next_appointment_date || treatment.next_appointment)
     })
   );
-  applyDateFormats(sheet, ["treatment_date"]);
+  applyDateFormats(sheet, ["treatment_date", "next_appointment_date"]);
   applyAmountFormats(sheet, ["amount_charged", "discount_percent", "discount_amount", "net_amount_due", "amount_paid", "balance"]);
   autoWidth(sheet);
 
@@ -467,6 +473,8 @@ export async function exportFullPatientRecordWorkbook(patientId) {
     { header: "Treatment ID", key: "treatment_id" },
     { header: "Procedure", key: "procedure" },
     { header: "Dentist/s", key: "dentists" },
+    { header: "Next Appointment Date", key: "next_appointment_date" },
+    { header: "Next Appointment Time", key: "next_appointment_time" },
     { header: "Amount Charged", key: "amount_charged" },
     { header: "Discount Type", key: "discount_type" },
     { header: "Discount Percent", key: "discount_percent" },
@@ -480,10 +488,11 @@ export async function exportFullPatientRecordWorkbook(patientId) {
   treatments.forEach((treatment) =>
     treatmentSheet.addRow({
       ...treatment,
-      treatment_date: parseDateValue(treatment.treatment_date)
+      treatment_date: parseDateValue(treatment.treatment_date),
+      next_appointment_date: parseDateValue(treatment.next_appointment_date || treatment.next_appointment)
     })
   );
-  applyDateFormats(treatmentSheet, ["treatment_date"]);
+  applyDateFormats(treatmentSheet, ["treatment_date", "next_appointment_date"]);
   applyAmountFormats(treatmentSheet, ["amount_charged", "discount_percent", "discount_amount", "net_amount_due", "amount_paid", "balance"]);
   autoWidth(treatmentSheet);
 

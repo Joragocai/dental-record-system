@@ -85,45 +85,47 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
         </div>
       )}
       {!attachments.length && <p className="text-sm text-slate-500">No attachments uploaded.</p>}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {attachments.map((attachment) => (
-          <article key={attachment.id} className="attachment-gallery-card rounded-2xl border border-slate-200 p-3">
-            {isImage(attachment.mime_type) ? (
-              <button type="button" className="attachment-preview-trigger block w-full" onClick={() => setPreviewAttachment(attachment)}>
-                <img
-                  src={getUploadUrl(attachment.file_path)}
-                  alt={attachment.original_filename}
-                  className="h-40 w-full rounded-xl object-cover transition hover:opacity-95"
-                />
-              </button>
-            ) : (
-              <div className="flex h-40 items-center justify-center rounded-xl bg-slate-100 text-sm text-slate-500">
-                File Preview Not Available
-              </div>
-            )}
-            <div className="mt-3 space-y-2 text-sm">
-              <p className="text-base font-semibold text-slate-900">{formatAttachmentType(attachment.attachment_type)}</p>
-              <p className="text-sm font-medium text-slate-700">Uploaded: {formatUploadedAt(attachment.uploaded_at)}</p>
-              <p className="text-xs text-slate-500">Filename: {attachment.original_filename}</p>
-              <div className="flex flex-wrap items-center gap-3 pt-1">
-                <a
-                  href={getAttachmentDownloadUrl(attachment.id)}
-                  className="button-download"
-                >
-                  Download
-                </a>
-                <button
-                  type="button"
-                  className="button-danger-outline"
-                  onClick={() => handleDelete(attachment)}
-                  disabled={deletingId === attachment.id}
-                >
-                  {deletingId === attachment.id ? "Deleting..." : "Delete"}
+      <div className="max-h-[420px] overflow-y-auto pr-1">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {attachments.map((attachment) => (
+            <article key={attachment.id} className="attachment-gallery-card rounded-2xl border border-slate-200 p-3">
+              {isImage(attachment.mime_type) ? (
+                <button type="button" className="attachment-preview-trigger block w-full" onClick={() => setPreviewAttachment(attachment)}>
+                  <img
+                    src={getUploadUrl(attachment.file_path)}
+                    alt={attachment.original_filename}
+                    className="h-40 w-full rounded-xl object-cover transition hover:opacity-95"
+                  />
                 </button>
+              ) : (
+                <div className="flex h-40 items-center justify-center rounded-xl bg-slate-100 text-sm text-slate-500">
+                  File Preview Not Available
+                </div>
+              )}
+              <div className="mt-3 space-y-2 text-sm">
+                <p className="text-base font-semibold text-slate-900">{formatAttachmentType(attachment.attachment_type)}</p>
+                <p className="text-sm font-medium text-slate-700">Uploaded: {formatUploadedAt(attachment.uploaded_at)}</p>
+                <p className="text-xs text-slate-500">Filename: {attachment.original_filename}</p>
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <a
+                    href={getAttachmentDownloadUrl(attachment.id)}
+                    className="button-download"
+                  >
+                    Download
+                  </a>
+                  <button
+                    type="button"
+                    className="button-danger-outline"
+                    onClick={() => handleDelete(attachment)}
+                    disabled={deletingId === attachment.id}
+                  >
+                    {deletingId === attachment.id ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
               </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          ))}
+        </div>
       </div>
       {previewAttachment && (
         <div className="attachment-preview-overlay" onClick={() => setPreviewAttachment(null)}>

@@ -5,7 +5,7 @@ import AttachmentUploadForm from "../components/AttachmentUploadForm";
 import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
 import { getExportUrl, getPatient, getTreatment, getTreatmentAttachments } from "../lib/api";
-import { formatPesoAmount } from "../lib/formatters";
+import { displayNoFinalTime, formatPesoAmount } from "../lib/formatters";
 
 export default function TreatmentDetailPage() {
   const { treatmentId } = useParams();
@@ -82,8 +82,12 @@ export default function TreatmentDetailPage() {
             <p className="font-semibold text-slate-900">{treatment.tooth_numbers || "-"}</p>
           </div>
           <div>
-            <p className="text-sm text-slate-500">Next Appointment</p>
-            <p className="font-semibold text-slate-900">{treatment.next_appointment || "-"}</p>
+            <p className="text-sm text-slate-500">Next Appointment Date</p>
+            <p className="font-semibold text-slate-900">{treatment.next_appointment_date || treatment.next_appointment || "-"}</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-500">Next Appointment Time</p>
+            <p className="font-semibold text-slate-900">{treatment.next_appointment_date ? displayNoFinalTime(treatment.next_appointment_time) : "-"}</p>
           </div>
           <div>
             <p className="text-sm text-slate-500">Amount Charged</p>

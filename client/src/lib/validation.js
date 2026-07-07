@@ -32,6 +32,10 @@ function isFutureDate(value) {
   return value > new Date().toISOString().slice(0, 10);
 }
 
+function isValidTimeString(value) {
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(String(value || "").trim());
+}
+
 function trimValue(value) {
   return typeof value === "string" ? value.trim() : value;
 }
@@ -140,8 +144,12 @@ export function validateTreatmentForm(form, selectedPatient) {
   if (!/^T-\d{4}-\d{4}$/.test(normalized.treatment_id || "")) errors.treatment_id = "Treatment ID format must be T-YYYY-0001.";
   if (!isValidDateString(normalized.treatment_date)) errors.treatment_date = "Treatment Date is required.";
   if (isFutureDate(normalized.treatment_date)) errors.treatment_date = "Treatment Date cannot be in the future.";
-  if (normalized.next_appointment && !isValidDateString(normalized.next_appointment)) errors.next_appointment = "Next Appointment date is not valid.";
-  if (normalized.next_appointment && normalized.treatment_date && normalized.next_appointment < normalized.treatment_date) errors.next_appointment = "Next Appointment cannot be earlier than Treatment Date.";
+  normalized.next_appointment_date = normalized.next_appointment_date || normalized.next_appointment || "";
+  normalized.next_appointment_time = normalized.next_appointment_time || "";
+  if (normalized.next_appointment_date && !isValidDateString(normalized.next_appointment_date)) errors.next_appointment_date = "Next Appointment Date is not valid.";
+  if (normalized.next_appointment_date && normalized.treatment_date && normalized.next_appointment_date < normalized.treatment_date) errors.next_appointment_date = "Next Appointment Date cannot be earlier than Treatment Date.";
+  if (normalized.next_appointment_time && !normalized.next_appointment_date) errors.next_appointment_date = "Next Appointment Date is required when Next Appointment Time is set.";
+  if (normalized.next_appointment_time && !isValidTimeString(normalized.next_appointment_time)) errors.next_appointment_time = "Next Appointment Time is not valid.";
   if (!normalized.procedure) errors.procedure = "Procedure is required.";
   if (!normalized.dentists) errors.dentists = "Dentist/s is required.";
   if (amountCharged.isBlank) {
@@ -199,6 +207,21 @@ export function validateTreatmentForm(form, selectedPatient) {
     normalized.amount_charged = normalized.amount_charged;
     normalized.amount_paid = normalized.amount_paid;
   }
+
+  normalized.next_appointment = normalized.next_appointment_date;
+
+  return { errors, normalized, isValid: Object.keys(errors).length === 0 };
+}
+
+export function validateAppointmentForm(form, selectedPatient) {
+  const errors = {};
+  const normalized = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, trimValue(value)]));
+  normalized.status = normalized.status || "Scheduled";
+
+  if (!selectedPatient?.patient_id) errors.patient_id = "Select a patient first.";
+  if (!isValidDateString(normalized.appointment_date)) errors.appointment_date = "Appointment Date is required.";
+  if (normalized.appointment_time && !isValidTimeString(normalized.appointment_time)) errors.appointment_time = "Appointment Time is not valid.";
+  if (!["Scheduled", "Completed", "Cancelled", "No-show"].includes(normalized.status)) errors.status = "Appointment Status is not valid.";
 
   return { errors, normalized, isValid: Object.keys(errors).length === 0 };
 }

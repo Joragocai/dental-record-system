@@ -4,13 +4,16 @@ import AttachmentGallery from "../components/AttachmentGallery";
 import AttachmentUploadForm from "../components/AttachmentUploadForm";
 import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
+import PatientAppointmentsTable from "../components/PatientAppointmentsTable";
 import TreatmentHistoryTable from "../components/TreatmentHistoryTable";
 import { displayNone, isPwdRelatedClassification } from "../lib/formatters";
 import {
   getExportUrl,
   getPatient,
+  getPatientAppointments,
   getPatientAttachments,
-  getTreatmentsByPatient
+  getTreatmentsByPatient,
+  updateAppointmentStatus
 } from "../lib/api";
 
 export default function PatientDetailPage() {
@@ -18,11 +21,14 @@ export default function PatientDetailPage() {
   const [patient, setPatient] = useState(null);
   const [treatments, setTreatments] = useState([]);
   const [attachments, setAttachments] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [updatingAppointmentId, setUpdatingAppointmentId] = useState(null);
 
   useEffect(() => {
     getPatient(patientId).then(setPatient).catch(() => setPatient(null));
     getTreatmentsByPatient(patientId).then(setTreatments).catch(() => setTreatments([]));
     getPatientAttachments(patientId).then(setAttachments).catch(() => setAttachments([]));
+    getPatientAppointments(patientId).then(setAppointments).catch(() => setAppointments([]));
   }, [patientId]);
 
   function refreshAttachments() {
@@ -32,6 +38,16 @@ export default function PatientDetailPage() {
         setAttachments([]);
         throw error;
       });
+  }
+
+  async function handleAppointmentStatusChange(appointment, status) {
+    setUpdatingAppointmentId(appointment.id);
+    try {
+      const updated = await updateAppointmentStatus(appointment.id, status);
+      setAppointments((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    } finally {
+      setUpdatingAppointmentId(null);
+    }
   }
 
   if (!patient) {
@@ -93,6 +109,21 @@ export default function PatientDetailPage() {
             {patient.medical_alert_summary || "No major medical alerts generated yet."}
           </p>
         </div>
+      </section>
+
+      <section className="page-card mt-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="section-title">Appointments</h2>
+          <Link className="button-secondary no-print" to={`/patients/${patientId}/appointments/new`}>
+            Schedule Appointment
+          </Link>
+        </div>
+        <PatientAppointmentsTable
+          patientId={patientId}
+          appointments={appointments}
+          onStatusChange={handleAppointmentStatusChange}
+          isUpdatingId={updatingAppointmentId}
+        />
       </section>
 
       <section className="page-card mt-6">

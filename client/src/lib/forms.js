@@ -222,6 +222,8 @@ export const emptyTreatment = {
   treatment_date: "",
   tooth_numbers: "",
   next_appointment: "",
+  next_appointment_date: "",
+  next_appointment_time: "",
   procedure: "",
   dentists: "",
   discount_type: "None",
@@ -232,6 +234,16 @@ export const emptyTreatment = {
   amount_paid: "",
   balance: "",
   remarks: ""
+};
+
+export const appointmentStatusOptions = ["Scheduled", "Completed", "Cancelled", "No-show"];
+
+export const emptyAppointment = {
+  appointment_date: "",
+  appointment_time: "",
+  planned_procedure: "",
+  notes: "",
+  status: "Scheduled"
 };
 
 export const suggestedDentists = ["Dr. Arlen C. Khurana"];

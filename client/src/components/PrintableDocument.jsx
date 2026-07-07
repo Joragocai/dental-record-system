@@ -1,4 +1,4 @@
-import { formatAttachmentType, formatUploadedAt } from "../lib/attachments";
+import { formatAttachmentType } from "../lib/attachments";
 import { getUploadUrl } from "../lib/api";
 
 export function PrintField({ label, value }) {
@@ -22,6 +22,10 @@ export function PrintSection({ title, children }) {
 export function PrintableAttachments({ attachments, title = "Uploaded Images and Files", showUploadedAt = false }) {
   if (!attachments.length) return null;
 
+  function getPrintableAttachmentLabel(attachmentType) {
+    return attachmentType && String(attachmentType).trim() ? formatAttachmentType(attachmentType) : "Attachment";
+  }
+
   return (
     <PrintSection title={title}>
       <div className="attachment-sheet-grid">
@@ -32,22 +36,10 @@ export function PrintableAttachments({ attachments, title = "Uploaded Images and
             ) : (
               <div className="attachment-sheet-placeholder">File Preview Not Available</div>
             )}
-            <p className="mt-2 text-sm font-semibold text-slate-900">{formatAttachmentType(attachment.attachment_type)}</p>
-            {showUploadedAt ? <p className="text-xs text-slate-600">Uploaded: {formatUploadedAt(attachment.uploaded_at)}</p> : null}
-            <p className="text-xs text-slate-600">{attachment.original_filename}</p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">{getPrintableAttachmentLabel(attachment.attachment_type)}</p>
           </div>
         ))}
       </div>
-      {showUploadedAt ? (
-        <div className="mt-3 space-y-1.5 text-sm">
-          {attachments.map((attachment) => (
-            <div key={`list-${attachment.id}`} className="document-attachment-line">
-              <strong>Attachment Category:</strong> {formatAttachmentType(attachment.attachment_type)} | {attachment.original_filename} | Uploaded{" "}
-              {formatUploadedAt(attachment.uploaded_at)}
-            </div>
-          ))}
-        </div>
-      ) : null}
     </PrintSection>
   );
 }
