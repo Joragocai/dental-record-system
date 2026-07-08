@@ -113,7 +113,11 @@ function BirthdayHighlightCard({ items }) {
 }
 
 export default function DashboardPage() {
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const today = new Date();
+  const todayIso = today.toISOString().slice(0, 10);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowIso = tomorrow.toISOString().slice(0, 10);
   const [summary, setSummary] = useState({
     patientCount: 0,
     treatmentCount: 0,
@@ -126,9 +130,9 @@ export default function DashboardPage() {
     birthdayReminders: [],
     today: ""
   });
-  const [selectedScheduleDate, setSelectedScheduleDate] = useState(todayIso);
+  const [selectedScheduleDate, setSelectedScheduleDate] = useState(tomorrowIso);
   const [selectedDateSchedule, setSelectedDateSchedule] = useState({
-    date: todayIso,
+    date: tomorrowIso,
     appointments: []
   });
 
@@ -223,8 +227,8 @@ export default function DashboardPage() {
         <section className="page-card">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h2 className="section-title">Schedule by Date</h2>
-              <p className="mt-1 text-sm text-slate-600">Select a date to view all scheduled patients for that day.</p>
+              <h2 className="section-title">Check Schedule by Date</h2>
+              <p className="mt-1 text-sm text-slate-600">Use this to check schedules for tomorrow or any future date.</p>
             </div>
             <div className="w-full max-w-xs">
               <label className="label-text" htmlFor="dashboard-schedule-date">
