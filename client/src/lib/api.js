@@ -14,6 +14,11 @@ export async function getDashboardSchedule() {
   return data;
 }
 
+export async function getDashboardScheduleByDate(date) {
+  const { data } = await api.get("/dashboard/schedule-by-date", { params: { date } });
+  return data;
+}
+
 export async function searchPatients(query) {
   const { data } = await api.get("/patients/search", { params: { q: query } });
   return data;

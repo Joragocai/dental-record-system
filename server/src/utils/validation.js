@@ -57,6 +57,19 @@ function cleanString(value) {
   return String(value).trim();
 }
 
+function parsePlainDate(value) {
+  const normalized = String(value || "").trim();
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  return new Date(year, month - 1, day);
+}
+
 function isValidDateString(value) {
   if (!value) return false;
   const date = new Date(value);
@@ -73,7 +86,8 @@ function isValidTimeString(value) {
 
 function calculateAge(birthday) {
   if (!isValidDateString(birthday)) return 0;
-  const birthDate = new Date(birthday);
+  const birthDate = parsePlainDate(birthday);
+  if (!birthDate || Number.isNaN(birthDate.getTime())) return 0;
   const today = new Date();
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();

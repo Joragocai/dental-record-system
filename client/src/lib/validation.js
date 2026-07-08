@@ -10,10 +10,23 @@ const treatmentDiscountDefaults = {
   Custom: 0
 };
 
+function parsePlainDate(value) {
+  const normalized = String(value || "").trim();
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  return new Date(year, month - 1, day);
+}
+
 export function calculateAgeFromBirthday(birthday) {
   if (!birthday) return "";
-  const birthDate = new Date(birthday);
-  if (Number.isNaN(birthDate.getTime())) return "";
+  const birthDate = parsePlainDate(birthday);
+  if (!birthDate || Number.isNaN(birthDate.getTime())) return "";
   const today = new Date();
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();

@@ -40,6 +40,15 @@ function selectClass(hasError, hasValue) {
   return hasValue ? "select-input input-filled" : "select-input";
 }
 
+function LabelText({ label, required = false }) {
+  return (
+    <span className="label-text">
+      {label}
+      {required ? <span className="text-red-500"> *</span> : null}
+    </span>
+  );
+}
+
 function formatEditableAmount(value, fallback = "") {
   if (value === null || value === undefined || value === "") return fallback;
   const numeric = Number(value);
@@ -394,7 +403,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
               <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-600">Treatment Details</h3>
               <div className="mt-4 grid gap-4 md:grid-cols-3">
                 <label className="field-box">
-                  <span className="label-text">Treatment Date *</span>
+                  <LabelText label="Treatment Date" required />
                   <input
                     type="date"
                     max={todayIsoDate()}
@@ -405,7 +414,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
                   {errors.treatment_date && <p className="error-text">{errors.treatment_date}</p>}
                 </label>
                 <label className="field-box">
-                  <span className="label-text">Procedure *</span>
+                  <LabelText label="Procedure" required />
                   <div className="datalist-input-wrap">
                     <input
                       className={`${inputClass(Boolean(errors.procedure), hasFilledValue(form.procedure))} pr-10`}
@@ -426,7 +435,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
                   {errors.procedure && <p className="error-text">{errors.procedure}</p>}
                 </label>
                 <label className="field-box">
-                  <span className="label-text">Dentist/s *</span>
+                  <LabelText label="Dentist/s" required />
                   <div className="datalist-input-wrap">
                     <input
                       className={`${inputClass(Boolean(errors.dentists), hasFilledValue(form.dentists))} pr-10`}
@@ -493,7 +502,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
               <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-600">Payment Details</h3>
               <div className="mt-4 grid gap-4 md:grid-cols-3">
                 <label className="field-box">
-                  <span className="label-text">Amount Charged *</span>
+                  <LabelText label="Amount Charged" required />
                   <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_charged), hasFilledValue(form.amount_charged))} value={form.amount_charged || ""} onChange={(event) => handleChange("amount_charged", event.target.value)} />
                   <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.amount_charged || 0)}</p>
                   {errors.amount_charged && <p className="error-text">{errors.amount_charged}</p>}
@@ -533,7 +542,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
                   {errors.net_amount_due && <p className="error-text">{errors.net_amount_due}</p>}
                 </label>
                 <label className="field-box">
-                  <span className="label-text">Amount Paid *</span>
+                  <LabelText label="Amount Paid" required />
                   <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_paid), hasFilledValue(form.amount_paid))} value={form.amount_paid || ""} onChange={(event) => handleChange("amount_paid", event.target.value)} />
                   <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.amount_paid || 0)}</p>
                   {errors.amount_paid && <p className="error-text">{errors.amount_paid}</p>}
@@ -541,7 +550,7 @@ export default function TreatmentFormPage({ mode = "create" }) {
               </div>
               <div className="mt-4 grid gap-4 md:grid-cols-3">
                 <label className="field-box md:col-span-1">
-                  <span className="label-text">Balance *</span>
+                  <LabelText label="Balance" required />
                   <input className={inputClass(Boolean(errors.balance), hasFilledValue(form.balance))} readOnly value={form.balance || ""} />
                   <p className="mt-2 text-sm font-semibold text-clinic-900">{formatPesoAmount(form.balance || 0)}</p>
                   {errors.balance && <p className="error-text">{errors.balance}</p>}

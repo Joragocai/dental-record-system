@@ -32,6 +32,19 @@ export function shouldShowPatientClassificationInSummary(value) {
   return normalized === "Senior Citizen" || normalized === "PWD" || normalized === "Senior Citizen and PWD";
 }
 
+function parsePlainDate(value) {
+  const normalized = String(value || "").trim();
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  return new Date(year, month - 1, day);
+}
+
 export function displayNoFinalTime(value) {
   return value && String(value).trim() ? formatTimeValue(value) : "No final time";
 }
@@ -55,8 +68,8 @@ export function formatTimeValue(value) {
 
 export function formatReadableDate(value) {
   if (!value) return "";
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return value;
+  const date = parsePlainDate(value);
+  if (!date || Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("en-PH", {
     month: "short",
     day: "numeric",

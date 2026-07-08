@@ -102,6 +102,15 @@ function selectClassName(hasError, hasValue) {
   return hasValue ? "select-input input-filled" : "select-input";
 }
 
+function LabelText({ label, required = false }) {
+  return (
+    <span className="label-text">
+      {label}
+      {required ? <span className="text-red-500"> *</span> : null}
+    </span>
+  );
+}
+
 function InputField({ field, value, onChange, error }) {
   const [name, label, type, required, readOnly, options, helperText] = field;
   const currentValue = value ?? "";
@@ -114,7 +123,7 @@ function InputField({ field, value, onChange, error }) {
   if (type === "textarea") {
     return (
       <label className="field-box">
-        <span className="label-text">{label}{required ? " *" : ""}</span>
+        <LabelText label={label} required={required} />
         <textarea className={textAreaClassName(Boolean(error), isFilled)} value={value ?? ""} onChange={(event) => onChange(name, event.target.value)} />
         {helperText && <p className="mt-1 text-xs text-slate-500">{helperText}</p>}
         {error && <p className="error-text">{error}</p>}
@@ -125,7 +134,7 @@ function InputField({ field, value, onChange, error }) {
   if (type === "select") {
     return (
       <label className="field-box">
-        <span className="label-text">{label}{required ? " *" : ""}</span>
+        <LabelText label={label} required={required} />
         <select className={selectClassName(Boolean(error), isFilled)} value={currentValue} onChange={(event) => onChange(name, event.target.value)}>
           {selectOptions.map((option) => (
             <option key={option} value={option}>
@@ -144,7 +153,7 @@ function InputField({ field, value, onChange, error }) {
 
     return (
       <label className="field-box">
-        <span className="label-text">{label}{required ? " *" : ""}</span>
+        <LabelText label={label} required={required} />
         <div className="datalist-input-wrap">
           <input
             type="text"
@@ -172,10 +181,7 @@ function InputField({ field, value, onChange, error }) {
 
   return (
     <label className="field-box">
-      <span className="label-text">
-        {label}
-        {required ? " *" : ""}
-      </span>
+      <LabelText label={label} required={required} />
       <input
         type={type}
         className={fieldClassName(Boolean(error), isFilled)}

@@ -15,8 +15,29 @@ function getDateRange() {
   };
 }
 
+function isValidIsoDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "").trim());
+}
+
 function normalizeProcedure(value) {
   return String(value || "").trim() || "General Appointment";
+}
+
+function parseIsoDateParts(value) {
+  const normalized = String(value || "").trim();
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  return { year, month, day };
+}
+
+function formatIsoDateParts(year, month, day) {
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 function decorateScheduleItems(rows) {
@@ -29,9 +50,9 @@ function decorateScheduleItems(rows) {
   }));
 }
 
-function getScheduleRows(dateFrom, { includeToday = false } = {}) {
-  const dateFilter = includeToday ? "schedule_date = ?" : "schedule_date > ?";
-  const params = [dateFrom];
+function getScheduleRows(dateValue, { includeToday = false, exactDate = false } = {}) {
+  const dateFilter = exactDate ? "schedule_date = ?" : includeToday ? "schedule_date = ?" : "schedule_date > ?";
+  const params = [dateValue];
 
   const rows = db
     .prepare(
@@ -96,10 +117,10 @@ function getBirthdayReminders() {
   return patients
     .map((patient) => {
       if (!patient.birthday) return null;
-      const birthday = new Date(patient.birthday);
-      if (Number.isNaN(birthday.getTime())) return null;
+      const birthdayParts = parseIsoDateParts(patient.birthday);
+      if (!birthdayParts) return null;
 
-      const nextBirthday = new Date(today.getFullYear(), birthday.getMonth(), birthday.getDate());
+      const nextBirthday = new Date(today.getFullYear(), birthdayParts.month - 1, birthdayParts.day);
       if (nextBirthday < todayStart) {
         nextBirthday.setFullYear(nextBirthday.getFullYear() + 1);
       }
@@ -107,12 +128,12 @@ function getBirthdayReminders() {
       const diffDays = Math.round((nextBirthday.setHours(0, 0, 0, 0) - todayStart.getTime()) / 86400000);
       if (diffDays < 0 || diffDays > 7) return null;
 
-      const turningAge = nextBirthday.getFullYear() - birthday.getFullYear();
+      const turningAge = nextBirthday.getFullYear() - birthdayParts.year;
       return {
         patient_id: patient.patient_id,
         patient_name: patient.display_name,
         birthday: patient.birthday,
-        birthday_date: nextBirthday.toISOString().slice(0, 10),
+        birthday_date: formatIsoDateParts(nextBirthday.getFullYear(), nextBirthday.getMonth() + 1, nextBirthday.getDate()),
         age_turning: turningAge,
         mobile_number: patient.mobile_number || "",
         branch_location: patient.branch_location || "",
@@ -142,6 +163,17 @@ router.get("/schedule", (_req, res) => {
     upcomingAppointments: getScheduleRows(today, { includeToday: false }),
     birthdayReminders: getBirthdayReminders(),
     today
+  });
+});
+
+router.get("/schedule-by-date", (req, res) => {
+  const { today } = getDateRange();
+  const requestedDate = String(req.query.date || "").trim();
+  const date = isValidIsoDate(requestedDate) ? requestedDate : today;
+
+  res.json({
+    date,
+    appointments: getScheduleRows(date, { exactDate: true })
   });
 });
 

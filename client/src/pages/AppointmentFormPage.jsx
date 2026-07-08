@@ -27,6 +27,15 @@ function selectClass(hasError, hasValue) {
   return hasValue ? "select-input input-filled" : "select-input";
 }
 
+function LabelText({ label, required = false }) {
+  return (
+    <span className="label-text">
+      {label}
+      {required ? <span className="text-red-500"> *</span> : null}
+    </span>
+  );
+}
+
 export default function AppointmentFormPage({ mode = "create" }) {
   const { patientId, appointmentId } = useParams();
   const navigate = useNavigate();
@@ -141,7 +150,7 @@ export default function AppointmentFormPage({ mode = "create" }) {
           <div className="form-section-body">
             <div className="form-grid">
               <label className="field-box">
-                <span className="label-text">Appointment Date *</span>
+                <LabelText label="Appointment Date" required />
                 <input
                   type="date"
                   className={inputClass(Boolean(errors.appointment_date), hasFilledValue(form.appointment_date))}

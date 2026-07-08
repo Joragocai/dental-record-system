@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
-import { getDashboardSchedule, getDashboardSummary } from "../lib/api";
+import { getDashboardSchedule, getDashboardScheduleByDate, getDashboardSummary } from "../lib/api";
 import { displayNoFinalTime, displayPlannedProcedure, formatReadableDate } from "../lib/formatters";
 
-function ScheduleSection({ title, subtitle, items, emptyMessage, showDate = false }) {
+function ScheduleSection({ title, subtitle, items, emptyMessage, showDate = false, framed = true, maxHeightClass }) {
   return (
-    <section className="page-card">
+    <section className={framed ? "page-card" : ""}>
       <h2 className="section-title">{title}</h2>
       {subtitle ? <p className="mt-1 text-sm text-slate-600">{subtitle}</p> : null}
       <div
         className={`mt-4 overflow-auto rounded-2xl border border-slate-200 ${
-          showDate ? "max-h-[420px]" : "max-h-[320px]"
+          maxHeightClass || (showDate ? "max-h-[420px]" : "max-h-[320px]")
         }`}
       >
         <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -113,6 +113,7 @@ function BirthdayHighlightCard({ items }) {
 }
 
 export default function DashboardPage() {
+  const todayIso = new Date().toISOString().slice(0, 10);
   const [summary, setSummary] = useState({
     patientCount: 0,
     treatmentCount: 0,
@@ -125,11 +126,22 @@ export default function DashboardPage() {
     birthdayReminders: [],
     today: ""
   });
+  const [selectedScheduleDate, setSelectedScheduleDate] = useState(todayIso);
+  const [selectedDateSchedule, setSelectedDateSchedule] = useState({
+    date: todayIso,
+    appointments: []
+  });
 
   useEffect(() => {
     getDashboardSummary().then(setSummary).catch(() => {});
     getDashboardSchedule().then(setSchedule).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    getDashboardScheduleByDate(selectedScheduleDate).then(setSelectedDateSchedule).catch(() => {
+      setSelectedDateSchedule({ date: selectedScheduleDate, appointments: [] });
+    });
+  }, [selectedScheduleDate]);
 
   return (
     <Layout>
@@ -208,13 +220,35 @@ export default function DashboardPage() {
           items={schedule.todayAppointments}
           emptyMessage="No patients scheduled today."
         />
-        <ScheduleSection
-          title="Upcoming Appointments"
-          subtitle="All future scheduled appointments"
-          items={schedule.upcomingAppointments}
-          emptyMessage="No upcoming appointments."
-          showDate
-        />
+        <section className="page-card">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="section-title">Schedule by Date</h2>
+              <p className="mt-1 text-sm text-slate-600">Select a date to view all scheduled patients for that day.</p>
+            </div>
+            <div className="w-full max-w-xs">
+              <label className="label-text" htmlFor="dashboard-schedule-date">
+                Select Date
+              </label>
+              <input
+                id="dashboard-schedule-date"
+                type="date"
+                className="text-input"
+                value={selectedScheduleDate}
+                onChange={(event) => setSelectedScheduleDate(event.target.value)}
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <ScheduleSection
+              title={formatReadableDate(selectedDateSchedule.date || selectedScheduleDate)}
+              items={selectedDateSchedule.appointments}
+              emptyMessage="No scheduled patients for this date."
+              framed={false}
+              maxHeightClass="max-h-[320px]"
+            />
+          </div>
+        </section>
       </div>
     </Layout>
   );
