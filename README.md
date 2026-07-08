@@ -1,4 +1,4 @@
-# KHURANA CALILAP DENTAL RECORD SYSTEM
+# DENTAL RECORD SYSTEM
 
 A local web-based dental record system for managing patient records, treatment records, appointments, attachments, print/PDF documents, Excel exports, and backups for clinic use.
 
