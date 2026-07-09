@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export default function PatientSearchResults({ patients }) {
   return (
-    <div className="max-h-[400px] overflow-auto rounded-2xl border border-slate-200">
+    <div className="min-h-[400px] max-h-[calc(100vh-260px)] overflow-auto rounded-2xl border border-slate-200">
       <table className="min-w-full divide-y divide-slate-200 text-sm">
         <thead className="sticky top-0 z-10 bg-slate-50 text-left text-slate-600">
           <tr>
