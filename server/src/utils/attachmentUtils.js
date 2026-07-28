@@ -3,15 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
 import multer from "multer";
-import { fileURLToPath } from "node:url";
+import runtimeConfig from "../config/runtimeConfig.js";
 
 const unlinkAsync = promisify(fs.unlink);
-
-const currentDir = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.resolve(currentDir, "../../..");
-const uploadsRootDir = path.join(rootDir, "uploads");
-const patientUploadDir = path.join(rootDir, "uploads", "patients");
-const treatmentUploadDir = path.join(rootDir, "uploads", "treatments");
+const uploadsRootDir = runtimeConfig.uploadRoot;
+const patientUploadDir = runtimeConfig.patientUploadDir;
+const treatmentUploadDir = runtimeConfig.treatmentUploadDir;
 
 export const MAX_ATTACHMENT_FILE_SIZE_MB = 10;
 export const MAX_ATTACHMENT_FILE_SIZE_BYTES = MAX_ATTACHMENT_FILE_SIZE_MB * 1024 * 1024;
@@ -108,7 +105,7 @@ export function resolveAttachmentAbsolutePath(filePath) {
   }
 
   const normalizedRelativePath = filePath.replace(/^\/+/, "");
-  const absolutePath = path.resolve(rootDir, normalizedRelativePath);
+  const absolutePath = path.resolve(uploadsRootDir, normalizedRelativePath.replace(/^uploads[\\/]/, ""));
 
   if (!absolutePath.startsWith(uploadsRootDir + path.sep) && absolutePath !== uploadsRootDir) {
     return null;

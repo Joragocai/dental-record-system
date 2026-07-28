@@ -191,7 +191,7 @@ export default function DashboardPage() {
         </section>
         <section className="grid gap-6">
           <div className="page-card">
-            <h2 className="section-title">Today's Quick Totals</h2>
+            <h2 className="section-title">Today's Totals</h2>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-sm text-slate-500">Patients</p>

@@ -1,7 +1,5 @@
 import cors from "cors";
 import express from "express";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import patientsRouter from "./routes/patients.js";
 import treatmentsRouter from "./routes/treatments.js";
 import attachmentsRouter from "./routes/attachments.js";
@@ -9,11 +7,10 @@ import exportRouter from "./routes/exports.js";
 import backupRouter from "./routes/backup.js";
 import dashboardRouter from "./routes/dashboard.js";
 import appointmentsRouter from "./routes/appointments.js";
+import runtimeConfig from "./config/runtimeConfig.js";
 import { ATTACHMENT_FILE_SIZE_ERROR_MESSAGE, deleteUploadedFileByAbsolutePath } from "./utils/attachmentUtils.js";
 
 const app = express();
-const currentDir = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.resolve(currentDir, "../..");
 const allowedOrigins = new Set(["http://127.0.0.1:5173", "http://localhost:5173"]);
 
 app.use(
@@ -29,7 +26,7 @@ app.use(
   })
 );
 app.use(express.json({ limit: "10mb" }));
-app.use("/uploads", express.static(path.join(rootDir, "uploads")));
+app.use("/uploads", express.static(runtimeConfig.uploadRoot));
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });

@@ -1,14 +1,8 @@
-import fs from "node:fs";
-import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { fileURLToPath } from "node:url";
+import runtimeConfig from "../config/runtimeConfig.js";
 
-const currentDir = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.resolve(currentDir, "../../..");
-const dataDir = path.join(rootDir, "data");
-const dbPath = path.join(dataDir, "dental.db");
-
-fs.mkdirSync(dataDir, { recursive: true });
+runtimeConfig.ensureRuntimeDirectories();
+const dbPath = runtimeConfig.databasePath;
 
 const db = new DatabaseSync(dbPath);
 
