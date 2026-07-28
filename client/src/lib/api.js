@@ -9,6 +9,11 @@ export async function getDashboardSummary() {
   return data;
 }
 
+export async function getDashboardTodaySummary() {
+  const { data } = await api.get("/dashboard/today-summary");
+  return data;
+}
+
 export async function getDashboardSchedule() {
   const { data } = await api.get("/dashboard/schedule");
   return data;
