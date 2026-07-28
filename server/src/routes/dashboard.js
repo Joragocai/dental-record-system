@@ -145,11 +145,24 @@ function getBirthdayReminders() {
 }
 
 router.get("/summary", (_req, res) => {
-  const patientCount = db.prepare("SELECT COUNT(*) AS count FROM patients").get().count;
-  const treatmentCount = db.prepare("SELECT COUNT(*) AS count FROM treatments").get().count;
+  const todayIso = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+
+  const patientsToday = db
+    .prepare("SELECT COUNT(*) AS count FROM patients WHERE date_registered = ?")
+    .get(todayIso).count;
+
+  const treatmentsToday = db
+    .prepare("SELECT COUNT(*) AS count FROM treatments WHERE treatment_date = ?")
+    .get(todayIso).count;
+
   res.json({
-    patientCount,
-    treatmentCount,
+    patientsToday,
+    treatmentsToday,
     latestPatients: listPatients().slice(-5).reverse(),
     latestTreatments: listTreatments().slice(0, 5)
   });

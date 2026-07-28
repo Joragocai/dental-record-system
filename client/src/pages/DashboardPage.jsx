@@ -119,8 +119,8 @@ export default function DashboardPage() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowIso = tomorrow.toISOString().slice(0, 10);
   const [summary, setSummary] = useState({
-    patientCount: 0,
-    treatmentCount: 0,
+    patientsToday: 0,
+    treatmentsToday: 0,
     latestPatients: [],
     latestTreatments: []
   });
@@ -158,7 +158,7 @@ export default function DashboardPage() {
             </div>
             <div className="rounded-2xl bg-clinic-50 px-4 py-3 text-right">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-clinic-700">Records</p>
-              <p className="text-2xl font-bold text-clinic-900">{summary.patientCount}</p>
+              <p className="text-2xl font-bold text-clinic-900">{summary.patientsToday}</p>
             </div>
           </div>
           <p className="max-w-2xl text-sm text-slate-600">
@@ -166,11 +166,11 @@ export default function DashboardPage() {
           </p>
           <div className="grid gap-4 md:grid-cols-3">
             <Link
-              className="dashboard-action-card rounded-2xl bg-clinic-700 p-4 text-white shadow-sm ring-1 ring-clinic-800/10 hover:bg-clinic-800"
-              to="/patients/new"
+              className="dashboard-action-card rounded-2xl bg-teal-700 p-4 text-white shadow-sm ring-1 ring-teal-900/15 hover:bg-teal-800"
+              to="/treatments/new"
             >
-              <p className="text-xs uppercase tracking-[0.2em] text-clinic-100">Create</p>
-              <p className="mt-2 text-lg font-semibold text-white">New Patient</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-teal-100">Treatment</p>
+              <p className="mt-2 text-lg font-semibold text-white">New Treatment</p>
             </Link>
             <Link
               className="dashboard-action-card rounded-2xl bg-slate-900 p-4 text-white shadow-sm ring-1 ring-slate-950/10 hover:bg-slate-800"
@@ -180,26 +180,26 @@ export default function DashboardPage() {
               <p className="mt-2 text-lg font-semibold text-white">Patient Search</p>
             </Link>
             <Link
-              className="dashboard-action-card rounded-2xl bg-teal-700 p-4 text-white shadow-sm ring-1 ring-teal-900/15 hover:bg-teal-800"
-              to="/treatments/new"
+              className="dashboard-action-card rounded-2xl bg-clinic-700 p-4 text-white shadow-sm ring-1 ring-clinic-800/10 hover:bg-clinic-800"
+              to="/patients/new"
             >
-              <p className="text-xs uppercase tracking-[0.2em] text-teal-100">Treatment</p>
-              <p className="mt-2 text-lg font-semibold text-white">New Treatment</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-clinic-100">Create</p>
+              <p className="mt-2 text-lg font-semibold text-white">New Patient</p>
             </Link>
           </div>
           <BirthdayHighlightCard items={schedule.birthdayReminders} />
         </section>
         <section className="grid gap-6">
           <div className="page-card">
-            <h2 className="section-title">Quick Totals</h2>
+            <h2 className="section-title">Today's Quick Totals</h2>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-sm text-slate-500">Patients</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{summary.patientCount}</p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">{summary.patientsToday}</p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-sm text-slate-500">Treatments</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{summary.treatmentCount}</p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">{summary.treatmentsToday}</p>
               </div>
             </div>
           </div>

@@ -318,16 +318,16 @@ export default function PatientFormPage({ mode = "create" }) {
 
           <div className="record-grid mt-5 xl:grid-cols-3">
             <div className="record-tile">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Patient ID</p>
-              <p className="mt-2 text-xl font-semibold text-slate-900">{form.patient_id || "-"}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Patient Name</p>
+              <p className="mt-2 text-lg font-semibold text-slate-900">{patientName || "-"}</p>
             </div>
             <div className="record-tile">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Date Registered</p>
               <p className="mt-2 text-xl font-semibold text-slate-900">{form.date_registered || "-"}</p>
             </div>
             <div className="record-tile">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Patient Name</p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">{patientName || "-"}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Patient ID</p>
+              <p className="mt-2 text-xl font-semibold text-slate-900">{form.patient_id || "-"}</p>
             </div>
           </div>
           <div
