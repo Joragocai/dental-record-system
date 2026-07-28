@@ -142,6 +142,20 @@ export async function createBackup() {
   return data;
 }
 
+export async function getBackupStatus() {
+  const { data } = await api.get("/backup/status");
+  return data;
+}
+
+export async function getRuntimeStatus() {
+  const { data } = await api.get("/runtime/status", {
+    headers: {
+      "Cache-Control": "no-store"
+    }
+  });
+  return data;
+}
+
 export function getExportUrl(path) {
   return `http://127.0.0.1:3002${path}`;
 }

@@ -4,6 +4,15 @@ import Layout from "../components/Layout";
 import { getDashboardSchedule, getDashboardScheduleByDate, getDashboardSummary } from "../lib/api";
 import { displayNoFinalTime, displayPlannedProcedure, formatReadableDate } from "../lib/formatters";
 
+function addOneDay(isoDate) {
+  const match = String(isoDate || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "";
+
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  date.setDate(date.getDate() + 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function ScheduleSection({ title, subtitle, items, emptyMessage, showDate = false, framed = true, maxHeightClass }) {
   return (
     <section className={framed ? "page-card" : ""}>
@@ -113,26 +122,31 @@ function BirthdayHighlightCard({ items }) {
 }
 
 export default function DashboardPage() {
-  const today = new Date();
-  const todayIso = today.toISOString().slice(0, 10);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowIso = tomorrow.toISOString().slice(0, 10);
   const [summary, setSummary] = useState({
-    patientsToday: 0,
-    treatmentsToday: 0,
+    totalPatientRecords: 0,
     latestPatients: [],
-    latestTreatments: []
+    latestTreatments: [],
+    todaySchedule: {
+      date: "",
+      appointmentCount: 0,
+      followUpCount: 0
+    }
   });
   const [schedule, setSchedule] = useState({
+    todaySchedule: {
+      date: "",
+      appointmentCount: 0,
+      followUpCount: 0,
+      entries: []
+    },
     todayAppointments: [],
     upcomingAppointments: [],
     birthdayReminders: [],
     today: ""
   });
-  const [selectedScheduleDate, setSelectedScheduleDate] = useState(tomorrowIso);
+  const [selectedScheduleDate, setSelectedScheduleDate] = useState("");
   const [selectedDateSchedule, setSelectedDateSchedule] = useState({
-    date: tomorrowIso,
+    date: "",
     appointments: []
   });
 
@@ -147,6 +161,14 @@ export default function DashboardPage() {
     });
   }, [selectedScheduleDate]);
 
+  useEffect(() => {
+    if (!selectedScheduleDate && schedule.today) {
+      const defaultDate = addOneDay(schedule.today);
+      setSelectedScheduleDate(defaultDate);
+      setSelectedDateSchedule((current) => ({ ...current, date: defaultDate }));
+    }
+  }, [schedule.today, selectedScheduleDate]);
+
   return (
     <Layout>
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -156,9 +178,9 @@ export default function DashboardPage() {
               <p className="text-sm uppercase tracking-[0.3em] text-clinic-700">Clinic Overview</p>
               <h1 className="mt-2 text-3xl font-bold text-slate-900">A Unified System for Clinical Data and Record Management</h1>
             </div>
-            <div className="rounded-2xl bg-clinic-50 px-4 py-3 text-right">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-clinic-700">Records</p>
-              <p className="text-2xl font-bold text-clinic-900">{summary.patientsToday}</p>
+            <div className="rounded-2xl bg-clinic-50 px-4 py-3 text-right" title="Total patient records">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-clinic-700">Patients</p>
+              <p aria-label="Total patient records" className="text-2xl font-bold text-clinic-900">{summary.totalPatientRecords}</p>
             </div>
           </div>
           <p className="max-w-2xl text-sm text-slate-600">
@@ -191,15 +213,15 @@ export default function DashboardPage() {
         </section>
         <section className="grid gap-6">
           <div className="page-card">
-            <h2 className="section-title">Today's Quick Totals</h2>
+            <h2 className="section-title">Today's Schedule</h2>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Patients</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{summary.patientsToday}</p>
+              <div aria-label="Appointment entries in today's clinic schedule" className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Appointments</p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">{summary.todaySchedule.appointmentCount}</p>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Treatments</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{summary.treatmentsToday}</p>
+              <div aria-label="Treatment follow-up entries in today's clinic schedule" className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Follow-ups</p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">{summary.todaySchedule.followUpCount}</p>
               </div>
             </div>
           </div>

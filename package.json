@@ -9,6 +9,12 @@
     "dev": "concurrently \"npm run dev --workspace server\" \"npm run dev --workspace client\"",
     "dev:server": "npm run dev --workspace server",
     "dev:client": "npm run dev --workspace client",
+    "demo:prepare": "node server/scripts/demoPrepare.js",
+    "dev:demo": "node server/scripts/devDemo.js",
+    "demo:reset": "node server/scripts/demoReset.js",
+    "demo:cleanup": "node server/scripts/demoCleanup.js",
+    "demo": "npm run dev:demo",
+    "backup:create": "node server/scripts/createManualBackup.js",
     "build": "npm run build --workspace client",
     "start": "npm run start --workspace server"
   },
