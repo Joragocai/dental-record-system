@@ -72,7 +72,38 @@ function ensureSafeUploadRoot(uploadRoot, backupRoot) {
   }
 }
 
-function ensureSafeBackupRoot(backupRoot, databasePath, uploadRoot) {
+function ensureSafeExportRoot(exportRoot, uploadRoot, backupRoot) {
+  const protectedPaths = [
+    projectRoot,
+    path.join(projectRoot, "server"),
+    path.join(projectRoot, "client"),
+    path.join(projectRoot, "data"),
+    path.join(projectRoot, "uploads"),
+    path.join(projectRoot, "demo-uploads"),
+    path.join(projectRoot, "backups"),
+    path.join(projectRoot, "demo-backups"),
+    path.join(projectRoot, "demo-fixtures"),
+    path.join(projectRoot, "node_modules")
+  ];
+
+  if (protectedPaths.some((protectedPath) => isSamePath(exportRoot, protectedPath))) {
+    throw new Error("Export root cannot be the project root or another protected application directory.");
+  }
+
+  if (isSamePath(exportRoot, uploadRoot)) {
+    throw new Error("Export root cannot be the same as the upload root.");
+  }
+
+  if (isSamePath(exportRoot, backupRoot)) {
+    throw new Error("Export root cannot be the same as the backup root.");
+  }
+
+  if (protectedPaths.some((protectedPath) => isSameOrContainsPath(exportRoot, protectedPath))) {
+    throw new Error("Export root cannot contain protected application folders.");
+  }
+}
+
+function ensureSafeBackupRoot(backupRoot, databasePath, uploadRoot, exportRoot) {
   const databaseDir = path.dirname(databasePath);
   const protectedPaths = [
     projectRoot,
@@ -101,12 +132,20 @@ function ensureSafeBackupRoot(backupRoot, databasePath, uploadRoot) {
     throw new Error("Backup root cannot be inside the active upload directory.");
   }
 
+  if (isSameOrInsidePath(backupRoot, exportRoot)) {
+    throw new Error("Backup root cannot be inside the active export directory.");
+  }
+
   if (isSameOrContainsPath(backupRoot, databasePath)) {
     throw new Error("Backup root cannot contain the active database file.");
   }
 
   if (isSameOrContainsPath(backupRoot, uploadRoot)) {
     throw new Error("Backup root cannot contain the active upload directory.");
+  }
+
+  if (isSameOrContainsPath(backupRoot, exportRoot)) {
+    throw new Error("Backup root cannot contain the active export directory.");
   }
 }
 
@@ -118,11 +157,13 @@ const defaultPathsByMode = {
   clean: {
     database: path.join("data", "dental.db"),
     uploadRoot: "uploads",
+    exportRoot: "exports",
     backupRoot: "backups"
   },
   demo: {
     database: path.join("data", "dental-demo.db"),
     uploadRoot: "demo-uploads",
+    exportRoot: "demo-exports",
     backupRoot: "demo-backups"
   }
 };
@@ -130,10 +171,12 @@ const defaultPathsByMode = {
 const defaults = defaultPathsByMode[mode];
 const databasePath = resolveFromProject(process.env.DENTAL_DB_PATH, defaults.database);
 const uploadRoot = resolveFromProject(process.env.DENTAL_UPLOAD_ROOT, defaults.uploadRoot);
+const exportRoot = resolveFromProject(process.env.DENTAL_EXPORT_ROOT, defaults.exportRoot);
 const backupRoot = resolveFromProject(process.env.DENTAL_BACKUP_ROOT, defaults.backupRoot);
 
 ensureSafeUploadRoot(uploadRoot, backupRoot);
-ensureSafeBackupRoot(backupRoot, databasePath, uploadRoot);
+ensureSafeExportRoot(exportRoot, uploadRoot, backupRoot);
+ensureSafeBackupRoot(backupRoot, databasePath, uploadRoot, exportRoot);
 
 const autoBackupEnabled = parseBooleanEnv(process.env.DENTAL_AUTO_BACKUP_ENABLED, mode === "clean");
 const patientUploadDir = path.join(uploadRoot, "patients");
@@ -152,6 +195,7 @@ function ensureRuntimeDirectories() {
   fs.mkdirSync(path.dirname(databasePath), { recursive: true });
   fs.mkdirSync(patientUploadDir, { recursive: true });
   fs.mkdirSync(treatmentUploadDir, { recursive: true });
+  fs.mkdirSync(exportRoot, { recursive: true });
 }
 
 export const runtimeConfig = {
@@ -162,6 +206,7 @@ export const runtimeConfig = {
   uploadRoot,
   patientUploadDir,
   treatmentUploadDir,
+  exportRoot,
   backupRoot,
   autoBackupEnabled,
   isDemoMode: mode === "demo",
@@ -184,6 +229,7 @@ export function logRuntimeConfiguration() {
   console.log("[runtime] Mode:", runtimeConfig.mode);
   console.log("[runtime] Database:", runtimeConfig.getDisplayPath(runtimeConfig.databasePath));
   console.log("[runtime] Upload root:", runtimeConfig.getDisplayPath(runtimeConfig.uploadRoot));
+  console.log("[runtime] Export root:", runtimeConfig.getDisplayPath(runtimeConfig.exportRoot));
   console.log("[runtime] Backup root:", runtimeConfig.getDisplayPath(runtimeConfig.backupRoot));
   console.log("[runtime] Automatic backup:", runtimeConfig.autoBackupEnabled ? "enabled" : "disabled");
 }

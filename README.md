@@ -259,6 +259,92 @@ Do not copy the `.bat` file itself to Desktop if it relies on project-relative p
 - Excel exports: `exports/`
 - Full system backups: `backups/`
 
+## Normal Clean Use
+
+Use the normal clinic system with:
+
+```powershell
+npm run dev
+```
+
+Clean mode uses only:
+
+- `data/dental.db`
+- `uploads/`
+- `exports/`
+- `backups/`
+
+Clean mode does not prepare demo data, does not show a demo banner, and keeps automatic weekly backup enabled.
+
+## Temporary Demo Use
+
+Prepare the isolated fictional demo environment with:
+
+```powershell
+npm run demo:prepare
+```
+
+Start demo mode with:
+
+```powershell
+npm run dev:demo
+```
+
+Reset the demo back to the original fictional dataset with:
+
+```powershell
+npm run demo:reset
+```
+
+Remove all generated demo runtime data with:
+
+```powershell
+npm run demo:cleanup
+```
+
+Demo mode uses only:
+
+- `data/dental-demo.db`
+- `demo-uploads/`
+- `demo-exports/`
+- `demo-backups/`
+
+Important demo behavior:
+
+- `demo:prepare` is idempotent. It prepares the demo if missing and reuses a valid prepared demo without reseeding it.
+- `demo:prepare` does not reset changes already made inside a valid demo environment.
+- `demo:reset` deletes only generated demo runtime artifacts, then recreates the original fictional dataset.
+- `demo:cleanup` permanently removes generated demo records and files and does not recreate them.
+- Demo data is fictional only and must never be treated as actual clinic data.
+- Clean data is never copied into demo mode.
+- Changes made in demo mode do not affect the clean clinic database.
+- Demo mode shows a persistent `DEMO MODE - Fictional data only` banner in the application.
+- Automatic backup is disabled in demo mode.
+- Manual backup remains available in demo mode for testing, but it writes only to `demo-backups/` and includes only demo data.
+- Attachment upload size is limited to `20 MB per file`.
+
+## Temporary Demo To Clean Client Handover
+
+1. Stop `npm run dev:demo`.
+2. Run `npm run demo:cleanup`.
+3. Confirm `data/dental-demo.db`, `demo-uploads/`, `demo-exports/`, and `demo-backups/` no longer exist.
+4. Confirm generated demo artifacts are not tracked by Git.
+5. Transfer or clone the source repository without ignored local runtime folders.
+6. On the client laptop, run `npm install --include=optional`.
+7. Run `npm run dev`.
+8. Confirm startup reports `Mode: clean`.
+9. Confirm the `DEMO MODE` banner is absent.
+10. Confirm the clean database is newly initialized or contains only the client's own records.
+11. Confirm the Backup page uses `backups/` and automatic backup is enabled.
+
+Notes:
+
+- `data/dental.db`, `uploads/`, `exports/`, and `backups/` are local runtime folders and are ignored by Git.
+- `data/dental-demo.db`, `demo-uploads/`, `demo-exports/`, `demo-backups/`, and `data/dental-demo.marker.json` are also ignored by Git.
+- A normal repository clone does not contain the developer's local database, uploads, exports, backups, or generated demo runtime data.
+- On first clean startup, the application initializes the normal local schema in `data/dental.db`.
+- Do not include a pre-populated clean database in Git.
+
 ## API Endpoints
 
 ### Patients
@@ -312,7 +398,12 @@ Do not copy the `.bat` file itself to Desktop if it relies on project-relative p
 
 ### Backup
 
+- `GET /api/backup/status`
 - `POST /api/backup`
+
+### Runtime
+
+- `GET /api/runtime/status`
 
 ## Attachments
 
@@ -375,6 +466,8 @@ Important:
 
 - A backup is incomplete if it includes only the database and not the uploads folder.
 - For real clinic use, copy the backup folder to an external drive, another computer, or secure cloud storage.
+- Demo mode does not run automatic backups.
+- Manual demo backups, when created, stay inside `demo-backups/` and do not affect clean clinic backup history.
 
 ### Manual Restore
 

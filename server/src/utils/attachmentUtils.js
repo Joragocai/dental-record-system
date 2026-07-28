@@ -10,10 +10,10 @@ const uploadsRootDir = runtimeConfig.uploadRoot;
 const patientUploadDir = runtimeConfig.patientUploadDir;
 const treatmentUploadDir = runtimeConfig.treatmentUploadDir;
 
-export const MAX_ATTACHMENT_FILE_SIZE_MB = 10;
+export const MAX_ATTACHMENT_FILE_SIZE_MB = 20;
 export const MAX_ATTACHMENT_FILE_SIZE_BYTES = MAX_ATTACHMENT_FILE_SIZE_MB * 1024 * 1024;
 export const ATTACHMENT_UPLOAD_ERROR_MESSAGE = "Unsupported file type. Please upload an image or document file only.";
-export const ATTACHMENT_FILE_SIZE_ERROR_MESSAGE = `File is too large. Maximum attachment size is ${MAX_ATTACHMENT_FILE_SIZE_MB} MB.`;
+export const ATTACHMENT_FILE_SIZE_ERROR_MESSAGE = `Maximum file size is ${MAX_ATTACHMENT_FILE_SIZE_MB} MB per file.`;
 export const allowedAttachmentMimeTypes = [
   "image/jpeg",
   "image/png",

@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import runtimeConfig from "../config/runtimeConfig.js";
 import { listPatients, getPatientByPatientId } from "./patientService.js";
 import { getTreatmentsByPatientId, listTreatments } from "./treatmentService.js";
 import {
@@ -15,7 +16,7 @@ import { timestampForFile } from "../utils/dateUtils.js";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(currentDir, "../../..");
-const exportDir = path.join(rootDir, "exports");
+const exportDir = runtimeConfig.exportRoot;
 fs.mkdirSync(exportDir, { recursive: true });
 
 const supportedImageExtensions = {
@@ -66,8 +67,8 @@ function parseDateValue(value) {
 
 function getAttachmentAbsolutePath(filePath) {
   if (!filePath) return null;
-  const relativePath = filePath.replace(/^\/+/, "").split("/").join(path.sep);
-  return path.join(rootDir, relativePath);
+  const relativePath = filePath.replace(/^\/+/, "").replace(/^uploads[\\/]/, "").split("/").join(path.sep);
+  return path.join(runtimeConfig.uploadRoot, relativePath);
 }
 
 function getAttachmentDisplayPath(filePath) {

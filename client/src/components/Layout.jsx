@@ -1,4 +1,5 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
+import { useRuntimeStatus } from "../context/RuntimeStatusContext";
 
 const navItems = [
   { to: "/", label: "Dashboard", isActive: (pathname) => pathname === "/" },
@@ -10,6 +11,7 @@ const navItems = [
 
 export default function Layout({ children }) {
   const location = useLocation();
+  const runtimeStatus = useRuntimeStatus();
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(60,122,115,0.15),_transparent_28%),linear-gradient(180deg,_#f8fbfb_0%,_#eef4f4_100%)]">
@@ -38,6 +40,16 @@ export default function Layout({ children }) {
           </nav>
         </div>
       </header>
+      {runtimeStatus.isDemoMode ? (
+        <div className="no-print border-b border-amber-200 bg-amber-50/90">
+          <div className="page-shell py-3">
+            <div className="rounded-2xl border border-amber-200 bg-white/80 px-4 py-3 text-sm text-amber-900 shadow-sm">
+              <p className="font-semibold tracking-wide">DEMO MODE - Fictional data only</p>
+              <p className="mt-1 text-amber-800">Changes made here affect only the demo environment.</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <main className="page-shell">{children}</main>
     </div>
   );

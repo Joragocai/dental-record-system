@@ -18,7 +18,7 @@ const automaticBackupCheckIntervalMs = 24 * 60 * 60 * 1000;
 const initialAutomaticBackupDelayMs = 15 * 1000;
 const weeklyRetentionCount = 8;
 const monthlyRetentionCount = 12;
-const exportsDir = path.join(runtimeConfig.projectRoot, "exports");
+const exportsDir = runtimeConfig.exportRoot;
 const requiredVerificationTables = ["patients", "treatments", "appointments", "attachments"];
 
 const backupState = {
@@ -134,6 +134,8 @@ async function validateBackupDestination() {
     path.join(runtimeConfig.projectRoot, "data"),
     path.join(runtimeConfig.projectRoot, "uploads"),
     path.join(runtimeConfig.projectRoot, "demo-uploads"),
+    path.join(runtimeConfig.projectRoot, "exports"),
+    path.join(runtimeConfig.projectRoot, "demo-exports"),
     path.join(runtimeConfig.projectRoot, "node_modules"),
     path.join(runtimeConfig.projectRoot, "demo-fixtures")
   ];
@@ -154,12 +156,20 @@ async function validateBackupDestination() {
     throw new Error("Backup destination cannot be inside the active upload directory.");
   }
 
+  if (isSameOrInsidePath(runtimeConfig.backupRoot, runtimeConfig.exportRoot)) {
+    throw new Error("Backup destination cannot be inside the active export directory.");
+  }
+
   if (isSameOrContainsPath(runtimeConfig.backupRoot, runtimeConfig.databasePath)) {
     throw new Error("Backup destination cannot contain the active database file.");
   }
 
   if (isSameOrContainsPath(runtimeConfig.backupRoot, runtimeConfig.uploadRoot)) {
     throw new Error("Backup destination cannot contain the active upload directory.");
+  }
+
+  if (isSameOrContainsPath(runtimeConfig.backupRoot, runtimeConfig.exportRoot)) {
+    throw new Error("Backup destination cannot contain the active export directory.");
   }
 
   if (isSameOrContainsPath(runtimeConfig.backupRoot, runtimeConfig.projectRoot)) {

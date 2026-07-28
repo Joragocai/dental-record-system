@@ -15,13 +15,17 @@ dist/
 data/*.db
 data/*.db-shm
 data/*.db-wal
+data/dental-demo.marker.json
 
 # Uploaded clinic files
 uploads/
+demo-uploads/
 
 # Generated exports and backups
 exports/
 backups/
+demo-exports/
+demo-backups/
 
 # Logs
 *.log

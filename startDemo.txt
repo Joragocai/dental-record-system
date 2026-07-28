@@ -1,0 +1,19 @@
+# Create or verify demo data
+npm run demo:prepare
+
+# Start demo backend — Window 1
+$env:DENTAL_APP_MODE = "demo"
+npm run dev --workspace server
+
+# Start frontend — Window 2
+npm run dev --workspace client
+
+# Restore original fictional demo data
+npm run demo:reset
+
+# Permanently delete generated demo data
+npm run demo:cleanup
+
+# Return to normal clean mode
+Remove-Item Env:DENTAL_APP_MODE -ErrorAction SilentlyContinue
+npm run dev
