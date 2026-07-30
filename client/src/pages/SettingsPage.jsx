@@ -1,38 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Layout from "../components/Layout";
+import { useRuntimeStatus } from "../context/RuntimeStatusContext";
 import { createBackup, getBackupStatus } from "../lib/api";
+import {
+  formatBackupDateTime,
+  formatRetentionSummary,
+  getBackupHeaderDescription,
+  getLatestBackupDisplay,
+  getManualBackupButtonState,
+  getNextBackupDisplay
+} from "../lib/backupUi";
 
-const manilaDateTimeFormatter = new Intl.DateTimeFormat("en-PH", {
-  timeZone: "Asia/Manila",
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit"
-});
-
-function formatDateTime(value) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return manilaDateTimeFormatter.format(date);
-}
-
-function formatBackupType(value) {
-  if (!value) return "—";
-  if (value === "automatic-weekly") return "Weekly Automatic Backup";
-  if (value === "manual") return "Manual Backup";
-  return value;
-}
-
-function formatBackupResult(value) {
-  if (!value) return "—";
-  if (value === "success") return "Successful";
-  if (value === "failed") return "Failed";
-  return value;
+function OverviewItem({ label, primary, secondary }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <p className="mt-2 text-base font-semibold text-slate-900">{primary}</p>
+      {secondary ? (
+        <p className="mt-1 text-sm text-slate-600">{secondary}</p>
+      ) : null}
+    </div>
+  );
 }
 
 export default function SettingsPage() {
+  const runtimeStatus = useRuntimeStatus();
   const [backupStatus, setBackupStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
@@ -42,9 +34,12 @@ export default function SettingsPage() {
   const intervalRef = useRef(null);
 
   const loadBackupStatus = useCallback(async (showLoading = false) => {
-    if (requestInFlightRef.current) return;
+    if (requestInFlightRef.current) {
+      return;
+    }
 
     requestInFlightRef.current = true;
+
     if (showLoading) {
       setIsLoading(true);
     }
@@ -53,10 +48,13 @@ export default function SettingsPage() {
       const data = await getBackupStatus();
       setBackupStatus(data);
     } catch (error) {
-      setStatus(error.response?.data?.message || "Unable to load backup status.");
+      setStatus(
+        error.response?.data?.message || "Unable to load backup status."
+      );
       setStatusTone("error");
     } finally {
       requestInFlightRef.current = false;
+
       if (showLoading) {
         setIsLoading(false);
       }
@@ -82,122 +80,137 @@ export default function SettingsPage() {
       if (intervalRef.current) {
         window.clearInterval(intervalRef.current);
       }
+
       window.removeEventListener("focus", handleFocus);
     };
   }, [loadBackupStatus]);
 
   async function handleBackup() {
-    if (isCreatingBackup || backupStatus?.backupInProgress) return;
+    if (isCreatingBackup || backupStatus?.backupInProgress) {
+      return;
+    }
 
     setIsCreatingBackup(true);
+    setStatus("");
+
     try {
-      const data = await createBackup();
-      setStatus(data.message || `Backup completed successfully. Database and uploaded files were copied to ${data.backup_path}.`);
+      await createBackup();
+      setStatus("Backup created successfully.");
       setStatusTone("success");
       await loadBackupStatus(false);
     } catch (error) {
-      setStatus(error.response?.data?.message || "Unable to create backup.");
+      setStatus(
+        error.response?.data?.message || "Backup failed. Please try again."
+      );
       setStatusTone("error");
     } finally {
       setIsCreatingBackup(false);
     }
   }
 
-  const showWarning = backupStatus?.lastBackupStatus === "failed" || backupStatus?.isBackupOverdue;
+  const showWarning =
+    backupStatus?.lastBackupStatus === "failed" ||
+    backupStatus?.isBackupOverdue;
+
+  const latestBackup = getLatestBackupDisplay(backupStatus);
+
+  const buttonState = getManualBackupButtonState({
+    backupStatus,
+    isLoading,
+    isCreatingBackup
+  });
+
+  const actionDescription = getBackupHeaderDescription(runtimeStatus);
+
+  const backupFolderDisplay = isLoading
+    ? "Loading..."
+    : backupStatus?.backupDestination || "Not available";
+
+  const retentionDisplay = isLoading
+    ? "Loading..."
+    : backupStatus
+      ? formatRetentionSummary(
+          backupStatus.retainedWeeklyCount,
+          backupStatus.retainedMonthlyCount
+        )
+      : "Not available";
+
+  const retentionAriaLabel = isLoading
+    ? "Loading retention information"
+    : backupStatus
+      ? `${backupStatus.retainedWeeklyCount ?? 0} recent weekly backups retained and ${
+          backupStatus.retainedMonthlyCount ?? 0
+        } monthly archives retained`
+      : "Retention information not available";
 
   return (
     <Layout>
       <section className="mx-auto max-w-3xl">
         <div className="page-card">
           <div className="max-w-2xl">
-            <p className="text-sm uppercase tracking-[0.2em] text-clinic-700">System Maintenance</p>
-            <h1 className="mt-2 text-3xl font-bold text-slate-900">Backup</h1>
+            <p className="text-sm uppercase tracking-[0.2em] text-clinic-700">
+              System Maintenance
+            </p>
+
+            <h1 className="mt-2 text-3xl font-bold text-slate-900">
+              Backup
+            </h1>
+
             <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              Create a timestamped backup of patient records, treatment records, and uploaded patient/treatment attachments.
+              {actionDescription}
             </p>
           </div>
 
-          {showWarning && (
+          {showWarning ? (
             <div className="feedback-message mt-6 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200">
               {backupStatus?.lastBackupStatus === "failed"
-                ? `The last backup failed. ${backupStatus?.lastBackupError || "Please review the backup destination and try again."}`
+                ? "The last backup failed. Please try creating another backup. If the problem continues, check that the backup folder is available."
                 : "Automatic backup is overdue. Run a manual backup now if needed and keep the application running so the next automatic backup can complete."}
             </div>
-          )}
+          ) : null}
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Automatic Backup</p>
-              <p className="mt-2 text-base font-semibold text-slate-900">
-                {isLoading ? "Loading..." : backupStatus?.automaticBackupEnabled ? "Enabled" : "Disabled"}
+          <section className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5">
+            <div className="max-w-xl">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Create a Manual Backup
+              </h2>
+
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                Create an immediate backup of the database, uploads, and exports.
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Frequency</p>
-              <p className="mt-2 text-base font-semibold text-slate-900">{isLoading ? "Loading..." : backupStatus?.automaticBackupFrequency || "Weekly"}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Last Successful Backup</p>
-              <p className="mt-2 text-sm font-medium text-slate-900">{isLoading ? "Loading..." : formatDateTime(backupStatus?.lastSuccessfulBackupAt)}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Last Automatic Backup</p>
-              <p className="mt-2 text-sm font-medium text-slate-900">{isLoading ? "Loading..." : formatDateTime(backupStatus?.lastAutomaticBackupAt)}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Last Manual Backup</p>
-              <p className="mt-2 text-sm font-medium text-slate-900">{isLoading ? "Loading..." : formatDateTime(backupStatus?.lastManualBackupAt)}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Next Backup Due</p>
-              <p className="mt-2 text-sm font-medium text-slate-900">{isLoading ? "Loading..." : formatDateTime(backupStatus?.nextBackupDueAt)}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Backup Destination</p>
-              <p className="mt-2 break-all text-sm font-medium text-slate-900">{isLoading ? "Loading..." : backupStatus?.backupDestination || "—"}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Last Backup Type</p>
-              <p className="mt-2 text-sm font-medium text-slate-900">{isLoading ? "Loading..." : formatBackupType(backupStatus?.lastBackupType)}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Last Backup Result</p>
-              <p className="mt-2 text-sm font-medium text-slate-900">{isLoading ? "Loading..." : formatBackupResult(backupStatus?.lastBackupStatus)}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Weekly Backups Retained</p>
-              <p className="mt-2 text-base font-semibold text-slate-900">{isLoading ? "Loading..." : backupStatus?.retainedWeeklyCount ?? "—"}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Monthly Archives Retained</p>
-              <p className="mt-2 text-base font-semibold text-slate-900">{isLoading ? "Loading..." : backupStatus?.retainedMonthlyCount ?? "—"}</p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className="px-1 text-xs text-slate-500">A monthly archive may also be one of the retained weekly backups.</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:col-span-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Backup In Progress</p>
-              <p className="mt-2 text-sm font-medium text-slate-900">
-                {isLoading ? "Loading..." : backupStatus?.backupInProgress || isCreatingBackup ? "Yes" : "No"}
-              </p>
-              {backupStatus?.lastBackupError && (
-                <p className="mt-2 text-sm text-rose-700">Last error: {backupStatus.lastBackupError}</p>
-              )}
-            </div>
-          </div>
 
-          <div className="mt-6 no-print">
-            <button
-              className="button-primary"
-              onClick={handleBackup}
-              disabled={isLoading || isCreatingBackup || backupStatus?.backupInProgress}
+            <div
+              className="mt-4 no-print"
+              aria-busy={buttonState.isBusy ? "true" : "false"}
             >
-              {isCreatingBackup || backupStatus?.backupInProgress ? "Creating Backup..." : "Create Backup"}
-            </button>
-          </div>
+              <button
+                type="button"
+                className="button-primary inline-flex items-center gap-2"
+                onClick={handleBackup}
+                disabled={buttonState.disabled}
+                aria-disabled={buttonState.disabled ? "true" : "false"}
+              >
+                {buttonState.isBusy ? (
+                  <span
+                    className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                    aria-hidden="true"
+                  />
+                ) : null}
 
-          {status && (
+                <span>{buttonState.label}</span>
+              </button>
+
+              {backupStatus?.backupInProgress && !isCreatingBackup ? (
+                <p className="mt-2 text-sm text-slate-600">
+                  Another backup is already in progress.
+                </p>
+              ) : null}
+
+              {status ? (
             <p
+              aria-live="polite"
+              role="status"
               className={`feedback-message mt-5 rounded-xl px-4 py-3 text-sm ${
                 statusTone === "success"
                   ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
@@ -206,7 +219,93 @@ export default function SettingsPage() {
             >
               {status}
             </p>
-          )}
+          ) : null}
+            </div>
+          </section>
+
+          <section className="mt-6">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Backup Overview
+            </h2>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <OverviewItem
+                label="Latest Backup"
+                primary={isLoading ? "Loading..." : latestBackup.primary}
+                secondary={isLoading ? "" : latestBackup.secondary}
+              />
+
+              <OverviewItem
+                label="Next Backup"
+                primary={
+                  isLoading
+                    ? "Loading..."
+                    : getNextBackupDisplay(backupStatus, runtimeStatus)
+                }
+              />
+
+              <OverviewItem
+                label="Last Automatic"
+                primary={
+                  isLoading
+                    ? "Loading..."
+                    : formatBackupDateTime(
+                        backupStatus?.lastAutomaticBackupAt,
+                        "Not yet created"
+                      )
+                }
+              />
+
+              <OverviewItem
+                label="Last Manual"
+                primary={
+                  isLoading
+                    ? "Loading..."
+                    : formatBackupDateTime(
+                        backupStatus?.lastManualBackupAt,
+                        "Not yet created"
+                      )
+                }
+              />
+            </div>
+          </section>
+
+          <section className="mt-6 rounded-2xl border border-slate-200 bg-white px-5 py-5">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Storage &amp; Retention
+            </h2>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-sm font-medium text-slate-500">
+                  Backup Folder
+                </p>
+
+                <p className="mt-2 break-all text-base font-semibold text-slate-900">
+                  {backupFolderDisplay}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-slate-500">
+                  Retention
+                </p>
+
+                <p
+                  className="mt-2 text-base font-semibold text-slate-900"
+                  aria-label={retentionAriaLabel}
+                >
+                  {retentionDisplay}
+                </p>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  A monthly archive may also count as one retained weekly backup.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          
         </div>
       </section>
     </Layout>
