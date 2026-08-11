@@ -4,8 +4,8 @@ function buildId(prefix, year, sequence) {
   return `${prefix}-${year}-${String(sequence).padStart(4, "0")}`;
 }
 
-function getNextSequence(prefix, year, tableName, columnName) {
-  const row = db
+function getNextSequence(database, prefix, year, tableName, columnName) {
+  const row = database
     .prepare(
       `SELECT ${columnName} AS value
        FROM ${tableName}
@@ -21,12 +21,12 @@ function getNextSequence(prefix, year, tableName, columnName) {
   return Number.isFinite(currentSequence) ? currentSequence + 1 : 1;
 }
 
-export function getNextPatientId(date = new Date()) {
+export function getNextPatientId(date = new Date(), database = db) {
   const year = date.getFullYear();
-  return buildId("P", year, getNextSequence("P", year, "patients", "patient_id"));
+  return buildId("P", year, getNextSequence(database, "P", year, "patients", "patient_id"));
 }
 
-export function getNextTreatmentId(date = new Date()) {
+export function getNextTreatmentId(date = new Date(), database = db) {
   const year = date.getFullYear();
-  return buildId("T", year, getNextSequence("T", year, "treatments", "treatment_id"));
+  return buildId("T", year, getNextSequence(database, "T", year, "treatments", "treatment_id"));
 }

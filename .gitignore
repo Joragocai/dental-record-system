@@ -41,6 +41,10 @@ Thumbs.db
 .vscode/
 .idea/
 
-.agents
-.codex
-ui-reference/
+# Editor and IDE
+.vscode/
+.idea/
+
+# Codex backup files
+.codex/*.bak
+

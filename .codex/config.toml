@@ -1,0 +1,15 @@
+[agents.repo_explorer]
+description = "Read-only repository mapper for structure, entry points, routes, database access, uploads, exports, and backup scripts."
+config_file = "agents/repo-explorer.toml"
+
+[agents.requirements_auditor]
+description = "Read-only auditor that compares the implementation against README.md and classifies preserved, missing, conflicting, obsolete, and clinic-decision items."
+config_file = "agents/requirements-auditor.toml"
+
+[agents.security_reviewer]
+description = "Read-only security reviewer for authentication, authorization, isolation, secrets, logging, uploads, storage, audit, backups, exports, and support access."
+config_file = "agents/security-reviewer.toml"
+
+[agents.test_auditor]
+description = "Read-only test auditor that finds current coverage and missing regression tests for core business rules and authorization."
+config_file = "agents/test-auditor.toml"
