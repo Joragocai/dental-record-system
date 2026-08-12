@@ -42,6 +42,8 @@ The target system must support:
 
 - Frontend: React + Vite + Tailwind CSS
 - Backend: Node.js + Express
+- Current source language: JavaScript / JSX
+- V2 source-language target: TypeScript / TSX through an incremental migration
 - Database: SQLite through Node's built-in `node:sqlite`
 - Upload storage: Local filesystem
 - Excel export: `exceljs`
@@ -218,7 +220,7 @@ The next version must:
 9. Provide outstanding balance and collectible tracking.
 10. Provide invoices, payments, expenses, receivables, payables, and daily financial summaries.
 11. Work well on phones, tablets, laptops, and desktops.
-12. Support direct camera capture on compatible mobile devices.
+12. Support direct camera capture on compatible mobile/laptop devices.
 13. Use secure deployment, backups, monitoring, and recovery procedures.
 14. Preserve the current clinic-specific record and discount rules unless a new approved requirement changes them.
 
@@ -242,7 +244,7 @@ The next version must:
 
 - Node.js LTS
 - Express
-- TypeScript is recommended for new V2 backend and shared code
+- TypeScript is required for new V2 backend, shared code, and newly created frontend modules unless an approved exception is documented
 - Zod request validation
 - PostgreSQL driver: `pg`
 - A migration system such as `node-pg-migrate`, `Knex`, or another approved migration tool
@@ -262,7 +264,145 @@ Example:
 }
 ```
 
-### 4.3 Database
+### 4.3 TypeScript Migration Strategy
+
+The current application is primarily JavaScript and JSX. V2 will migrate the
+active codebase incrementally to TypeScript and TSX before major new cloud
+modules are built.
+
+The migration exists to improve correctness, refactoring safety, editor
+tooling, API-contract clarity, and Codex's ability to detect invalid data
+shapes, missing properties, incorrect function arguments, nullable values, and
+frontend/backend contract mismatches.
+
+#### 4.3.1 Migration Principles
+
+- Do not rewrite the entire application in one task.
+- Preserve all behavior protected by the V1 regression-test safety net.
+- Keep JavaScript and TypeScript interoperable during the transition.
+- Avoid mixing large TypeScript-only conversions with unrelated business-rule
+  changes.
+- New V2 source files should use TypeScript by default.
+- Use `.ts` for backend, utilities, schemas, domain types, repositories,
+  services, scripts, and shared non-React code.
+- Use `.tsx` for React components, pages, layouts, and other files containing
+  JSX.
+- Prefer explicit domain types for patients, treatments, appointments,
+  attachments, users, roles, permissions, audit events, invoices, payments,
+  expenses, branches, and notifications.
+- Model optional and nullable values deliberately instead of relying on
+  implicit JavaScript behavior.
+- Do not use `any` as a routine escape hatch. Temporary `any` usage must be
+  narrow, documented, and removed when the surrounding module is migrated.
+- Do not use TypeScript assertions to bypass runtime validation for data
+  received from HTTP requests, environment variables, databases, storage, or
+  other external systems.
+- Continue using Zod or another approved runtime validator at trust
+  boundaries. TypeScript compile-time types do not replace runtime validation.
+- Run type checking together with regression tests and the production build
+  before merging each migration batch.
+
+#### 4.3.2 Recommended Migration Order
+
+1. Finish and commit the V1 regression-test safety net.
+2. Add TypeScript compiler configuration and project scripts.
+3. Add shared domain types and runtime schemas for stable existing behavior.
+4. Convert low-risk shared utilities and formatting/validation modules.
+5. Convert backend services and repositories.
+6. Convert Express middleware, controllers, routes, and application entry
+   points.
+7. Convert frontend API clients, utilities, hooks, and shared state.
+8. Convert React components, layouts, routes, and pages to TSX.
+9. Convert operational and migration scripts that remain part of V2.
+10. Remove obsolete JavaScript compatibility settings only after all required
+    source files have migrated and tests remain green.
+11. Increase compiler strictness gradually until the approved strict target is
+    reached.
+
+#### 4.3.3 TypeScript Configuration Requirements
+
+The exact configuration may evolve during migration, but the project should
+provide repository-level type-check commands and separate frontend/backend
+TypeScript configuration where useful.
+
+Recommended expectations:
+
+```text
+tsconfig.json
+client/tsconfig.json
+server/tsconfig.json
+```
+
+During the transition, compatibility options such as `allowJs` may be used when
+needed so JavaScript and TypeScript can coexist. They should be removed when the
+migration is complete.
+
+The final V2 configuration should enable strict type checking where practical,
+including checks for nullability, unsafe property access, and inconsistent API
+contracts.
+
+Required root command:
+
+```bash
+npm run typecheck
+```
+
+The command should type-check the relevant workspaces without emitting
+production files.
+
+#### 4.3.4 Shared Types and Runtime Validation
+
+TypeScript types should describe trusted application contracts. Zod schemas or
+another approved runtime-validation mechanism must validate untrusted input.
+
+Examples of shared contracts include:
+
+```text
+Patient
+Treatment
+Appointment
+Attachment
+User
+Role
+Permission
+Invoice
+Payment
+Expense
+AuditEvent
+ApiError
+PaginatedResponse<T>
+```
+
+Rules:
+
+- Do not duplicate incompatible request/response shapes across frontend and
+  backend.
+- Reuse shared types only where doing so does not couple the browser to
+  server-only secrets or privileged implementation details.
+- Database row types, API response types, form types, and patient-visible types
+  may intentionally differ.
+- Patient-portal response types must exclude staff-only and internal clinical
+  fields by design.
+- Financial types must not imply that JavaScript floating-point arithmetic is
+  authoritative for money.
+
+#### 4.3.5 Migration Safety Gate
+
+A TypeScript conversion batch is complete only when:
+
+- Existing regression tests still pass.
+- New or changed behavior has appropriate tests.
+- `npm run typecheck` passes.
+- The relevant build passes.
+- No real patient data was used.
+- The batch does not silently change approved clinic behavior.
+- New type errors are resolved rather than broadly suppressed.
+- The final diff remains focused enough to review.
+
+TypeScript migration must strengthen the V2 transition rather than become a
+second uncontrolled rewrite.
+
+### 4.4 Database
 
 - PostgreSQL
 - UUID primary keys
@@ -272,7 +412,7 @@ Example:
 - Constraints for data integrity
 - Row Level Security when tables are exposed through Supabase APIs
 
-### 4.4 Authentication and Cloud Services
+### 4.5 Authentication and Cloud Services
 
 Recommended managed services:
 
@@ -287,7 +427,7 @@ Recommended managed services:
 
 The Express API remains the primary trusted business-logic layer. The frontend must never receive database passwords, service-role keys, unrestricted storage credentials, or other server secrets.
 
-### 4.5 Testing
+### 4.6 Testing
 
 - Vitest
 - React Testing Library
@@ -1598,7 +1738,30 @@ Codex and developers must follow these rules during the V2 migration:
 - Put all new access-control checks in the backend even when the frontend also hides unavailable actions.
 - Keep unrelated modules unchanged when implementing a focused Codex task.
 
-### 15.2 Files and Modules to Keep and Refactor
+### 15.2 TypeScript Transition Rules
+
+The repository will remain a single evolving codebase during the JavaScript to
+TypeScript migration.
+
+- Do not create a separate rewrite repository.
+- Do not convert generated runtime data, backups, uploads, or exported patient
+  files as part of the source-language migration.
+- Preserve existing module boundaries when possible before introducing larger
+  architectural reorganizations.
+- Rename `.js` to `.ts` and `.jsx` to `.tsx` only when the file's imports,
+  exports, runtime behavior, tests, and build configuration are ready.
+- Keep TypeScript-only refactors separate from PostgreSQL, authentication,
+  authorization, storage, and finance behavior changes whenever practical.
+- New V2 modules should be TypeScript-first even while legacy V1 modules are
+  still JavaScript.
+- Add shared types deliberately; do not create one unrestricted global type
+  file for unrelated domains.
+- Use type-only imports where appropriate.
+- Keep server-only types and privileged data contracts out of browser bundles.
+- Every migration batch must run regression tests, type checking, and the
+  relevant build before it is considered complete.
+
+### 15.3 Files and Modules to Keep and Refactor
 
 The following parts of the current repository contain valuable functionality and should remain in the active codebase while being reorganized or adapted for V2.
 
@@ -1638,7 +1801,7 @@ Before major infrastructure replacement, add tests for at least:
 
 These tests protect business behavior while the underlying database, storage, authentication, and deployment mechanisms change.
 
-### 15.3 Local Runtime Data and Legacy Tools to Preserve for Migration or Rollback
+### 15.4 Local Runtime Data and Legacy Tools to Preserve for Migration or Rollback
 
 The following items may contain important local data or provide temporary fallback capability. Preserve secure copies, but do not treat them as V2 production infrastructure.
 
@@ -1663,7 +1826,7 @@ backups/
 
 The database and uploads must come from the same backup point so attachment records continue to match their files.
 
-### 15.4 Implementations That Must Be Replaced
+### 15.5 Implementations That Must Be Replaced
 
 The following current implementations are local-only or incomplete for secure online operation and must be replaced.
 
@@ -1689,7 +1852,7 @@ The following current implementations are local-only or incomplete for secure on
 
 A replacement is complete only after the new implementation passes tests, migration verification, role checks, security checks, and user acceptance for the affected workflow.
 
-### 15.5 New Files, Folders, and Modules to Add
+### 15.6 New Files, Folders, and Modules to Add
 
 The following capabilities do not exist completely in the current local system and should be added as dedicated modules rather than mixed into unrelated files.
 
@@ -1852,7 +2015,7 @@ docs/database/migration-runbook.md
 docs/testing/role-test-matrix.md
 ```
 
-### 15.6 Recommended Project Structure
+### 15.7 Recommended Project Structure
 
 The existing `client` and `server` workspace layout can continue. The structure below is the target organization. Codex should create folders only when the requested module needs them; empty placeholder folders are not required.
 
@@ -1969,7 +2132,7 @@ dental-record-system/
   AGENTS.md
 ```
 
-### 15.7 Layer Responsibilities
+### 15.8 Layer Responsibilities
 
 ```text
 Route
@@ -1995,7 +2158,7 @@ Rules:
 - Audit creation is centralized and must not depend on the frontend.
 - Do not put complex SQL, authorization logic, financial calculations, or clinical business rules directly inside route files.
 
-### 15.8 Production Deployment Inclusion Rules
+### 15.9 Production Deployment Inclusion Rules
 
 The production deployment package should contain application source or build output, configuration templates, migrations, and approved operational scripts. It must not contain local clinic runtime data.
 
@@ -2014,7 +2177,7 @@ The production deployment package should contain application source or build out
 | Build output | Usually no | Yes through CI | Follow hosting-provider requirements |
 | Test reports and coverage | Usually no | No | Keep as CI artifacts when needed |
 
-### 15.9 Git Branch Convention
+### 15.10 Git Branch Convention
 
 Use the following integration branch for the cloud-ready V2 effort:
 
@@ -2025,6 +2188,9 @@ refactor/v2-cloud-migration
 Recommended feature branches include:
 
 ```text
+refactor/typescript-foundation
+refactor/typescript-backend
+refactor/typescript-frontend
 feature/postgresql-foundation
 feature/authentication
 feature/role-permissions
@@ -2048,7 +2214,7 @@ Branch rules:
 - Merge only after the affected workflow and permissions are verified.
 - Preserve a stable tag for the current local version, such as `v1-local-stable`, before major V2 changes.
 
-### 15.10 Replacement Completion Checklist
+### 15.11 Replacement Completion Checklist
 
 Before removing or disabling any legacy implementation, confirm all applicable items:
 
@@ -2794,10 +2960,25 @@ npm run db:seed:demo
 - Confirm appointment workflow.
 - Confirm financial terminology.
 - Confirm privacy responsibilities.
-- Add automated tests for existing critical business rules.
+- Finish automated regression tests for existing critical business rules.
 - Create a fictional staging dataset.
 
-### Phase 2: PostgreSQL Foundation
+### Phase 2: TypeScript Foundation and Incremental Migration
+
+- Add TypeScript configuration for the root, client, and server as appropriate.
+- Add `npm run typecheck` and make type checking part of the validation workflow.
+- Allow JavaScript and TypeScript to coexist temporarily during migration.
+- Define shared domain types and runtime-validation boundaries.
+- Convert stable utilities and existing business-rule modules in focused batches.
+- Convert backend services and repositories before major new backend modules are added.
+- Convert middleware, controllers, routes, and server entry points.
+- Convert frontend API clients, hooks, state, components, and pages incrementally.
+- Use `.ts` for non-React TypeScript and `.tsx` for React JSX modules.
+- Keep TypeScript-only conversions separate from unrelated behavior changes where practical.
+- Require regression tests, type checking, and builds to stay green after every migration batch.
+- Write new V2 modules in TypeScript by default.
+
+### Phase 3: PostgreSQL Foundation
 
 - Configure PostgreSQL.
 - Add migration tooling.
@@ -2807,7 +2988,7 @@ npm run db:seed:demo
 - Add database constraints and transactions.
 - Verify patient, treatment, appointment, discount, and balance behavior.
 
-### Phase 3: Authentication and Authorization
+### Phase 4: Authentication and Authorization
 
 - Integrate Supabase Auth or approved provider.
 - Add staff invitation flow.
@@ -2822,7 +3003,7 @@ npm run db:seed:demo
 - Add System Administrator self-elevation prevention.
 - Add scoped, expiring temporary support-access workflow.
 
-### Phase 4: Audit Trail
+### Phase 5: Audit Trail
 
 - Create `audit_events` table.
 - Add request IDs.
@@ -2833,7 +3014,7 @@ npm run db:seed:demo
 - Protect audit log from modification.
 - Audit account approvals, technical provisioning, support access, backup approval, and restore execution.
 
-### Phase 5: Private Attachments and Camera Capture
+### Phase 6: Private Attachments and Camera Capture
 
 - Create private storage bucket.
 - Add upload intent flow.
@@ -2844,7 +3025,7 @@ npm run db:seed:demo
 - Add attachment access tests.
 - Add storage backup plan.
 
-### Phase 6: Appointment Redesign
+### Phase 7: Appointment Redesign
 
 - Add expanded statuses.
 - Add patient request flow.
@@ -2855,7 +3036,7 @@ npm run db:seed:demo
 - Add in-app notifications and transactional email notifications.
 - Do not add SMS providers, SMS templates, SMS delivery tables, or SMS environment variables in the initial V2 implementation.
 
-### Phase 7: Financial Module
+### Phase 8: Financial Module
 
 - Add invoices and invoice items.
 - Add payments and allocations.
@@ -2868,7 +3049,7 @@ npm run db:seed:demo
 - Add daily cash closing.
 - Add reports and controlled exports.
 
-### Phase 8: Patient Portal
+### Phase 9: Patient Portal
 
 - Add patient dashboard.
 - Add approved treatment history.
@@ -2877,7 +3058,7 @@ npm run db:seed:demo
 - Add approved documents.
 - Add privacy information.
 
-### Phase 9: Responsive UI and Accessibility
+### Phase 10: Responsive UI and Accessibility
 
 - Add desktop sidebar.
 - Add mobile bottom navigation.
@@ -2887,7 +3068,7 @@ npm run db:seed:demo
 - Add keyboard and accessibility checks.
 - Test required viewport sizes.
 
-### Phase 10: Deployment, Monitoring, and Production Review
+### Phase 11: Deployment, Monitoring, and Production Review
 
 - Configure staging deployment.
 - Configure production deployment.
@@ -2903,6 +3084,17 @@ npm run db:seed:demo
 ---
 
 ## 24. Priority Order
+
+### Development Modernization Before Major V2 Feature Work
+
+1. Finish the V1 regression safety net.
+2. Establish the TypeScript toolchain and type-check command.
+3. Migrate stable shared/backend foundations incrementally.
+4. Keep regression tests and production builds green.
+5. Continue converting remaining JavaScript/JSX while new V2 modules are written in TypeScript/TSX.
+
+This modernization sequence supports the migration but does not replace the
+security and production-readiness requirements below.
 
 ### Must Be Completed Before Public Use
 
@@ -2947,6 +3139,17 @@ npm run db:seed:demo
 ---
 
 ## 25. Acceptance Criteria
+
+### 25.0 TypeScript Migration
+
+- The project provides a working `npm run typecheck` command.
+- New V2 modules use TypeScript/TSX by default.
+- Existing JavaScript/JSX is converted incrementally rather than through an uncontrolled rewrite.
+- Regression-tested V1 behavior remains unchanged during conversion.
+- Type errors are fixed rather than broadly suppressed with `any` or unsafe assertions.
+- External input continues to use runtime validation even when TypeScript types exist.
+- Frontend contracts do not expose server-only secrets or privileged internal data shapes.
+- The relevant tests, type check, and production build pass for each migration batch.
 
 ### 25.1 Authentication
 
@@ -3071,6 +3274,12 @@ Codex must follow these rules when changing the project:
 34. Require Clinic Administrator approval and System Administrator execution for production restores.
 35. Implement temporary support access as approved, scoped, expiring, revocable, and fully audited.
 36. Do not implement account impersonation.
+37. New V2 application source should use TypeScript/TSX by default unless an approved exception is documented.
+38. Migrate existing JavaScript incrementally; do not perform a whole-application TypeScript rewrite in one task.
+39. Preserve regression-tested behavior during TypeScript conversion.
+40. Do not use `any`, `@ts-ignore`, unsafe type assertions, or disabled compiler checks as broad substitutes for fixing type errors.
+41. TypeScript types do not replace runtime validation at API, environment, database, storage, or other trust boundaries.
+42. Run `npm run typecheck`, relevant tests, and the relevant production build before declaring a TypeScript migration task complete.
 
 ### 26.1 Codex Task Completion Format
 
@@ -3096,24 +3305,33 @@ Next Recommended Task
 Use this order to reduce risk:
 
 1. Inspect repository and document current schema and routes.
-2. Add lint, type-checking, and automated test baseline.
-3. Add PostgreSQL connection and migration framework.
-4. Implement branches and UUID identifiers.
-5. Implement annual patient/treatment counter transaction.
-6. Implement core patient and treatment repositories.
-7. Implement authentication integration.
-8. Implement the five roles, owner-dentist dual assignment, permission matrix, and authorization middleware.
-9. Implement Clinic Administrator approvals, System Administrator restrictions, self-elevation prevention, and temporary support access.
-10. Implement patient account linking and patient isolation tests.
-11. Implement audit service and audit table.
-12. Implement private object storage.
-13. Implement secure attachment upload and camera UI.
-14. Implement appointment request and conflict-safe scheduling.
-15. Implement invoices, payments, and receivables.
-16. Implement expenses and daily closing.
-17. Implement role-specific dashboards and responsive navigation.
-18. Implement staging deployment.
-19. Complete security and recovery tests.
+2. Finish the V1 regression-test safety net for preserved business behavior.
+3. Add lint, TypeScript configuration, type-checking, and automated test scripts.
+4. Define shared domain types and runtime-validation boundaries.
+5. Migrate stable backend utilities, services, and repositories to TypeScript in focused batches.
+6. Migrate Express middleware, controllers, routes, and backend entry points to TypeScript.
+7. Migrate frontend API clients, utilities, hooks, and React modules to TypeScript/TSX incrementally while keeping builds green.
+8. Add PostgreSQL connection and migration framework.
+9. Implement branches and UUID identifiers.
+10. Implement annual patient/treatment counter transaction.
+11. Implement core patient and treatment repositories.
+12. Implement authentication integration.
+13. Implement the five roles, owner-dentist dual assignment, permission matrix, and authorization middleware.
+14. Implement Clinic Administrator approvals, System Administrator restrictions, self-elevation prevention, and temporary support access.
+15. Implement patient account linking and patient isolation tests.
+16. Implement audit service and audit table.
+17. Implement private object storage.
+18. Implement secure attachment upload and camera UI.
+19. Implement appointment request and conflict-safe scheduling.
+20. Implement invoices, payments, and receivables.
+21. Implement expenses and daily closing.
+22. Implement role-specific dashboards and responsive navigation.
+23. Implement staging deployment.
+24. Complete security and recovery tests.
+
+Do not combine the full TypeScript migration with PostgreSQL, authentication,
+storage, or finance implementation in one Codex task. Keep each migration batch
+reviewable and protected by the regression-test baseline.
 
 ---
 
@@ -3180,6 +3398,7 @@ The target production stack is:
 ```text
 Frontend
 - React
+- TypeScript / TSX
 - Vite
 - Tailwind CSS
 - React Router

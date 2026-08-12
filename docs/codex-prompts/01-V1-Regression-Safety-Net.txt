@@ -1,0 +1,195 @@
+
+```
+CODEX TASK — FINISH V1 REGRESSION SAFETY NET
+
+Read these files first and treat them as the source of truth:
+- README.md
+- AGENTS.md
+- docs/architecture/current-system-audit.md
+
+Goal:
+Finish the remaining regression-test baseline for the CURRENT V1 system before any V2 infrastructure migration. Preserve and test the existing behavior for appointments, attachments, Excel exports, print documents, and backups.
+
+This task is about locking in verified V1 behavior. Do not redesign these features and do not begin PostgreSQL, Supabase, authentication, authorization, private storage, deployment, or other V2 work.
+
+Before editing:
+1. Inspect the existing implementation and all existing tests.
+2. Locate the exact files, functions, services, routes, and client utilities responsible for each behavior in scope.
+3. Use the repository's current test style, especially node:test where practical.
+4. Use the existing production functions/services rather than duplicating business logic inside tests.
+5. Give me a short implementation plan before modifying files.
+6. If a behavior cannot be tested cleanly without changing production code, explain the smallest behavior-preserving extraction required before making it.
+7. Inspect the current git status first. Treat unrelated existing modifications as pre-existing and leave them untouched.
+
+Scope
+
+1. Appointment filtering and history
+- Preserve the current rules for scheduled/upcoming appointments.
+- Preserve current date and status filtering.
+- Verify completed appointments remain available in patient history.
+- Verify cancelled appointments remain available in patient history where the current implementation does so.
+- Verify no-show appointments remain available in patient history where the current implementation does so.
+- Verify follow-up appointments appear in the appropriate schedule/dashboard views according to current behavior.
+- Do not invent new appointment statuses or workflow rules.
+
+2. Attachment restrictions
+- Test the current allowed attachment types.
+- Test rejection of currently disallowed or unsafe file types.
+- Preserve the current attachment-category requirements.
+- Test the current maximum file-size restriction where it is implemented and testable.
+- Test the real validation path used by production code when practical.
+- Use fictional temporary files only.
+- Do not read, copy, inspect, or expose existing real upload contents.
+
+3. Excel export contents
+- Test the current Excel export behavior using fictional records only.
+- Verify the important patient/treatment fields currently intended for export remain present.
+- Verify follow-up appointment date/time is included where the current implementation includes it.
+- Prefer inspecting generated workbook structure/content programmatically rather than relying on manual inspection.
+- Write generated test artifacts only to temporary test locations.
+- Do not inspect existing exports that may contain clinic or patient data.
+
+4. Print documents
+- Test the current patient/treatment print-document behavior.
+- Preserve the content currently intended to appear in printed records.
+- Verify UI-only controls/buttons are excluded from print output where the implementation supports automated verification.
+- Prefer testing the underlying print/document generation logic or markup rather than adding brittle screenshot tests.
+- Do not introduce a new browser/E2E framework unless the repository already uses one and it is clearly necessary.
+- If part of print behavior cannot be tested safely with the current architecture, document that limitation instead of performing a broad refactor.
+
+5. Backup inclusion behavior
+- Test the current V1 local backup behavior using temporary directories and fictional fixtures only.
+- Verify the database file is included according to current behavior.
+- Verify upload files are included according to current behavior.
+- Verify exports are included when present if that is part of the current implementation.
+- Verify expected backup structure/content without opening or copying existing real backups.
+- Do not touch the real data/, uploads/, exports/, or backups/ runtime contents.
+
+Test quality requirements:
+- Tests must be deterministic.
+- Do not depend on the current date unless time is explicitly controlled/frozen.
+- Do not depend on real local database contents.
+- Do not depend on network access.
+- Do not depend on the user's machine state where temporary fixtures can be used instead.
+- Use fictional data only.
+- Clean up temporary files/directories created by tests.
+- Test observable behavior, not private implementation details unnecessarily.
+- Prefer small behavior-preserving dependency injection/extraction over mocking large portions of the application.
+
+Constraints:
+- Preserve existing V1 behavior.
+- Do not redesign business rules.
+- Do not migrate SQLite to PostgreSQL.
+- Do not add Supabase.
+- Do not add authentication or authorization.
+- Do not replace local file storage yet.
+- Do not add V2 finance, patient portal, audit, deployment, or cloud features.
+- Do not modify the SQLite schema unless a test absolutely requires it; if so, stop and explain before proceeding.
+- Do not inspect or reproduce real patient data.
+- Do not install, remove, or update dependencies unless absolutely required; if a new dependency appears necessary, stop and ask before changing package files.
+- Do not modify package-lock.json unless explicitly approved.
+- Avoid broad refactors.
+- Leave unrelated pre-existing worktree changes untouched.
+
+Subagents:
+Use these project subagents as read-only reviewers:
+- repo_explorer: locate the exact implementation and test seams.
+- requirements_auditor: verify the proposed tests preserve requirements in README.md and the current-system audit.
+- test_auditor: review coverage, determinism, edge cases, and whether tests exercise production behavior.
+- security_reviewer: review attachment and backup test boundaries so no real sensitive data is accessed.
+
+The parent agent is the only writer.
+Wait for all requested subagents before editing.
+
+Validation sequence:
+1. Run the new tests for this batch.
+2. Run the previously added Batch 1 regression tests.
+3. Run all existing node:test suites in the repository.
+4. Run any existing broader test command already defined by the project.
+5. Run the client production build:
+   `npm run build --workspace client`
+
+   If it fails because of an environment or dependency problem, report the
+   exact failure without changing unrelated dependencies to make the build pass.
+6. If a command fails because of an environment or dependency problem, report the exact failure. Do not hide it by changing unrelated dependencies.
+
+Required Batch 1 regression checks that must still pass:
+- patient code generation
+- treatment code generation
+- treatment-date validation
+- Senior Citizen discount behavior
+- PWD discount behavior
+- combined Senior Citizen/PWD single discount basis
+- derived net amount and balance behavior
+
+Done when:
+- Appointment filtering/history behavior in scope has regression coverage.
+- Attachment restrictions in scope have regression coverage.
+- Excel export contents in scope have regression coverage.
+- Print-document behavior has the strongest safe automated coverage supported by the current architecture, with any unavoidable gaps documented.
+- Backup inclusion behavior has regression coverage using temporary fictional fixtures.
+- All new tests pass.
+- All previous regression tests still pass.
+- Existing tests still pass.
+- No V2 infrastructure work has started.
+- No real patient/runtime data was accessed.
+- The final diff contains only changes required for this regression-test task.
+
+Git boundary:
+
+Codex may use read-only Git commands to inspect repository state, including:
+- `git status`
+- `git diff`
+- `git diff --stat`
+- `git branch --show-current`
+- `git log`
+- `git grep`
+
+Codex must not:
+- stage files;
+- create commits;
+- push;
+- merge;
+- rebase;
+- reset;
+- switch branches;
+- create or delete branches;
+- create or delete tags;
+- rewrite Git history.
+
+Leave all task changes uncommitted for human review.
+
+Before completing the task:
+1. Run `git status --short`.
+2. Inspect the final diff.
+3. Confirm that unrelated pre-existing changes were not modified.
+4. List exactly which files were added or modified by this task.
+5. Provide the suggested commit message:
+   `test: complete V1 regression safety net`
+
+The user will review, stage, commit, and push the approved changes manually.
+
+If tests fail because of a regression, fix only issues within this task's approved scope, rerun the checks, and report any unresolved failures.
+
+Completion report:
+- Summary
+- Subagents used
+- Files added
+- Files modified
+- Production-code refactors, if any
+- Appointment tests added
+- Attachment tests added
+- Excel export tests added
+- Print-document tests added
+- Backup tests added
+- Commands run
+- Test results
+- Build result
+- Known limitations
+- Behaviors that could not be automated safely
+- Final git status
+- Suggested commit message
+- Recommended next step
+
+Do not begin PostgreSQL or any other V2 migration work after completing this task.
+```
