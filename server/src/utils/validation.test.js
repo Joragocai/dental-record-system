@@ -139,3 +139,25 @@ test("validateTreatmentPayload rejects mismatched derived balance values", () =>
 
   assert.ok(result.errors.includes("Balance must equal Net Amount Due minus Amount Paid."));
 });
+
+test("validateTreatmentPayload requires a next appointment date when next appointment time is set", () => {
+  const result = validateTreatmentPayload(
+    buildValidTreatmentPayload({
+      next_appointment_date: "",
+      next_appointment_time: "09:30"
+    })
+  );
+
+  assert.ok(result.errors.includes("Next Appointment Date is required when Next Appointment Time is set."));
+});
+
+test("validateTreatmentPayload rejects follow-up dates earlier than the treatment date", () => {
+  const result = validateTreatmentPayload(
+    buildValidTreatmentPayload({
+      next_appointment_date: "2026-08-08",
+      next_appointment_time: "09:30"
+    })
+  );
+
+  assert.ok(result.errors.includes("Next Appointment Date cannot be earlier than Treatment Date."));
+});

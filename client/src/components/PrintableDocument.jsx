@@ -1,5 +1,5 @@
-import { formatAttachmentType } from "../lib/attachments";
 import { getUploadUrl } from "../lib/api";
+import { buildPrintableAttachmentViewModel } from "../lib/printDocument";
 
 export function PrintField({ label, value }) {
   return (
@@ -22,23 +22,23 @@ export function PrintSection({ title, children }) {
 export function PrintableAttachments({ attachments, title = "Uploaded Images and Files", showUploadedAt = false }) {
   if (!attachments.length) return null;
 
-  function getPrintableAttachmentLabel(attachmentType) {
-    return attachmentType && String(attachmentType).trim() ? formatAttachmentType(attachmentType) : "Attachment";
-  }
-
   return (
     <PrintSection title={title}>
       <div className="attachment-sheet-grid">
-        {attachments.map((attachment) => (
-          <div key={attachment.id} className="attachment-sheet-item">
-            {attachment.mime_type?.startsWith("image/") ? (
-              <img src={getUploadUrl(attachment.file_path)} alt={attachment.original_filename} className="attachment-sheet-image" />
-            ) : (
-              <div className="attachment-sheet-placeholder">File Preview Not Available</div>
-            )}
-            <p className="mt-2 text-sm font-semibold text-slate-900">{getPrintableAttachmentLabel(attachment.attachment_type)}</p>
-          </div>
-        ))}
+        {attachments.map((attachment) => {
+          const viewModel = buildPrintableAttachmentViewModel(attachment);
+
+          return (
+            <div key={attachment.id} className="attachment-sheet-item">
+              {viewModel.isImage ? (
+                <img src={getUploadUrl(attachment.file_path)} alt={viewModel.alt} className="attachment-sheet-image" />
+              ) : (
+                <div className="attachment-sheet-placeholder">{viewModel.placeholderText}</div>
+              )}
+              <p className="mt-2 text-sm font-semibold text-slate-900">{viewModel.label}</p>
+            </div>
+          );
+        })}
       </div>
     </PrintSection>
   );

@@ -143,6 +143,49 @@ test("follow-up metric counts only treatment follow-up rows that match the dashb
   database.close();
 });
 
+test("patient schedule by exact date keeps scheduled appointments and follow-ups only for the selected day", () => {
+  const database = createDashboardTestDatabase();
+  seedDashboardTestData(database);
+
+  const entries = getScheduleRows(database, "2026-07-29", { exactDate: true });
+
+  assert.equal(entries.length, 2);
+  assert.deepEqual(
+    entries.map((entry) => ({
+      source_type: entry.source_type,
+      schedule_date: entry.schedule_date,
+      procedure_label: entry.procedure_label
+    })),
+    [
+      {
+        source_type: "appointment",
+        schedule_date: "2026-07-29",
+        procedure_label: "Tomorrow Visit"
+      },
+      {
+        source_type: "treatment_follow_up",
+        schedule_date: "2026-07-29",
+        procedure_label: "Future Follow-up"
+      }
+    ]
+  );
+  database.close();
+});
+
+test("blank appointment procedures keep the General Appointment dashboard label", () => {
+  const database = createDashboardTestDatabase();
+  seedDashboardTestData(database);
+  database.prepare(`
+    INSERT INTO appointments (patient_id, appointment_date, appointment_time, planned_procedure, status)
+    VALUES (?, ?, ?, ?, ?)
+  `).run("P-2026-0001", "2026-07-30", "", "", "Scheduled");
+
+  const entries = getScheduleRows(database, "2026-07-29");
+
+  assert.equal(entries[0].procedure_label, "General Appointment");
+  database.close();
+});
+
 test("Manila date handling keeps the local dashboard date and does not shift through UTC parsing", () => {
   assert.equal(getManilaIsoDate(new Date("2026-07-27T16:30:00.000Z")), "2026-07-28");
   assert.equal(getDateRange(new Date("2026-07-27T16:30:00.000Z")).today, "2026-07-28");
