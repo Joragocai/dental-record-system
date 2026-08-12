@@ -1,0 +1,217 @@
+```
+Dependency gate:
+This task may begin only after the V1 regression safety-net task has been completed, reviewed by the user, and committed.
+
+Before editing:
+- confirm the working tree does not contain uncommitted regression-task changes;
+- confirm the V1 regression safety-net tests exist and pass.
+
+If regression-task changes are still uncommitted, STOP and report that the regression baseline must be reviewed and committed before Legacy Cleanup begins.
+
+CODEX TASK — LEGACY CLEANUP BEFORE TYPESCRIPT MIGRATION
+
+Read these files first and treat them as the source of truth:
+- README.md
+- AGENTS.md
+- docs/architecture/current-system-audit.md
+
+Goal:
+Clean the active V2 branch of verified obsolete V1/local-only artifacts without removing working business logic, migration sources, regression-test coverage, fictional demo support that is still useful, or any data needed for later migration/rollback.
+
+This is a cleanup task only.
+Do not begin TypeScript migration, PostgreSQL migration, authentication, authorization, private storage, finance redesign, UI redesign, deployment, or other V2 implementation work.
+
+Before editing:
+1. Run `git status --short` and treat unrelated existing changes as pre-existing.
+2. Verify the current branch.
+3. Verify locally, using a read-only Git command, that the `v1-local-stable`
+tag exists.
+If the tag is not available locally:
+- STOP before deleting any recoverable legacy launcher;
+- report that the V1 reference could not be verified;
+- do not fetch, create, modify, or delete tags;
+- ask the user to verify/fetch the tag manually.
+4. Inspect the repository for legacy/local-only artifacts and classify each candidate as:
+   - REMOVE NOW
+   - KEEP FOR MIGRATION/ROLLBACK
+   - KEEP AND REFACTOR LATER
+   - UNCERTAIN — NEEDS APPROVAL
+5. Give me a short cleanup plan before modifying files.
+6. Do not delete anything simply because it looks old. Confirm that it is unused or explicitly marked for removal by README.md.
+
+Required cleanup scope:
+
+A. Remove verified legacy Windows launcher artifacts from the active V2 branch
+- `Start Dental System.bat`
+- `Backup System.bat`
+- other legacy `.bat` launchers used only for the old Windows-local workflow
+- `startDemo.txt`
+
+Only remove these after confirming they are recoverable from `v1-local-stable`.
+
+B. Remove verified obsolete empty/temporary agent artifacts
+- Remove `.agents/` only if it exists, is unused, and contains no required files.
+- Do not remove `.codex/`; it contains active project Codex configuration/subagents.
+- Ignore or remove obsolete `.codex/*.bak` backup files only when they are confirmed unnecessary.
+- Do not remove active `AGENTS.md`, `.codex/agents/`, or required `.codex/config.toml`.
+
+C. Clean obsolete Windows-only project assumptions where they are purely configuration/artifact leftovers
+Examples to inspect:
+- hardcoded Windows-only package dependencies such as platform-specific Rollup binaries
+- obsolete Windows-only launcher references in documentation or scripts
+- stale references to removed `.bat` files or `startDemo.txt`
+
+Do not replace functional runtime architecture in this task.
+Do not migrate SQLite, uploads, backups, exports, or localhost behavior yet.
+
+D. Review `.gitignore`
+Ensure the active branch continues to ignore sensitive/generated/runtime content, including where applicable:
+- `node_modules/`
+- build output
+- `.env` and local secret files
+- SQLite runtime files
+- uploads
+- exports
+- backups
+- logs
+- editor-local files
+- `.obsidian/` if present as a personal workspace
+- obsolete backup files such as `.codex/*.bak` if appropriate
+
+Do not ignore `.codex/agents/` if those project subagent definitions are intentionally version-controlled.
+
+E. Preserve these items unless README.md explicitly says otherwise
+DO NOT delete:
+- `data/dental.db` or related SQLite migration-source files
+- `uploads/`
+- `exports/`
+- `backups/`
+- working patient/treatment/appointment/payment logic
+- current services, routes, validation, or UI modules
+- existing regression tests
+- current fictional demo workflows/data that remain useful and contain no real patient information
+- README.md
+- AGENTS.md
+- docs/architecture/current-system-audit.md
+- Do not modify package.json or package-lock.json unless a verified obsolete
+  Windows-only direct dependency or script remains and removing it is clearly
+  required by this cleanup task.
+- Do not update dependency versions, run broad dependency upgrades, or change
+  the lockfile for unrelated npm metadata churn.
+These legacy runtime items may remain ignored/untracked and must be preserved outside Git as migration/rollback sources where required.
+
+F. Do not perform broad source-code cleanup
+This task is NOT for:
+- renaming large folder structures
+- converting JavaScript to TypeScript
+- refactoring controllers/services/repositories
+- changing business rules
+- changing API behavior
+- changing database schema
+- changing appointment statuses
+- changing discount rules
+- replacing local storage
+- adding cloud services
+- updating dependencies just because they are old
+- fixing npm audit findings unless a cleanup change directly requires it
+
+Subagents:
+
+Required:
+- repo_explorer: inventory legacy artifacts, references, scripts, and current usage.
+- requirements_auditor: verify each proposed removal against README.md and current-system-audit.md.
+- test_auditor: identify regression/build checks needed to prove cleanup did not change behavior.
+
+Conditional:
+- security_reviewer: use only if the cleanup proposes changing `.gitignore`,
+  secret exclusions, SQLite/runtime-data exclusions, uploads, exports,
+  backups, or another security-sensitive repository rule.
+
+The parent agent is the only writer.
+Do not spawn unrelated subagents merely because they are available.
+Wait for required subagent findings before editing.
+
+Validation:
+After cleanup:
+1. Run `git status --short`.
+2. Inspect the final diff.
+3. Search the repository for stale references to deleted launchers or `startDemo.txt`.
+4. Run the complete current V1 regression-test safety net.
+5. Run all existing `node:test` suites.
+6. Run the client production build:
+   `npm run build --workspace client`
+7. Run any existing broader test/lint commands already defined and safe to execute.
+8. Do not modify unrelated dependencies just to make a check pass.
+9. Report exact environment failures if any.
+
+Git boundary:
+
+Codex may use read-only Git commands for repository inspection, including:
+- `git status`
+- `git diff`
+- `git diff --stat`
+- `git branch --show-current`
+- `git log`
+- `git show-ref`
+- `git grep`
+
+Codex must not:
+- stage files;
+- create commits;
+- push;
+- merge;
+- rebase;
+- reset;
+- switch branches;
+- create or delete branches;
+- create or delete tags;
+- rewrite Git history.
+
+Leave all cleanup changes uncommitted for human review.
+
+Before completion:
+1. Run `git status --short`.
+2. Inspect the final diff.
+3. Confirm no unrelated files were modified.
+4. List exactly which files were removed or modified.
+5. Provide a suggested commit message only:
+   `chore: clean legacy V1 project artifacts`
+
+Done when:
+- Verified obsolete Windows launcher artifacts are removed from the active V2 branch.
+- `v1-local-stable` remains available as the legacy reference.
+- `.codex/` and active project subagents remain intact.
+- `.gitignore` safely excludes generated/runtime/sensitive content without hiding required project configuration.
+- No working V1 business behavior is removed.
+- No migration-source data is deleted.
+- Regression tests still pass.
+- The client production build still passes.
+- No TypeScript/PostgreSQL/V2 feature implementation has started.
+- The final diff is small, reviewable, and cleanup-only.
+
+
+Completion report:
+- Summary
+- Branch
+- V1 tag/reference verification
+- Subagents used
+- Removed files
+- Modified files
+- Items intentionally preserved
+- Uncertain items requiring approval
+- `.gitignore` changes
+- Stale-reference checks
+- Commands run
+- Regression-test results
+- Build result
+- Known limitations
+- Recommended next task
+
+Recommended next task after this cleanup:
+TypeScript Foundation.
+
+Do not begin the TypeScript task automatically.
+```
+
+
+Codex Prompt;
