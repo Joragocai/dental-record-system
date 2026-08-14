@@ -1,0 +1,299 @@
+
+```
+CODEX TASK — TYPESCRIPT FOUNDATION BEFORE INCREMENTAL MIGRATION
+
+Read these files first and treat them as the source of truth:
+- README.md
+- AGENTS.md
+- docs/architecture/current-system-audit.md
+
+Goal:
+Establish a safe TypeScript foundation so JavaScript/JSX and TypeScript/TSX can coexist during the upcoming incremental migration.
+
+This task is foundation/tooling work only.
+Do not broadly convert the application to TypeScript yet.
+Do not begin PostgreSQL, Supabase, authentication, authorization/RBAC, audit trail, private storage, finance, patient portal, deployment, or other later V2 work.
+
+Dependency gate:
+Begin only after:
+- the V1 regression safety-net task is completed, reviewed, and committed;
+- the Legacy Cleanup task is completed, reviewed, and committed;
+- the working tree is clean, except for unrelated changes explicitly identified by the user.
+
+If Regression or Legacy Cleanup changes are still uncommitted, STOP and report that the previous phase must be reviewed and committed first.
+
+Before editing:
+1. Run `git status --short`.
+2. Verify the current branch.
+3. Inspect root, client, and server package manifests and existing build/runtime configuration.
+4. Inspect for existing `tsconfig`, `jsconfig`, Vite config, Node module settings, path aliases, workspace scripts, lint configuration, and test conventions.
+5. Inspect current Node/npm version declarations.
+6. Identify the smallest TypeScript setup that supports the existing workspace without forcing a broad JS-to-TS conversion.
+7. Give me a short implementation plan before modifying files.
+
+Required scope:
+
+A. TypeScript toolchain
+- Determine whether TypeScript and required type declarations are already installed.
+- Add only the minimum development dependencies required for this foundation.
+- Typical needs may include TypeScript and relevant Node/React type declarations, but inspect first and add only what is required.
+- Do not add unrelated libraries.
+- Do not upgrade existing dependencies just because newer versions exist.
+- Do not run `npm audit fix`, `npm audit fix --force`, or broad dependency upgrades.
+- `package-lock.json` may change only as a direct result of approved minimal TypeScript dependency changes.
+- Never manually edit `package-lock.json`.
+- Inspect package and lockfile diffs afterward and report unexpected metadata churn.
+
+B. TypeScript configuration
+Create or update the smallest maintainable configuration for the current workspace.
+
+Possible structure:
+- root `tsconfig.json`
+- `client/tsconfig.json`
+- `server/tsconfig.json`
+
+Requirements:
+- JavaScript and TypeScript must coexist during migration.
+- Existing `.js` and `.jsx` files do not need to be renamed in this task.
+- Use `allowJs` temporarily where needed.
+- Do not enable whole-codebase JavaScript checking if it creates a large unrelated error backlog.
+- Type checking must use `noEmit`.
+-New TypeScript source should be checked with `strict: true` unless the current
+architecture makes a specific strict compiler option temporarily incompatible.
+-Do not weaken strictness merely to make type-checking pass.
+-Legacy JavaScript may temporarily coexist through `allowJs` with `checkJs`
+disabled where necessary so existing JavaScript does not become an unrelated
+TypeScript error backlog.
+- Client configuration must remain compatible with React + Vite.
+- Server configuration must remain compatible with the existing Node.js/Express module system.
+- Do not silently change the module system.
+- Do not introduce path aliases unless an existing need clearly justifies them.
+- Do not change runtime behavior merely to satisfy TypeScript configuration.
+
+C. Type-check scripts
+Add a reliable root command:
+
+`npm run typecheck`
+
+It must type-check the relevant workspaces without emitting production files.
+
+Separate commands such as these may be added if useful:
+- `typecheck:client`
+- `typecheck:server`
+
+Avoid unnecessary script complexity.
+
+D. Minimal proof that TypeScript works
+
+Prove:
+- the backend can type-check `.ts` files;
+- the frontend can type-check both `.ts` and `.tsx` files with React JSX;
+- existing `.js` and `.jsx` files continue to work unchanged.
+
+Use the smallest safe method, such as:
+- a tiny non-production TypeScript compile fixture;
+- a trivial behavior-neutral helper/type-only file;
+- another minimal compile proof supported by the current architecture.
+
+Do NOT convert feature modules, routes, services, React pages, database code, or business-rule modules merely to prove TypeScript works.
+
+E. Type-location conventions
+Create only the minimum structure needed to establish where future types belong, if appropriate.
+
+Examples:
+- `client/src/types/`
+- `server/src/types/`
+
+Do not model the entire dental domain in this task.
+Do not create full Patient, Treatment, Appointment, Auth, RBAC, Finance, Audit, or Storage models yet.
+
+F. Source conventions
+Preserve or document these approved conventions:
+- `.ts` for backend, services, repositories, utilities, schemas, scripts, and other non-React TypeScript.
+- `.tsx` for React files containing JSX.
+- New V2 source uses TypeScript by default unless an approved exception exists.
+- Existing JavaScript/JSX migrates incrementally.
+- Avoid broad use of `any`.
+- Do not use `@ts-ignore`, `@ts-nocheck`, unsafe assertions, or disabled compiler checks as shortcuts.
+- TypeScript does not replace runtime validation such as Zod at trust boundaries.
+- TypeScript-only conversion work should avoid unrelated behavioral changes.
+
+Prefer updating existing documentation rather than duplicating large policy sections.
+
+G. Preserve current runtime behavior
+This task must not change:
+- patient behavior;
+- treatment behavior;
+- appointment behavior;
+- discounts or balance calculations;
+- attachment behavior;
+- Excel/PDF/print behavior;
+- backup behavior;
+- SQLite schema or data access behavior;
+- API contracts;
+- routes;
+- UI design;
+- deployment behavior.
+
+If TypeScript setup appears to require a behavior-changing production refactor, STOP and report the issue instead of expanding scope.
+
+Subagents:
+
+The existing subagent definitions are configuration, not implementation scope.
+
+Do not create, modify, rename, or delete:
+- `.codex/agents/*.toml`
+- `.codex/config.toml`
+
+Do not modify `AGENTS.md` unless a TypeScript policy clarification is directly
+required by this task and is already supported by README.md.
+
+Do not modify subagent definitions during this task.
+
+unless this task explicitly requires a documentation-only clarification already authorized by the source-of-truth files.
+
+Required:
+- `repo_explorer`: inspect workspace/package layout, module system, Vite/Node configuration, scripts, and safe TypeScript integration points.
+- `requirements_auditor`: verify the proposed foundation matches README.md, AGENTS.md, and the approved incremental migration strategy.
+- `test_auditor`: identify validation needed to prove TypeScript tooling was added without breaking the regression baseline.
+-`typescript_reviewer`:use it to review tsconfig/compiler choices, JS/TS coexistence, strictness, module resolution, and unsafe suppressions.
+  
+Conditional:
+- `security_reviewer`: use only if the task changes secret handling, environment loading, build exposure of server-only values, or another security-sensitive boundary.
+
+The parent agent is the only writer.
+Do not spawn unrelated subagents merely because they are available.
+Wait for required subagent findings before editing.
+
+Dependency-change boundary:
+This task explicitly authorizes only minimal package changes required to establish TypeScript tooling.
+
+Before changing dependencies:
+1. Identify the exact packages required and why.
+2. Confirm they are development/tooling dependencies, not new runtime architecture.
+3. Avoid unrelated version upgrades.
+4. Use the repository's existing npm workspace strategy.
+5. After installation, inspect `package.json` and `package-lock.json`.
+6. Report broad lockfile churn unrelated to the intended TypeScript additions.
+
+Do not use this task to fix unrelated vulnerabilities or warnings.
+
+Validation sequence:
+1. Run:
+   `npm run typecheck`
+2. Run any separate client/server type-check commands that were added.
+3. Run the complete current V1 regression safety net.
+4. Run all existing Node tests:
+   `node --test`
+5. Run:
+   `npm run build --workspace client`
+6. Run an existing lint command if one already exists and is safe to execute.
+7. Inspect package-manifest and lockfile changes.
+8. Run `git status --short`.
+9. Inspect the final diff and confirm it contains only TypeScript-foundation changes.
+
+If validation fails:
+- Fix only failures caused by this task and within scope.
+- Do not suppress type errors broadly.
+- Do not change business behavior just to make the compiler pass.
+- Do not upgrade unrelated dependencies to make checks pass.
+- If a clean foundation requires a larger refactor, STOP and report the blocker.
+
+Safety and scope rules:
+- Use fictional data only.
+- Do not inspect real SQLite row contents, uploads, exports, or backups.
+- Do not modify runtime patient data.
+- Do not modify the SQLite schema.
+- Do not start PostgreSQL migration.
+- Do not add Supabase.
+- Do not add authentication or authorization.
+- Do not add new business features.
+- Do not perform broad JS-to-TS conversion.
+- Do not rename large groups of `.js` or `.jsx` files.
+- Do not reorganize application architecture.
+- Do not introduce a new build system.
+- Do not replace Vite, Express, or npm.
+- Do not perform unrelated dependency cleanup or vulnerability remediation.
+
+Git boundary:
+
+Codex may use read-only Git commands to inspect repository state, including:
+- `git status`
+- `git diff`
+- `git diff --stat`
+- `git branch --show-current`
+- `git log`
+- `git show-ref`
+- `git grep`
+
+Codex must not:
+- stage files;
+- create commits;
+- push;
+- merge;
+- rebase;
+- reset;
+- switch branches;
+- create or delete branches;
+- create or delete tags;
+- rewrite Git history.
+-Do not modify `.codex/agents/*.toml` or `.codex/config.toml` in this task.
+
+Leave all task changes uncommitted for human review.
+
+Done when:
+- TypeScript tooling is installed with only minimal approved dependency changes.
+- JavaScript/JSX and TypeScript/TSX can coexist safely.
+- Appropriate TypeScript configuration exists for the current workspace.
+- `npm run typecheck` exists and passes.
+- The configuration supports the current React/Vite frontend.
+- The configuration supports the current Node/Express backend.
+- No broad source conversion occurred.
+- No business behavior changed.
+- Existing V1 regression tests still pass.
+- All existing `node:test` tests still pass.
+- The client production build still passes.
+- No PostgreSQL/auth/RBAC/storage/finance/deployment work started.
+- The final diff is focused and TypeScript-foundation only.
+
+Before completion:
+1. Run `git status --short`.
+2. Inspect the final diff.
+3. Confirm no unrelated files were modified.
+4. List exactly which files were added or modified.
+5. Summarize all dependency changes and why each was required.
+6. Explain the TypeScript compiler/configuration decisions in plain language.
+7. Provide the suggested commit message only:
+   `chore: establish TypeScript foundation`
+
+Completion report:
+- Summary
+- Branch
+- Dependency-gate result
+- Subagents used
+- Files added
+- Files modified
+- Dependencies added or changed
+- TypeScript configuration created
+- Type-check scripts added
+- JS/TS coexistence strategy
+- Compiler/module-resolution decisions
+- Production-code changes, if any
+- Commands run
+- Type-check results
+- Regression-test results
+- Full test results
+- Build result
+- Lockfile review
+- Known limitations
+- Remaining JavaScript/JSX scope
+- Final git status
+- Suggested commit message
+- Recommended next task
+
+Recommended next task:
+Incremental JavaScript-to-TypeScript migration.
+
+Do not begin the incremental migration automatically.
+Do not begin PostgreSQL or any later V2 roadmap phase automatically.
+```
