@@ -1,0 +1,310 @@
+```
+CODEX TASK — INCREMENTAL JAVASCRIPT → TYPESCRIPT MIGRATION — BATCH 1
+
+Read these files first and treat them as the source of truth:
+- README.md
+- AGENTS.md
+- docs/architecture/current-system-audit.md
+- docs/codex-prompts/03-TypeScript-Foundation.txt
+
+Goal:
+Begin the JavaScript/JSX → TypeScript/TSX migration in a small, reviewable, behavior-preserving batch using the TypeScript foundation already established in the repository.
+
+This is an incremental migration task.
+Do not attempt to convert the entire application in one pass.
+
+Do not begin PostgreSQL, Supabase, authentication, authorization/RBAC, audit trail, private storage, finance redesign, patient portal, deployment, or any later V2 roadmap phase.
+
+Dependency gate:
+Begin only after:
+- the V1 regression safety-net task is completed, reviewed, and committed;
+- the Legacy Cleanup task is completed, reviewed, and committed;
+- the TypeScript Foundation task is completed, reviewed, and committed;
+- `npm run typecheck` exists and passes;
+- the working tree is clean except for unrelated changes explicitly identified by the user.
+
+If TypeScript Foundation changes are still uncommitted, STOP and report that the previous phase must be reviewed and committed before this migration batch begins.
+
+Before editing:
+1. Run `git status --short`.
+2. Verify the current branch.
+3. Run `npm run typecheck` to confirm the TypeScript baseline is green.
+4. Inspect the current TypeScript configuration and package scripts.
+5. Inventory the remaining `.js` and `.jsx` source files.
+6. Build a dependency-aware migration map that classifies candidate files as:
+   - SAFE LEAF / LOW DEPENDENCY
+   - SHARED UTILITY
+   - SERVICE / BUSINESS LOGIC
+   - ROUTE / API BOUNDARY
+   - DATABASE-COUPLED
+   - REACT COMPONENT
+   - REACT PAGE
+   - HIGH-RISK / DEFER
+7. Identify a small first batch that can be migrated without broad architectural changes.
+8. Give me a short migration plan listing the exact files you intend to convert before modifying anything.
+
+Batch-size rule:
+- Prefer a small batch of closely related files.
+- Do not convert large groups merely because they are easy to rename.
+- Prefer files with existing regression coverage and limited dependencies.
+- Stop after one coherent batch.
+- Do not automatically continue into Batch 2.
+
+Preferred migration order:
+1. Low-risk pure utilities/helpers with strong test coverage.
+2. Small shared non-React libraries.
+3. Small service modules with clear contracts and tests.
+4. Route/API modules only after their dependencies are typed.
+5. React libraries/hooks/components after their data contracts are understood.
+6. Large React pages, database-heavy modules, backup/export internals, and other high-risk modules later.
+
+The actual Batch 1 file selection must be based on repository inspection, not assumptions.
+
+A. File conversion rules
+- Rename `.js` → `.ts` for non-React TypeScript.
+- Rename `.jsx` → `.tsx` only for React modules containing JSX.
+- Update only imports/exports directly required by the rename.
+- Preserve runtime behavior.
+- Preserve public function names and API contracts unless a type-only change requires a safe annotation.
+- Do not reorganize folders.
+- Do not combine unrelated refactors with migration.
+- Do not redesign APIs.
+- Do not change business rules.
+- Do not change user-visible behavior.
+
+B. Type-safety rules
+For newly migrated files:
+- Use `strict` TypeScript according to the established project configuration.
+- Add explicit parameter and return types where they improve clarity or are required by inference boundaries.
+- Prefer meaningful object types/interfaces/type aliases over `any`.
+- Avoid broad `unknown` unless the value truly is unknown and is narrowed safely.
+- Do not use `@ts-ignore`.
+- Do not use `@ts-nocheck`.
+- Do not weaken compiler options to make migrated files pass.
+- Do not add unsafe type assertions merely to silence the compiler.
+- Do not introduce placeholder types that hide real domain uncertainty.
+- Reuse existing types when they accurately represent the same contract.
+- Do not create an oversized global domain model in this batch.
+
+C. Runtime-validation boundary
+TypeScript provides compile-time checking only.
+
+Do not remove or weaken existing runtime validation.
+
+At external trust boundaries such as HTTP input, environment variables, database results, file-upload metadata, or external-service responses, preserve existing runtime validation.
+
+If runtime validation is currently missing, do not redesign that boundary in this migration task unless the missing validation directly blocks safe typing. Report it as a follow-up finding instead.
+
+D. JavaScript/TypeScript interoperability
+During this incremental phase:
+- Existing `.js` and `.jsx` files may continue importing migrated TypeScript through the current build/tooling pipeline where supported.
+- Migrated TypeScript may depend on remaining JavaScript only when necessary.
+- Do not force migration of an entire dependency chain if a safe typed boundary can be maintained.
+- Do not enable `checkJs` broadly just to type legacy JavaScript.
+- Avoid creating circular dependencies.
+- Update import extensions only where required by the project's existing module-resolution/runtime behavior.
+- Do not silently change ESM/CommonJS behavior.
+
+E. Tests
+For every migrated production module:
+- preserve existing tests;
+- update test imports only where required by file renames;
+- keep tests behavior-focused rather than TypeScript-implementation-focused;
+- add narrowly scoped tests only if migration exposes an untested contract necessary to prove behavior preservation.
+
+Do not rewrite the regression suite just because source files changed extensions.
+
+F. Production behavior that must remain unchanged
+This migration batch must not change:
+- patient IDs or annual numbering;
+- patient behavior;
+- treatment behavior;
+- appointment statuses/history/follow-ups;
+- discount rules;
+- balances/payment calculations;
+- attachment allowlists, categories, paths, or upload behavior;
+- Excel export contents;
+- print/PDF behavior;
+- backup behavior;
+- SQLite schema or queries except type-only annotations around existing usage;
+- API routes or payload shapes;
+- UI appearance or navigation;
+- deployment behavior.
+
+If TypeScript migration requires changing any of these behaviors, STOP and report the blocker instead of expanding scope.
+
+G. High-risk files
+Do not include high-risk files in Batch 1 unless repository inspection proves they are small, well-tested, and dependency-safe.
+
+High-risk examples include:
+- database initialization/schema modules;
+- backup/restore internals;
+- export-generation internals;
+- attachment-storage internals;
+- large patient/treatment forms;
+- large React pages;
+- cross-cutting runtime configuration;
+- security/auth code;
+- files that many unrelated modules depend on.
+
+Classify them and defer them when appropriate.
+
+Subagents:
+
+Required:
+- `repo_explorer`: map JS/JSX files, imports, dependency direction, current tests, and identify a safe first migration batch.
+- `requirements_auditor`: verify proposed migrations preserve README.md and current-system behavior.
+- `test_auditor`: verify every proposed migrated module has appropriate regression coverage and identify validation gaps.
+- `typescript_reviewer`: review proposed type boundaries, inferred/explicit types, JS/TS interoperability, unsafe assertions, suppressions, and compiler/module-resolution risks.
+
+Conditional:
+- `security_reviewer`: use only if the chosen batch touches environment handling, attachments, backups, exports, runtime data paths, secret handling, or another security-sensitive boundary.
+
+The parent agent is the only writer.
+All reviewer subagents remain read-only.
+Do not create or modify subagent definitions in this task.
+Do not spawn unrelated subagents merely because they are available.
+Wait for required subagent findings before editing.
+
+Protected project configuration:
+Do not modify:
+- `.codex/agents/*.toml`
+- `.codex/config.toml`
+
+Do not modify `AGENTS.md` unless a TypeScript policy clarification is directly required and already supported by README.md.
+
+Do not change `tsconfig` files or TypeScript package dependencies unless a real issue discovered during migration proves the existing TypeScript Foundation is insufficient.
+
+If a foundation change is necessary:
+- explain the exact reason;
+- keep it narrowly scoped;
+- have `typescript_reviewer` review it;
+- do not weaken strictness;
+- report it separately in the completion summary.
+
+Dependency boundary:
+Do not add or upgrade dependencies unless a migrated file cannot be typed safely with the existing approved TypeScript foundation and the dependency is genuinely necessary.
+
+Do not:
+- run `npm audit fix`;
+- run `npm audit fix --force`;
+- perform dependency cleanup;
+- upgrade libraries for convenience;
+- replace packages during migration.
+
+Migration workflow for each selected file:
+1. Read the production file completely.
+2. Read its direct tests.
+3. Read its direct callers/importers.
+4. Identify its external/public contract.
+5. Rename to `.ts` or `.tsx`.
+6. Add the minimum accurate types required.
+7. Update direct imports only as necessary.
+8. Run the narrowest relevant tests.
+9. Run the relevant type-check command.
+10. Fix only migration-caused issues within scope.
+11. Continue to the next file in the approved batch only after the current file is green.
+
+Validation sequence after Batch 1:
+1. Run `npm run typecheck`.
+2. Run tests directly related to every migrated module.
+3. Run the complete V1 regression safety net.
+4. Run all existing Node tests with `node --test`.
+5. Run `npm run build --workspace client`.
+6. Run any existing lint command if already defined and safe.
+7. Search for stale imports that still reference renamed source files incorrectly.
+8. Run `git status --short`.
+9. Inspect `git diff --stat`.
+10. Inspect the full final diff.
+11. Confirm only the approved Batch 1 files and directly necessary import/test changes were modified.
+
+If validation fails:
+- fix only issues caused by this migration batch;
+- do not weaken TypeScript settings;
+- do not suppress errors broadly;
+- do not change business behavior to satisfy types;
+- do not expand into unrelated modules;
+- if the failure requires architectural refactoring, STOP and report the blocker.
+
+Git boundary:
+Codex may use read-only Git commands for inspection, including:
+- `git status`
+- `git diff`
+- `git diff --stat`
+- `git branch --show-current`
+- `git log`
+- `git grep`
+
+Codex must not:
+- stage files;
+- create commits;
+- push;
+- merge;
+- rebase;
+- reset;
+- switch branches;
+- create or delete branches;
+- create or delete tags;
+- rewrite Git history.
+
+Leave all changes uncommitted for human review.
+
+Done when:
+- one small dependency-aware migration batch is complete;
+- selected `.js` files are safely converted to `.ts`;
+- selected `.jsx` files, if any, are safely converted to `.tsx`;
+- no broad migration occurred;
+- no business behavior changed;
+- no unsafe TypeScript suppressions were introduced;
+- `npm run typecheck` passes;
+- targeted tests pass;
+- the full regression safety net passes;
+- all existing `node:test` tests pass;
+- the client production build passes;
+- no PostgreSQL/auth/RBAC/storage/finance/deployment work started;
+- the final diff is focused and reviewable.
+
+Before completion:
+1. Run `git status --short`.
+2. Inspect the final diff.
+3. Confirm no unrelated files were modified.
+4. List exactly which files were renamed, added, or modified.
+5. Explain why each file was selected for Batch 1.
+6. Summarize the important types/contracts introduced.
+7. Report any deferred migration risks.
+8. Provide the suggested commit message only:
+   `refactor: begin incremental TypeScript migration`
+
+Completion report:
+- Summary
+- Branch
+- Dependency-gate result
+- Subagents used
+- Migration inventory
+- Batch 1 selection and rationale
+- Files renamed
+- Files added
+- Files modified
+- Types/contracts introduced
+- JS/TS interoperability decisions
+- Production behavior changes, if any
+- Tests updated or added
+- Commands run
+- Type-check result
+- Targeted-test results
+- Regression-test results
+- Full test results
+- Build result
+- TypeScript reviewer findings
+- Deferred/high-risk files
+- Known limitations
+- Final git status
+- Suggested commit message
+- Recommended Batch 2 scope
+
+Recommended next task:
+Review Batch 1 manually, commit it if approved, then prepare Incremental JavaScript → TypeScript Migration — Batch 2.
+
+Do not begin Batch 2 automatically.
+Do not begin PostgreSQL or any later V2 roadmap phase automatically.
+```
