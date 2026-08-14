@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildPrintableAttachmentViewModel, getPrintableAttachmentLabel } from "./printDocument.js";
+import { buildPrintableAttachmentViewModel, getPrintableAttachmentLabel } from "./printDocument.ts";
 
 test("printable attachment labels preserve attachment categories and fallback label", () => {
   assert.equal(getPrintableAttachmentLabel("X-ray"), "X-ray");

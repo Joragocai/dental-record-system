@@ -6,7 +6,7 @@ import {
   getLatestBackupDisplay,
   getManualBackupButtonState,
   getNextBackupDisplay
-} from "./backupUi.js";
+} from "./backupUi.ts";
 
 test("clean mode header description says automatic backups run weekly", () => {
   assert.equal(

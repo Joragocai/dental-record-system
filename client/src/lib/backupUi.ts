@@ -7,28 +7,60 @@ const manilaDateTimeFormatter = new Intl.DateTimeFormat("en-PH", {
   minute: "2-digit"
 });
 
-export function formatBackupDateTime(value, emptyText = "—") {
+type BackupType = "automatic-weekly" | "manual" | string;
+type BackupResult = "success" | "failed" | string;
+
+interface RuntimeStatusLike {
+  isDemoMode?: boolean | null;
+}
+
+interface BackupStatusLike {
+  backupInProgress?: boolean | null;
+  lastBackupStatus?: BackupResult | null;
+  lastBackupType?: BackupType | null;
+  lastSuccessfulBackupAt?: string | null;
+  nextBackupDueAt?: string | null;
+}
+
+interface BackupDisplay {
+  primary: string;
+  secondary: string;
+}
+
+interface ManualBackupButtonStateInput {
+  backupStatus: BackupStatusLike | null | undefined;
+  isLoading: boolean;
+  isCreatingBackup: boolean;
+}
+
+interface ManualBackupButtonState {
+  disabled: boolean;
+  label: string;
+  isBusy: boolean;
+}
+
+export function formatBackupDateTime(value: string | null | undefined, emptyText = "—"): string {
   if (!value) return emptyText;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return emptyText;
   return manilaDateTimeFormatter.format(date);
 }
 
-export function formatBackupTypeLabel(value) {
+export function formatBackupTypeLabel(value: BackupType | null | undefined): string {
   if (!value) return "";
   if (value === "automatic-weekly") return "Weekly Automatic";
   if (value === "manual") return "Manual";
   return value;
 }
 
-export function formatBackupResultLabel(value) {
+export function formatBackupResultLabel(value: BackupResult | null | undefined): string {
   if (!value) return "";
   if (value === "success") return "Successful";
   if (value === "failed") return "Failed";
   return value;
 }
 
-export function getBackupHeaderDescription(runtimeStatus) {
+export function getBackupHeaderDescription(runtimeStatus: RuntimeStatusLike | null | undefined): string {
   if (runtimeStatus?.isDemoMode) {
     return "Protect fictional demo records and attachments. Automatic backups are disabled in Demo Mode.";
   }
@@ -36,7 +68,7 @@ export function getBackupHeaderDescription(runtimeStatus) {
   return "Protect patient records, treatment records, and uploaded attachments. Automatic backups run weekly.";
 }
 
-export function getLatestBackupDisplay(backupStatus) {
+export function getLatestBackupDisplay(backupStatus: BackupStatusLike | null | undefined): BackupDisplay {
   if (!backupStatus?.lastSuccessfulBackupAt) {
     return {
       primary: "No backups yet",
@@ -62,7 +94,10 @@ export function getLatestBackupDisplay(backupStatus) {
   };
 }
 
-export function getNextBackupDisplay(backupStatus, runtimeStatus) {
+export function getNextBackupDisplay(
+  backupStatus: BackupStatusLike | null | undefined,
+  runtimeStatus: RuntimeStatusLike | null | undefined
+): string {
   if (runtimeStatus?.isDemoMode) {
     return "Disabled in Demo Mode";
   }
@@ -74,7 +109,7 @@ export function getNextBackupDisplay(backupStatus, runtimeStatus) {
   return formatBackupDateTime(backupStatus.nextBackupDueAt, "Not scheduled");
 }
 
-export function formatRetentionSummary(weeklyCount, monthlyCount) {
+export function formatRetentionSummary(weeklyCount: unknown, monthlyCount: unknown): string {
   const weekly = Number.isFinite(Number(weeklyCount)) ? Number(weeklyCount) : 0;
   const monthly = Number.isFinite(Number(monthlyCount)) ? Number(monthlyCount) : 0;
   const weeklyLabel = `${weekly} recent weekly`;
@@ -82,7 +117,11 @@ export function formatRetentionSummary(weeklyCount, monthlyCount) {
   return `${weeklyLabel} · ${monthlyLabel}`;
 }
 
-export function getManualBackupButtonState({ backupStatus, isLoading, isCreatingBackup }) {
+export function getManualBackupButtonState({
+  backupStatus,
+  isLoading,
+  isCreatingBackup
+}: ManualBackupButtonStateInput): ManualBackupButtonState {
   const backupInProgress = Boolean(backupStatus?.backupInProgress);
   return {
     disabled: isLoading || !backupStatus || isCreatingBackup || backupInProgress,

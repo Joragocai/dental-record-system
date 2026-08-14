@@ -1,5 +1,3 @@
-sandbox_mode = "read-only"
-
 name = "typescript_reviewer"
 description = "Read-only TypeScript specialist for compiler configuration, JS/TS interoperability, type safety, and incremental migration risk."
 sandbox_mode = "read-only"
