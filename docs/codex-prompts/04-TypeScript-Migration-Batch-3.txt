@@ -1,0 +1,358 @@
+```
+CODEX TASK — INCREMENTAL JAVASCRIPT → TYPESCRIPT MIGRATION — BATCH 3
+
+STATUS: READY ONLY AFTER BATCH 2 IS REVIEWED AND COMMITTED
+
+Read these files first and treat them as the source of truth:
+- README.md
+- AGENTS.md
+- docs/architecture/current-system-audit.md
+- docs/codex-prompts/03-TypeScript-Foundation.txt
+- the approved Batch 1 TypeScript migration task
+- the approved Batch 2 TypeScript migration task
+
+Goal:
+Continue the incremental JavaScript/JSX → TypeScript/TSX migration with one focused Batch 3 centered on the remaining client formatting utility layer.
+
+Batch 1 migrated:
+- `client/src/lib/backupUi.js` → `client/src/lib/backupUi.ts`
+- `client/src/lib/printDocument.js` → `client/src/lib/printDocument.ts`
+
+Batch 2 migrated:
+- the implementation of `client/src/lib/attachments.js` into `client/src/lib/attachments.ts`
+- while retaining `client/src/lib/attachments.js` as a one-line compatibility re-export bridge required by the current mixed JS/TS + `node --test` setup
+- and adding `client/src/lib/attachments.test.js`
+
+This Batch 3 must preserve that compatibility bridge unless repository inspection proves it is no longer needed and removing it is explicitly required for the selected migration. Do not use Batch 3 to redesign the TypeScript foundation or test runner.
+
+This remains an incremental migration task.
+Do not attempt to convert the whole application.
+Do not begin Batch 4 automatically.
+Do not begin PostgreSQL, authentication, authorization/RBAC, audit trail, private storage, finance redesign, patient portal, deployment, or any later roadmap phase.
+
+Dependency gate:
+Begin only after:
+- TypeScript Foundation is reviewed and committed;
+- Batch 1 is reviewed and committed;
+- Batch 2 is reviewed and committed;
+- `npm run typecheck` passes;
+- the current V1 regression safety net passes;
+- the working tree is clean except for unrelated changes explicitly identified by the user.
+
+If Batch 2 changes are still uncommitted, STOP and report that Batch 2 must be reviewed and committed first.
+
+Subagent discovery gate:
+Before editing, confirm that the dedicated project subagent `typescript_reviewer` is available as a custom read-only reviewer.
+
+If Codex cannot discover/use the dedicated `typescript_reviewer`:
+- STOP before modifying files;
+- report the exact discovery/configuration problem;
+- do not silently substitute a generic reviewer.
+
+Before editing:
+1. Run `git status --short`.
+2. Verify the current branch.
+3. Run `npm run typecheck`.
+4. Confirm the Batch 1 and Batch 2 migrated TypeScript files exist.
+5. Confirm `client/src/lib/attachments.js` is only the expected compatibility bridge and do not alter it unless necessary.
+6. Inspect `client/src/lib/formatters.js` completely.
+7. Inspect all direct importers of `client/src/lib/formatters.js`.
+8. Inspect any tests that directly or indirectly protect its behavior.
+9. Identify every exported formatter/helper and classify it as:
+   - PURE PRESENTATION FORMATTER
+   - DATE/TIME FORMATTER
+   - MONEY DISPLAY FORMATTER
+   - CLASSIFICATION/DISPLAY DECISION
+   - FALLBACK/NORMALIZATION HELPER
+   - HIGHER-RISK / DEFER
+10. Give me a short Batch 3 plan before editing, including the exact files you intend to modify.
+
+Approved Batch 3 scope:
+
+Primary candidate:
+- `client/src/lib/formatters.js`
+
+This should be a single-production-file migration batch unless repository inspection proves one tiny directly coupled helper must move with it.
+
+Do not add a second unrelated production module simply to make the batch larger.
+
+Why this file is a separate batch:
+- it has a broader importer surface than previous batches;
+- it is used by multiple pages/components;
+- it may contain display decisions related to patient classification and time/date presentation;
+- it therefore deserves dedicated behavior tests and a narrowly reviewed migration.
+
+Explicitly defer:
+- `client/src/lib/api.js`
+- `client/src/lib/forms.js`
+- `client/src/lib/validation.js`
+- server validation/business-rule modules
+- server services
+- server routes
+- database modules
+- runtime configuration
+- backup/export/upload internals
+- React pages
+- large React components/forms
+- application bootstrap files
+
+A. File conversion rules
+
+If `client/src/lib/formatters.js` is approved after inspection:
+- rename/migrate its implementation to `client/src/lib/formatters.ts`;
+- preserve every exported function name;
+- preserve current argument behavior;
+- preserve return values and fallback text;
+- preserve locale/date/time formatting behavior;
+- preserve peso/money display behavior;
+- preserve patient-classification display decisions;
+- preserve `"No final time"` / planned-procedure fallback behavior if present;
+- update only directly necessary test/import references;
+- do not reorganize folders;
+- do not combine cleanup/refactors with migration.
+
+B. Behavior-lock test requirement
+
+Because Batch 2 identified `formatters.js` as having a wider blast radius, create or extend a direct focused test before considering the migration complete.
+
+The test should lock the current behavior of the actual exported helpers, including where present:
+- peso/currency display formatting;
+- empty/null fallback behavior;
+- readable date formatting;
+- time formatting;
+- `"No final time"` fallback behavior;
+- planned-procedure fallback behavior;
+- PWD-related classification detection;
+- patient-classification summary visibility decisions.
+
+Use the actual production function outputs as the contract.
+Do not invent new expected behavior.
+
+If existing tests already cover these helpers directly, extend them only where necessary rather than duplicating coverage.
+
+C. Type-safety rules
+
+For `formatters.ts`:
+- use the existing strict TypeScript configuration;
+- add the minimum accurate parameter and return types;
+- prefer local structural types where needed;
+- preserve broad legacy inputs where current behavior intentionally accepts them;
+- do not narrow string inputs into literal unions unless the actual application contract proves those values are exhaustive;
+- avoid `any`;
+- avoid broad `unknown` unless truly required and safely narrowed;
+- do not use `@ts-ignore`;
+- do not use `@ts-nocheck`;
+- do not weaken compiler options;
+- do not use unsafe assertions merely to silence TypeScript.
+
+If a helper accepts values coming from loosely typed legacy JS callers, type the boundary honestly rather than pretending the callers are stricter than they are.
+
+D. Business/display boundary
+
+This is a migration task, not a behavior-redesign task.
+
+Do not change:
+- Senior/PWD classification logic;
+- discount eligibility logic;
+- treatment/financial calculations;
+- patient classification values;
+- appointment time meaning;
+- date interpretation;
+- user-visible fallback labels;
+- currency formatting semantics.
+
+If a formatter contains logic that is actually a business rule rather than presentation-only formatting:
+- preserve it exactly;
+- flag it in the completion report as a future architectural concern;
+- do not move or redesign it during Batch 3.
+
+E. JS/TS interoperability
+
+- Keep production imports extensionless where the current Vite configuration supports them.
+- Existing JS/JSX callers may continue consuming the migrated TypeScript module through the approved build pipeline.
+- Do not force migration of callers merely because they import `formatters.ts`.
+- Do not change `checkJs`.
+- Do not change TypeScript compiler settings.
+- Do not introduce a new compatibility shim unless the actual Node test/runtime behavior requires one.
+- If a compatibility shim becomes necessary, explain why before adding it and keep it to the smallest possible bridge.
+- Do not remove the Batch 2 `attachments.js` bridge as unrelated cleanup.
+
+F. Tests
+
+Migration workflow:
+1. Read `formatters.js`.
+2. Read all direct tests and importers.
+3. Add/confirm direct behavior-lock tests.
+4. Run the behavior-lock test against the existing implementation if practical before rename.
+5. Rename/migrate to `.ts`.
+6. Add minimum accurate types.
+7. Update only directly necessary imports/tests.
+8. Run targeted formatter tests.
+9. Run `npm run typecheck`.
+10. Inspect the diff for any behavior changes.
+
+Do not rewrite unrelated regression tests.
+
+G. Runtime behavior that must remain unchanged
+
+Batch 3 must not change:
+- patient behavior;
+- treatment behavior;
+- appointment behavior;
+- discount calculations;
+- balance calculations;
+- classification rules;
+- attachment behavior;
+- backup behavior;
+- export contents;
+- print/PDF behavior;
+- API contracts;
+- database behavior;
+- UI layout/navigation.
+
+If migration requires a behavior change, STOP and report the blocker.
+
+Subagents:
+
+Required:
+- `repo_explorer`: inspect `formatters.js`, importers, dependencies, current test coverage, and blast radius.
+- `requirements_auditor`: verify every formatter/display decision remains consistent with README.md and verified V1 behavior.
+- `test_auditor`: verify the direct behavior-lock tests are sufficient before/after migration.
+- `typescript_reviewer`: use the dedicated project custom subagent to review type boundaries, nullable/broad legacy inputs, JS/TS interoperability, suppressions, and migration risk.
+
+Conditional:
+- `security_reviewer`: use only if inspection unexpectedly shows the formatter module touches sensitive data exposure, secrets, file paths, uploads, backups, or another security boundary.
+
+The parent agent is the only writer.
+All reviewer subagents remain read-only.
+Do not create or modify subagent definitions.
+Wait for required findings before editing.
+
+Protected configuration:
+Do not modify:
+- `.codex/agents/*.toml`
+- `.codex/config.toml`
+- `tsconfig.json`
+- `client/tsconfig.json`
+- `server/tsconfig.json`
+- TypeScript dependencies
+
+If the current foundation blocks this migration:
+- STOP;
+- report the exact blocker;
+- do not silently change compiler or package configuration.
+
+Dependency boundary:
+Do not add or upgrade dependencies.
+Do not run:
+- `npm audit fix`
+- `npm audit fix --force`
+
+Do not perform unrelated dependency cleanup.
+
+Validation sequence:
+1. Run targeted formatter tests.
+2. Run `npm run typecheck`.
+3. Run the complete current V1 regression safety net.
+4. Run all existing Node tests:
+   `node --test`
+5. Run:
+   `npm run build --workspace client`
+6. Search for stale imports referencing `formatters.js` incorrectly after migration.
+7. Run `git status --short`.
+8. Inspect `git diff --stat`.
+9. Inspect the complete final diff, including any untracked `.ts` test/migration files.
+10. Confirm only approved Batch 3 files and directly necessary import/test changes were modified.
+
+If validation fails:
+- fix only migration-caused issues inside Batch 3;
+- do not weaken compiler settings;
+- do not change existing formatter/business/display behavior;
+- do not expand into validation/forms/pages/services;
+- if a broader refactor is required, STOP and report it.
+
+Git boundary:
+
+Codex may use read-only Git commands for inspection, including:
+- `git status`
+- `git diff`
+- `git diff --stat`
+- `git branch --show-current`
+- `git log`
+- `git grep`
+
+Codex must not:
+- stage files;
+- create commits;
+- push;
+- merge;
+- rebase;
+- reset;
+- switch branches;
+- create or delete branches;
+- create or delete tags;
+- rewrite Git history.
+
+Leave all changes uncommitted for human review.
+
+Done when:
+- `client/src/lib/formatters.js` is safely migrated to TypeScript if inspection confirms it is suitable;
+- direct formatter behavior is locked by focused tests;
+- no business/display behavior changed;
+- no broad migration occurred;
+- no unsafe TypeScript suppressions were introduced;
+- targeted tests pass;
+- `npm run typecheck` passes;
+- the full regression safety net passes;
+- all existing Node tests pass;
+- the client production build passes;
+- the final diff is focused and reviewable.
+
+Before completion:
+1. Run `git status --short`.
+2. Inspect the final diff.
+3. List every renamed/added/modified file.
+4. Explain why `formatters.js` was safe or unsafe for Batch 3.
+5. Summarize types/contracts introduced.
+6. List any formatter functions discovered to contain business rules rather than pure presentation logic.
+7. Report whether any compatibility shim was required.
+8. Report the dedicated `typescript_reviewer` findings.
+9. Provide the suggested commit message only:
+   `refactor: migrate client formatters to TypeScript`
+
+Completion report:
+- Summary
+- Branch
+- Dependency-gate result
+- `typescript_reviewer` discovery result
+- Subagents used
+- Batch 3 selection and rationale
+- Files renamed
+- Files added
+- Files modified
+- Formatter behavior locked by tests
+- Types/contracts introduced
+- JS/TS interoperability decisions
+- Compatibility shim, if any
+- Business/display rules discovered
+- Production behavior changes, if any
+- Tests updated or added
+- Commands run
+- Type-check result
+- Targeted-test results
+- Regression-test results
+- Full test results
+- Build result
+- TypeScript reviewer findings
+- Deferred/high-risk files
+- Known limitations
+- Final git status
+- Suggested commit message
+- Recommended Batch 4 scope
+
+Recommended next task:
+Review Batch 3 manually, commit it if approved, then prepare Incremental JavaScript → TypeScript Migration — Batch 4.
+
+Do not begin Batch 4 automatically.
+Do not begin PostgreSQL or any later V2 roadmap phase automatically.
+```
