@@ -13,3 +13,7 @@ config_file = "agents/security-reviewer.toml"
 [agents.test_auditor]
 description = "Read-only test auditor that finds current coverage and missing regression tests for core business rules and authorization."
 config_file = "agents/test-auditor.toml"
+
+[agents.typescript_reviewer]
+description = "Read-only TypeScript specialist for compiler configuration, JS/TS interoperability, type safety, and incremental migration risk."
+config_file = "agents/typescript-reviewer.toml"
