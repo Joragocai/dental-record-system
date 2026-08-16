@@ -1,0 +1,301 @@
+ODEX TASK — INCREMENTAL JAVASCRIPT → TYPESCRIPT MIGRATION — BATCH 4
+
+STATUS: READY ONLY AFTER BATCH 3 IS REVIEWED AND COMMITTED
+
+Read first:
+- README.md
+- AGENTS.md
+- docs/architecture/current-system-audit.md
+- docs/codex-prompts/03-TypeScript-Foundation.txt
+- approved TypeScript migration Batch 1, Batch 2, and Batch 3 task specs
+
+Goal:
+Continue the incremental JS/JSX → TS/TSX migration with a larger but still reviewable Batch 4 focused on the client-side validation/forms utility layer.
+
+Completed context:
+- Batch 1: `client/src/lib/backupUi.js` → `.ts`, `client/src/lib/printDocument.js` → `.ts`
+- Batch 2: attachment implementation moved to `client/src/lib/attachments.ts`; `attachments.js` remains a one-line compatibility bridge; direct attachment test added
+- Batch 3: `client/src/lib/formatters.js` → `formatters.ts`; direct behavior-lock test added; broad legacy input behavior preserved
+
+Preferred Batch 4 production candidates:
+- `client/src/lib/validation.js`
+- `client/src/lib/forms.js`
+
+Migrate both only if repository inspection confirms they form one tight dependency cluster. If one has a materially larger blast radius, migrate only the safer one and defer the other.
+
+Do not begin Batch 5 automatically.
+Do not begin PostgreSQL, authentication, RBAC, audit, private storage, finance redesign, patient portal, deployment, or later roadmap phases.
+
+DEPENDENCY GATE
+Begin only after:
+- TypeScript Foundation and Batches 1–3 are reviewed and committed
+- `npm run typecheck` passes
+- current V1 regression safety net passes
+- working tree is clean except for unrelated user-approved changes
+
+If Batch 3 is uncommitted, STOP.
+
+SUBAGENT DISCOVERY GATE
+Before editing, confirm the dedicated custom project subagent `typescript_reviewer` is callable.
+If it cannot be discovered/spawned:
+- STOP before modifying files
+- report the exact problem
+- do not substitute a generic reviewer
+
+BEFORE EDITING
+1. Run `git status --short`.
+2. Verify branch.
+3. Run `npm run typecheck`.
+4. Confirm Batch 1–3 migrated TS files exist.
+5. Confirm `client/src/lib/attachments.js` is still only the expected compatibility bridge.
+6. Read `client/src/lib/validation.js` fully.
+7. Read `client/src/lib/forms.js` fully.
+8. Read all direct importers and relevant tests.
+9. Map dependencies among validation.js, forms.js, formatters.ts, API helpers, and React callers.
+10. Classify exports as:
+   - PURE VALIDATION
+   - NORMALIZATION
+   - FORM-DATA SHAPING
+   - CLASSIFICATION-DEPENDENT RULE
+   - DATE/TIME VALIDATION
+   - MONEY/NUMBER VALIDATION
+   - BUSINESS-RULE ADJACENT
+   - HIGH-RISK / DEFER
+11. Give a short Batch 4 plan with exact files before editing.
+
+BATCH-SIZE RULE
+Batch 4 may be larger than prior batches:
+- target 2 closely related production modules
+- directly necessary tests
+- directly necessary import updates
+
+Do not add unrelated modules just because the first conversion is easy.
+
+EXPLICITLY DEFER
+- `client/src/lib/api.js`
+- server validation/business-rule modules
+- server services
+- server routes
+- database modules
+- runtime configuration
+- backup/export/upload internals
+- React pages
+- large React components/forms
+- application bootstrap
+- PostgreSQL work
+
+BEHAVIOR-LOCK REQUIREMENT
+Before migration, establish or confirm direct tests for selected exports.
+
+For validation.js, preserve/test actual current behavior where present:
+- required/optional field checks
+- patient/treatment/appointment validation
+- date validation
+- numeric/money validation
+- classification/PWD-related validation
+- returned error messages/shapes
+- null/empty/fallback handling
+
+For forms.js, preserve/test actual current behavior where present:
+- default/initial form values
+- record → form-state conversion
+- form-state normalization
+- empty-string/null conversion
+- date/time shaping
+- number/string conversion
+- classification field preservation
+- patient/treatment/appointment form shaping
+
+Use current JS behavior as the contract. Do not invent new behavior.
+
+TYPE-SAFETY RULES
+- strict TypeScript
+- minimum accurate types
+- named local interfaces/types for recurring form/validation shapes
+- preserve broad legacy inputs where callers rely on them
+- no broad `any`
+- `unknown` only when genuinely appropriate and narrowed
+- no `@ts-ignore`
+- no `@ts-nocheck`
+- no weakening tsconfig
+- no unsafe assertions merely to silence TypeScript
+- no invented literal unions unless exhaustive values are proven
+
+TypeScript must not replace runtime validation.
+
+BUSINESS-RULE BOUNDARY
+Preserve exactly:
+- patient validation
+- treatment validation
+- appointment validation
+- Senior/PWD classification handling
+- discount-related input handling
+- amount/payment/balance input behavior
+- current date rules
+- appointment status validation
+- error messages/error-object shapes
+- required/optional field behavior
+
+If a helper contains a business rule, preserve it and report it. Do not redesign or relocate it.
+
+JS/TS INTEROP
+- keep production imports extensionless where supported
+- do not force JS/JSX callers to migrate
+- do not enable checkJs
+- do not change tsconfig or dependencies
+- add no compatibility shim unless current Node test/runtime behavior proves it necessary
+- if a shim is necessary, explain why and keep it minimal
+- do not remove the Batch 2 attachments.js bridge as unrelated cleanup
+
+MIGRATION WORKFLOW
+For each selected module:
+1. Read production source completely.
+2. Read direct tests/importers.
+3. Add/extend behavior-lock tests against the current JS implementation when practical.
+4. Run them before rename.
+5. Rename/migrate `.js` → `.ts`.
+6. Add minimum accurate types.
+7. Update only directly necessary tests/imports.
+8. Run targeted tests.
+9. Run `npm run typecheck`.
+10. Inspect diff for behavior changes.
+11. Continue to second production module only if first remains green and reviewers approve.
+
+RUNTIME BEHAVIOR MUST NOT CHANGE
+- patient/treatment/appointment workflows
+- readable IDs
+- classification behavior
+- discount/balance/payment calculations
+- attachment behavior
+- backup behavior
+- export contents
+- print/PDF behavior
+- API payloads/contracts
+- database behavior
+- UI layout/navigation
+
+If migration requires a behavior change, STOP.
+
+SUBAGENTS
+Required:
+- `repo_explorer`
+- `requirements_auditor`
+- `test_auditor`
+- dedicated custom `typescript_reviewer`
+
+Conditional:
+- `security_reviewer` only if selected code touches upload validation, sensitive-field exposure, secrets, authorization assumptions, or another security boundary
+
+Parent agent is the only writer.
+All reviewers stay read-only.
+Do not create/modify subagent definitions.
+
+PROTECTED CONFIG
+Do not modify:
+- `.codex/agents/*.toml`
+- `.codex/config.toml`
+- `tsconfig.json`
+- `client/tsconfig.json`
+- `server/tsconfig.json`
+- TypeScript dependencies
+
+If current foundation blocks the migration, STOP and report the exact blocker instead of changing compiler/test-runner/package configuration.
+
+DEPENDENCY BOUNDARY
+Do not add/upgrade dependencies.
+Do not run `npm audit fix` or `npm audit fix --force`.
+
+VALIDATION
+1. Targeted validation/forms tests.
+2. `npm run typecheck`.
+3. Full current V1 regression safety net.
+4. `node --test`.
+5. `npm run build --workspace client`.
+6. Search stale `.js` imports after rename.
+7. Search for new `@ts-ignore`, `@ts-nocheck`, broad `any`, unsafe assertions.
+8. `git status --short`.
+9. `git diff --stat`.
+10. Inspect full final diff including untracked `.ts` files/tests.
+11. Confirm only approved Batch 4 changes exist.
+
+If validation fails:
+- fix only migration-caused issues inside Batch 4
+- do not weaken compiler settings
+- do not change current business/validation behavior
+- do not expand into API/server/routes/database/React migration
+- STOP if a broader redesign is required
+
+GIT BOUNDARY
+Read-only inspection commands are allowed.
+Do not stage, commit, push, merge, rebase, reset, switch branches, create/delete branches/tags, or rewrite history.
+Leave changes uncommitted for human review.
+
+DONE WHEN
+- one approved client validation/forms cluster is migrated safely
+- no unrelated migration occurred
+- direct behavior-lock coverage exists
+- existing behavior is preserved
+- targeted tests pass
+- `npm run typecheck` passes
+- full V1 regression passes
+- all Node tests pass
+- client build passes
+- final diff is focused
+
+BEFORE COMPLETION
+1. Run `git status --short`.
+2. Inspect final diff.
+3. List every renamed/added/modified file.
+4. Explain why migrated modules belong in one dependency cluster.
+5. Summarize types/contracts introduced.
+6. List business-rule-adjacent helpers discovered.
+7. Report compatibility shim, if any.
+8. Report dedicated `typescript_reviewer` findings.
+9. List remaining JS/JSX migration inventory by:
+   - client utilities
+   - server utilities
+   - server services
+   - routes/API
+   - React components
+   - React pages/forms
+   - database/runtime/high-risk
+   - compatibility bridges/cleanup
+10. Suggested commit message only:
+    `refactor: migrate client validation utilities to TypeScript`
+
+COMPLETION REPORT
+- Summary
+- Branch
+- Dependency-gate result
+- `typescript_reviewer` discovery result
+- Subagents used
+- Batch 4 selection/rationale
+- Files renamed
+- Files added
+- Files modified
+- Behavior locked by tests
+- Types/contracts introduced
+- JS/TS interoperability decisions
+- Compatibility shim, if any
+- Business-rule-adjacent helpers discovered
+- Production behavior changes, if any
+- Tests updated/added
+- Commands run
+- Type-check result
+- Targeted-test results
+- Regression-test results
+- Full test results
+- Build result
+- TypeScript reviewer findings
+- Security reviewer findings, if used
+- Deferred/high-risk files
+- Remaining JS/JSX migration inventory
+- Known limitations
+- Final git status
+- Suggested commit message
+- Recommended Batch 5 scope
+
+Recommended next task:
+Review Batch 4 manually, commit if approved, then prepare Batch 5 from the actual remaining inventory.
+
+Do not begin Batch 5 or PostgreSQL automatically.
