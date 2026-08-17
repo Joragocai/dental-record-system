@@ -21,6 +21,7 @@
     "db:migrate": "npm run db:migrate --workspace server",
     "db:migrate:status": "npm run db:migrate:status --workspace server",
     "test:postgres:foundation": "npm run test:postgres:foundation --workspace server",
+    "test:postgres:batch-a": "npm run test:postgres:batch-a --workspace server",
     "typecheck": "npm run typecheck:client && npm run typecheck:server",
     "typecheck:client": "tsc --project client/tsconfig.json",
     "typecheck:server": "tsc --project server/tsconfig.json",

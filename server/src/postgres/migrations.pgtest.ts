@@ -93,9 +93,11 @@ class FakeMigrationRunner implements PgMigrationRunner {
 test("listMigrationFiles returns ordered SQL migrations with checksums", async () => {
   const migrations = await listMigrationFiles();
 
-  assert.equal(migrations.length, 1);
+  assert.equal(migrations.length, 2);
   assert.equal(migrations[0]?.name, "0001_v2_foundation_probe.sql");
+  assert.equal(migrations[1]?.name, "0002_branch_patient_core.sql");
   assert.equal(migrations[0]?.checksum.length, 64);
+  assert.equal(migrations[1]?.checksum.length, 64);
 });
 
 test("compareMigrationState reports pending, applied, and orphaned migrations", () => {
@@ -136,12 +138,15 @@ test("runPendingMigrationsFromList records applied migrations and skips reruns",
   const runner = new FakeMigrationRunner();
 
   const firstRun = await runPendingMigrationsFromList(runner, migrations, migrationTableName);
-  assert.deepEqual(firstRun.applied, ["0001_v2_foundation_probe.sql"]);
-  assert.deepEqual(runner.listAppliedMigrationNames(), ["0001_v2_foundation_probe.sql"]);
+  assert.deepEqual(firstRun.applied, ["0001_v2_foundation_probe.sql", "0002_branch_patient_core.sql"]);
+  assert.deepEqual(runner.listAppliedMigrationNames(), [
+    "0001_v2_foundation_probe.sql",
+    "0002_branch_patient_core.sql"
+  ]);
 
   const secondRun = await runPendingMigrationsFromList(runner, migrations, migrationTableName);
   assert.deepEqual(secondRun.applied, []);
-  assert.deepEqual(secondRun.skipped, ["0001_v2_foundation_probe.sql"]);
+  assert.deepEqual(secondRun.skipped, ["0001_v2_foundation_probe.sql", "0002_branch_patient_core.sql"]);
 });
 
 test("runPendingMigrationsFromList rejects checksum drift", async () => {
@@ -178,8 +183,9 @@ test("getMigrationStatus remains read-only when the migration table is absent", 
 
   const statuses = await getMigrationStatus(runner);
 
-  assert.equal(statuses.length, 1);
+  assert.equal(statuses.length, 2);
   assert.equal(statuses[0]?.applied, false);
+  assert.equal(statuses[1]?.applied, false);
   assert.equal(
     runner.executedSql.some((statement) => statement.startsWith(`CREATE TABLE IF NOT EXISTS ${migrationTableName}`)),
     false
