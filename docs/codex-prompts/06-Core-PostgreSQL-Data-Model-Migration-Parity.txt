@@ -9,7 +9,7 @@ Migration Parity phase.
 Do not execute this document directly.
 
 Current executable task:
-06A-Core-PostgreSQL-Data-Model-Migration-Parity-Batch-A.txt
+06B-Core-PostgreSQL-Data-Model-Migration-Parity-Treatment.txt
 
 Build the first controlled V2 domain-data slice on top of the committed PostgreSQL Foundation.
 

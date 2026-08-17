@@ -1,0 +1,589 @@
+STATUS: EXECUTABLE TASK — PHASE 06B / TREATMENT
+
+Project: Khurana Calliap Dental Record System
+Phase: 06 — Core PostgreSQL Data Model + Migration Parity
+Batch: 06B — Treatment
+Execution branch: feat/v2-treatment-data-model-batch-b
+Base/integration branch: refactor/v2-cloud-migration
+
+PURPOSE
+
+Implement the next narrow PostgreSQL domain-data slice for Treatment after the
+completed and integrated Phase 06A Branch + Patient foundation.
+
+This task is ONLY for the Treatment PostgreSQL data model, legacy identity
+mapping where needed, and fictional V1 SQLite -> V2 PostgreSQL migration/parity
+validation.
+
+Do not cut over the active V1 Treatment runtime yet.
+
+SOURCE-OF-TRUTH ORDER
+
+Read and follow, in this order:
+
+1. README.md
+2. AGENTS.md
+3. docs/codex-prompts/06-Core-PostgreSQL-Data-Model-Migration-Parity.txt
+4. docs/codex-prompts/06A-Core-PostgreSQL-Data-Model-Migration-Parity-Batch-A.txt
+5. docs/architecture/postgresql-patient-batch-a.md
+6. docs/architecture/v2-migration-map.md
+7. ADR-0001 for the accepted selective-replacement migration strategy
+8. the actual V1 Treatment schema, services, routes, utilities, tests, and UI
+   code in the repository
+
+The repository implementation is authoritative for existing V1 persisted
+behavior. Do not invent fields from memory.
+
+BRANCH / GIT GATE
+
+Before any edits, verify:
+
+- Node major version is 24
+- active branch is exactly:
+  feat/v2-treatment-data-model-batch-b
+- the branch was created from the current:
+  refactor/v2-cloud-migration
+- working tree is clean
+- Phase 06A Branch + Patient has already been merged into the integration
+  branch and is present in this branch history
+- PostgreSQL Foundation is present
+- migration 0001 is unchanged
+- Batch A migration 0002 is present and unchanged
+- docs/architecture/postgresql-patient-batch-a.md exists
+- docs/architecture/v2-migration-map.md exists
+
+If the active branch is wrong, STOP and report the blocker.
+Do not create, switch, merge, rebase, stage, commit, or push branches yourself.
+
+REQUIRED PRE-EDIT REVIEW
+
+Use the available read-only reviewers:
+
+- repo_explorer
+- requirements_auditor
+- test_auditor
+- typescript_reviewer
+- security_reviewer
+
+Use database_architect only if it is already available and useful.
+
+The parent agent is the only writer.
+Reviewers remain read-only.
+
+Before editing, inspect the exact V1 Treatment domain, including at minimum:
+
+- SQLite treatment-related table definitions
+- Treatment service/repository logic
+- Treatment route behavior
+- Treatment utilities/helpers
+- Treatment tests
+- Treatment UI fields only as needed to confirm persisted semantics
+- patient linkage behavior
+- treatment identifier generation behavior, if one exists
+- treatment status/finalization/correction behavior, if persisted
+- timestamps/date semantics
+- money/fee/discount/balance fields only if Treatment itself persists them
+- any downstream Appointment/finance linkage, without implementing those
+  downstream domains in this batch
+
+Do not infer a Treatment field merely because it appears in a UI label.
+Confirm whether it is actually persisted.
+
+MANDATORY V1 -> V2 FIELD-MAPPING MATRIX
+
+Before code changes, produce a field-mapping matrix covering EVERY persisted
+V1 Treatment field.
+
+For each field include:
+
+- V1 field name
+- V1 SQLite type / representation
+- actual V1 behavior / meaning
+- nullable/required behavior
+- V2 target field
+- PostgreSQL type
+- transformation rule
+- whether behavior is preserved exactly or semantically
+- risk / ambiguity
+
+Also list:
+
+- V1 fields intentionally NOT carried into the V2 Treatment domain table
+- why each one is omitted
+- any derived fields
+- any denormalized legacy values
+- any fields whose business meaning cannot be confirmed
+
+If a material Treatment semantic decision cannot be derived safely from the
+repository/docs, STOP before implementation and report the exact decision
+needed from the human.
+
+DO NOT silently resolve major business ambiguities.
+
+BATCH 06B SCOPE
+
+The intended Batch B scope is:
+
+1. Treatment PostgreSQL schema
+2. Treatment internal UUID identity
+3. preservation of any existing human-readable Treatment identifier, if V1
+   actually has one
+4. Treatment -> Patient linkage using the V2 Patient UUID
+5. legacy Treatment identity mapping if required for future referential
+   migration
+6. fictional V1 Treatment -> V2 Treatment migration helper/harness
+7. field-level migration parity
+8. rerun/idempotency behavior
+9. transactional Treatment + legacy-mapping migration
+10. focused PostgreSQL integration validation
+11. architecture/migration-map documentation updates
+
+OUT OF SCOPE
+
+Do NOT implement:
+
+- Treatment service/API cutover
+- Treatment route conversion
+- Treatment UI replacement
+- dual writes
+- deletion of V1 Treatment code
+- Appointment PostgreSQL schema
+- Finance schema
+- invoice/payment/receivable logic
+- Authentication
+- RBAC
+- audit log implementation
+- storage/attachments migration
+- patient portal
+- notifications
+- dashboards
+- deployment
+- real production migration
+- real clinic or patient data
+
+Keep the active V1 Treatment path on SQLite.
+
+IDENTITY / RELATIONSHIP RULES
+
+Use UUID primary keys internally for V2 Treatment records.
+
+Do not reuse a legacy SQLite integer primary key as the V2 primary key.
+
+If V1 has a visible Treatment/business code:
+- preserve its visible semantics
+- keep it separate from the UUID primary key
+- verify its actual generation rules from V1 before implementing an allocator
+
+Patient linkage:
+- V2 Treatment must reference the V2 Patient UUID
+- fictional migration must resolve the legacy patient identity through the
+  Phase 06A legacy patient mapping seam
+- do not guess patient matches by name, email, phone, or fuzzy matching
+- missing or conflicting Patient mapping must fail before Treatment insertion
+
+If V1 uses patient_id business codes as the relationship key, preserve that
+only as migration input; the V2 Treatment FK should target patients.id.
+
+LEGACY TREATMENT MAPPING
+
+If downstream V1 records will need a stable Treatment migration seam later,
+add a narrow legacy Treatment identity map.
+
+Use explicit source-system identity and one-to-one constraints comparable in
+spirit to the Patient Batch A mapping.
+
+Do not add a mapping table unless the repository inspection shows it is useful
+for later Treatment references or safe rerun behavior.
+
+Document the decision either way.
+
+TRANSACTIONAL MIGRATION
+
+A single fictional Treatment migration unit must be atomic.
+
+If a Treatment row and legacy identity mapping are both needed:
+- both succeed; or
+- neither remains
+
+Use the existing PostgreSQL transaction foundation.
+Do not introduce a second transaction framework.
+
+RERUN / IDEMPOTENCY
+
+The fictional migration harness must be safe to rerun.
+
+At minimum:
+
+- rerunning the same source Treatment does not create a duplicate
+- a matching existing migration is reused/no-op
+- conflicting source identity or business identifier fails clearly
+- mismatched persisted data is not silently overwritten
+- tests prove row-count stability after rerun
+
+PATIENT FK INTEGRITY
+
+Tests must prove:
+
+- a mapped legacy Patient resolves to exactly one existing V2 Patient UUID
+- a missing mapping fails before Treatment write
+- a conflicting mapping fails clearly
+- Treatment cannot silently attach to the wrong Patient
+- PostgreSQL FK constraints protect the relationship
+
+TREATMENT BUSINESS RULE PRESERVATION
+
+Do not redesign Treatment behavior in this batch.
+
+Preserve existing persisted V1 semantics unless an already accepted V2
+requirement explicitly supersedes them.
+
+Examples to inspect, not assumptions:
+
+- treatment date
+- diagnosis / procedure / description
+- tooth / surface / area
+- dentist/provider reference
+- status
+- notes
+- treatment plan vs completed treatment distinction
+- fee / amount / discount fields
+- finalization state
+- correction/amendment semantics
+- created_at / updated_at
+- treatment code / record number
+
+If V1 mixes concepts that should eventually be separated, prefer a parity-safe
+Batch B structure and document the future normalization instead of expanding
+scope now.
+
+DENTIST / STAFF SEMANTICS
+
+Do not add authentication/RBAC in this batch.
+
+However, if V1 Treatment rows persist dentist/provider identity:
+- preserve that persisted value or relationship faithfully
+- do not invent staff UUID mappings unless a committed staff identity model
+  already exists
+- if V2 staff identity is not yet available, keep the migration strategy
+  explicit and non-destructive and document the deferred dependency
+
+Do not make temporary fake production identity structures merely to unblock
+this batch.
+
+DATES / TIMESTAMPS
+
+Use:
+
+- PostgreSQL DATE for date-only business dates
+- PostgreSQL TIMESTAMPTZ for event timestamps
+
+Persist event timestamps as UTC-compatible values.
+
+Use the approved clinic display/business timezone semantics from README.md
+(default Asia/Manila) where calendar-boundary behavior matters.
+
+Do not make date behavior depend accidentally on the host machine timezone.
+
+MONEY
+
+If Treatment persists monetary values in V1 and they truly belong to the
+Treatment record for parity:
+- use NUMERIC(12,2)
+- avoid floating-point storage
+- preserve exact V1 semantics
+- do not implement Finance ledger behavior in this batch
+
+If those values actually belong to later Finance work, do not move them into
+Treatment merely for convenience. Document the dependency.
+
+NULL / EMPTY STRING RULES
+
+Build the rule from actual V1 behavior and the approved Batch A convention.
+
+Unless a field requires exact empty-string preservation:
+- null/undefined optional text -> NULL
+- empty/whitespace-only optional text -> NULL
+- meaningful optional text -> preserve meaning
+- required fields must be validated explicitly rather than silently converted
+
+Document any intentional exception.
+
+POSTGRESQL MIGRATION
+
+Add the next ordered migration only.
+
+Expected sequence:
+- 0001 PostgreSQL foundation — MUST remain unchanged
+- 0002 Branch + Patient Batch A — MUST remain unchanged
+- 0003 Treatment Batch B — new migration for this task
+
+Use the repository's exact migration naming convention.
+
+Do not edit an already committed migration to add Treatment fields.
+
+Prefer explicit constraints:
+- PK
+- FK
+- UNIQUE where required by real business identity
+- NOT NULL where required
+- CHECK constraints where they safely encode confirmed invariants
+- ON DELETE behavior that avoids accidental clinical-data loss
+
+Do not add destructive cascade behavior for clinical history without explicit
+existing requirements.
+
+FICTIONAL TEST DATA ONLY
+
+All migration/parity fixtures must be fictional.
+
+Do not read or copy real patient, clinic, dentist, or treatment data.
+
+Use obvious fictional/example values.
+
+TEST-DATABASE SAFETY
+
+The live PostgreSQL integration test must use the existing safe test-database
+guard.
+
+It must never run destructive setup against:
+- production
+- staging
+- the configured production DATABASE_URL
+- real clinic data
+
+Cleanup must be limited to verified test-created state.
+
+Do not use broad DROP SCHEMA public CASCADE unless the existing safety
+foundation explicitly proves a dedicated disposable database and the current
+project policy permits it.
+
+Prefer cleanup of the known Batch B/Batch A test-created objects or another
+narrow isolated mechanism consistent with the existing foundation.
+
+TEST REQUIREMENTS
+
+Add focused tests that cover, as applicable after repository inspection:
+
+1. V1 -> V2 field transformation
+2. full field-level persisted parity
+3. Treatment -> Patient UUID mapping
+4. missing Patient mapping failure
+5. conflicting Patient mapping failure
+6. Treatment insert + identity-map atomicity
+7. rollback when mapping insert fails
+8. rollback when Treatment insert fails
+9. safe second migration run
+10. conflicting legacy Treatment identity
+11. conflicting business Treatment identifier, if V1 has one
+12. null/blank optional-value normalization
+13. DATE/TIMESTAMPTZ behavior
+14. money precision if Treatment owns money fields
+15. PostgreSQL FK behavior
+16. source row count == expected migrated row count
+17. target row count has no duplicates/extras
+18. legacy map row count is stable
+19. no source Treatment silently disappears
+
+The live PostgreSQL integration test MUST run and pass.
+If it skips because no safe TEST_DATABASE_URL exists, do NOT report READY FOR
+COMMIT.
+
+Instead report:
+
+IMPLEMENTATION COMPLETE — POSTGRESQL INTEGRATION VALIDATION PENDING
+
+Do not weaken the safety gate merely to make integration run.
+
+TYPESCRIPT RULES
+
+New V2 code is TypeScript by default.
+
+Keep strict typing.
+
+Do not introduce:
+- broad any
+- @ts-ignore
+- @ts-nocheck
+- unsafe double assertions
+- import-time database singletons
+- unnecessary global abstractions
+
+Use narrow PostgreSQL executor/domain contracts consistent with Batch A.
+
+PACKAGE / SCRIPT HYGIENE
+
+Add only the minimal scripts needed for Batch B tests.
+
+Keep:
+- foundation PostgreSQL tests isolated
+- Batch A tests isolated
+- Batch B tests isolated
+
+Do not add dependencies unless strictly necessary.
+If no dependency is required, package-lock.json should remain unchanged.
+
+DOCUMENTATION
+
+Add a focused durable architecture note for Batch B, for example:
+
+docs/architecture/postgresql-treatment-batch-b.md
+
+Document:
+
+- scope
+- Treatment identity strategy
+- Patient relationship strategy
+- legacy Treatment mapping decision
+- full field-mapping summary
+- date/timestamp rules
+- monetary-field decision if relevant
+- rerun/idempotency behavior
+- transactional migration behavior
+- fictional migration harness
+- known limitations
+- real-data migration blockers
+- explicitly deferred service/API/UI cutover
+
+Update:
+- docs/architecture/v2-migration-map.md
+
+Do not rewrite unrelated architecture documents.
+
+NO RUNTIME CUTOVER
+
+This is critical.
+
+After Batch B:
+- V1 Treatment services/routes/UI must remain functional
+- V1 SQLite remains the active runtime persistence path for Treatment
+- PostgreSQL Treatment code is migration/foundation work only
+- no dual-write path
+- no partially activated V2 route
+
+VALIDATION SEQUENCE
+
+After implementation run:
+
+- node -v
+- npm -v
+- git diff --check
+- npm run typecheck
+- npm run test:postgres:foundation
+- npm run test:postgres:batch-a
+- the new Batch B targeted PostgreSQL test command
+- node --test server/src/services/v1RegressionSafetyNet.test.js
+- node --test
+- npm run build --workspace client
+
+Also inspect/search for:
+
+- accidental Treatment service/route cutover
+- dual-write logic
+- Appointment schema creep
+- Finance schema creep
+- auth/RBAC/storage/audit scope creep
+- credentials
+- PII logging
+- raw database URL logging
+- unsafe SQL interpolation
+- real data
+- changes to migration 0001
+- changes to migration 0002
+- unsafe TypeScript suppression/casts
+
+FINAL DIFF REVIEW
+
+Before completion:
+
+- inspect git status
+- inspect git diff --check
+- inspect git diff --stat
+- inspect exact changed-file list
+- verify no unrelated files changed
+- verify migration 0001 unchanged
+- verify migration 0002 unchanged
+- verify V1 Treatment runtime still uses SQLite
+- verify Phase 06A Patient behavior/tests remain intact
+- verify Batch 5 Appointment files remain untouched unless a test-only import
+  was strictly necessary
+
+COMMIT-READINESS RULE
+
+Report READY FOR COMMIT only if:
+
+- field mapping is complete
+- no unresolved material Treatment semantics remain
+- typecheck passes
+- Foundation tests pass
+- Batch A tests pass
+- Batch B targeted tests pass
+- safe live PostgreSQL Batch B integration runs and passes
+- V1 regression passes
+- full tests pass
+- client build passes
+- no runtime cutover occurred
+- no real data was used
+- migrations 0001 and 0002 remained unchanged
+
+Otherwise report the precise blocker.
+
+FINAL COMPLETION REPORT
+
+Report:
+
+- Summary
+- Branch
+- Dependency-gate result
+- Node/npm versions
+- Batch A integration verification
+- PostgreSQL Foundation verification
+- reviewers used
+- pre-implementation V1 Treatment findings
+- complete V1 -> V2 Treatment field-mapping summary
+- files added
+- files modified
+- migration added
+- confirmation 0001 unchanged
+- confirmation 0002 unchanged
+- Treatment schema summary
+- Patient FK strategy
+- Treatment identity/business-code strategy
+- legacy Treatment mapping strategy
+- atomic migration result
+- rerun/idempotency result
+- full parity result
+- date/timestamp behavior
+- money-field decision if applicable
+- test database safety result
+- PostgreSQL integration result
+- TypeScript reviewer findings
+- security reviewer findings
+- V1 SQLite coexistence result
+- Batch A compatibility result
+- Appointment/Finance scope confirmation
+- commands run
+- typecheck result
+- foundation test result
+- Batch A test result
+- Batch B test result
+- V1 regression result
+- full test result
+- client build result
+- package/lockfile impact
+- documentation changes
+- known limitations
+- real-data migration blockers
+- deferred service/API/UI cutover
+- final git status
+- commit-readiness status
+- suggested commit message
+- recommended next task only
+
+If READY FOR COMMIT, suggested commit message:
+
+feat: add PostgreSQL treatment data-model foundation
+
+Leave all implementation changes uncommitted for human review.
+
+Do not begin Phase 06C automatically.
+Stop after the completion report.
