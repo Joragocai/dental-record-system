@@ -1,23 +1,32 @@
 CODEX TASK — POSTGRESQL FOUNDATION FOR V2 SELECTIVE REPLACEMENT
 
-STATUS: READY AFTER THE SELECTIVE-REPLACEMENT TRANSITION CHANGES ARE HUMAN-REVIEWED AND COMMITTED
+STATUS: READY
 
-IMPORTANT GATE
+IMPORTANT DEPENDENCY GATE
 
-The selective-replacement transition has completed successfully, but its documentation changes were left uncommitted for human review.
+The V2 Selective Replacement Strategy Transition must already be human-reviewed and committed before this PostgreSQL Foundation task begins.
 
-Do not execute this PostgreSQL Foundation task until the following transition changes are reviewed and committed:
+Evaluate this gate from the CURRENT repository state and Git history. Do not rely on historical wording from earlier task drafts.
 
-- README.md
-- AGENTS.md
-- docs/architecture/decisions/README.md
-- docs/architecture/decisions/ADR-0001-adopt-incremental-v2-selective-replacement-migration.md
-- docs/architecture/v2-migration-map.md
+Before doing any PostgreSQL work:
 
-Expected transition commit message:
-`docs: adopt incremental V2 replacement strategy`
+1. Run `git status --short`.
+2. Confirm the working tree is clean except for unrelated user-approved changes.
+3. Verify that the selective-replacement transition commit exists in Git history.
+4. Verify these committed files exist:
+   - README.md
+   - AGENTS.md
+   - docs/architecture/decisions/README.md
+   - docs/architecture/decisions/ADR-0001-adopt-incremental-v2-selective-replacement-migration.md
+   - docs/architecture/v2-migration-map.md
+5. Verify ADR-0001 has status `Accepted`.
+6. Verify the committed README/AGENTS/migration-map state reflects the selective-replacement strategy.
 
-If those changes are still uncommitted, STOP and report that the transition must be committed first.
+If these requirements are satisfied, CONTINUE with the PostgreSQL Foundation task.
+
+Do not stop merely because an older prompt or prior completion report described the transition changes as uncommitted. The current working tree, committed files, and Git history are authoritative.
+
+If the transition files are actually uncommitted, missing, or ADR-0001 is not accepted, STOP and report the exact dependency-gate problem.
 
 PURPOSE
 
