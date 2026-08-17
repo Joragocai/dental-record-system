@@ -81,4 +81,4 @@ Add ADRs to this section as they are accepted.
 
 | ADR | Decision | Status |
 | --- | --- | --- |
-| ADR-0001 | TBD | Proposed |
+| ADR-0001 | Adopt incremental V2 selective replacement migration | Accepted |

@@ -306,16 +306,22 @@ frontend/backend contract mismatches.
 
 1. Finish and commit the V1 regression-test safety net.
 2. Add TypeScript compiler configuration and project scripts.
-3. Add shared domain types and runtime schemas for stable existing behavior.
-4. Convert low-risk shared utilities and formatting/validation modules.
-5. Convert backend services and repositories.
-6. Convert Express middleware, controllers, routes, and application entry
-   points.
-7. Convert frontend API clients, utilities, hooks, and shared state.
-8. Convert React components, layouts, routes, and pages to TSX.
-9. Convert operational and migration scripts that remain part of V2.
+3. Reuse stable shared TypeScript helpers and migrate only low-risk modules
+   that clearly support the next approved V2 step.
+4. Classify legacy areas as keep, adapt, replace, bridge, or retire-later
+   instead of treating broad JavaScript elimination as the primary goal.
+5. Preserve compatibility bridges while live runtime consumers still depend on
+   them.
+6. Establish PostgreSQL and other V2 foundations without waiting for 100%
+   TypeScript conversion of the current V1 application.
+7. Replace capabilities in incremental vertical slices that preserve approved
+   clinic behavior while moving toward the target architecture.
+8. Retire legacy JavaScript and compatibility layers only after parity,
+   runtime, data-migration, and review gates are satisfied.
+9. Convert additional source to TypeScript where it materially improves a
+   replacement slice or a stable shared foundation.
 10. Remove obsolete JavaScript compatibility settings only after all required
-    source files have migrated and tests remain green.
+    consumers are migrated and tests remain green.
 11. Increase compiler strictness gradually until the approved strict target is
     reached.
 
@@ -2963,22 +2969,32 @@ npm run db:seed:demo
 - Finish automated regression tests for existing critical business rules.
 - Create a fictional staging dataset.
 
-### Phase 2: TypeScript Foundation and Incremental Migration
+### Phase 2: TypeScript Foundation and Selective Migration
 
 - Add TypeScript configuration for the root, client, and server as appropriate.
 - Add `npm run typecheck` and make type checking part of the validation workflow.
 - Allow JavaScript and TypeScript to coexist temporarily during migration.
 - Define shared domain types and runtime-validation boundaries.
-- Convert stable utilities and existing business-rule modules in focused batches.
-- Convert backend services and repositories before major new backend modules are added.
-- Convert middleware, controllers, routes, and server entry points.
-- Convert frontend API clients, hooks, state, components, and pages incrementally.
+- Convert stable utilities and existing business-rule modules only in focused
+  batches that clearly support the next approved V2 step.
+- Reuse successful TypeScript modules and preserve compatibility bridges where
+  live consumers still depend on them.
 - Use `.ts` for non-React TypeScript and `.tsx` for React JSX modules.
 - Keep TypeScript-only conversions separate from unrelated behavior changes where practical.
 - Require regression tests, type checking, and builds to stay green after every migration batch.
 - Write new V2 modules in TypeScript by default.
 
-### Phase 3: PostgreSQL Foundation
+### Phase 3: Migration Strategy Transition
+
+- Record the selective-replacement migration strategy in repository
+  architecture documentation.
+- Classify current implementation areas as keep, adapt, replace, bridge, or
+  retire-later.
+- Document legacy retirement gates and parity expectations.
+- Confirm that PostgreSQL and future V2 slices should not wait on broad
+  JavaScript/JSX elimination.
+
+### Phase 4: PostgreSQL Foundation
 
 - Configure PostgreSQL.
 - Add migration tooling.
@@ -2988,7 +3004,16 @@ npm run db:seed:demo
 - Add database constraints and transactions.
 - Verify patient, treatment, appointment, discount, and balance behavior.
 
-### Phase 4: Authentication and Authorization
+### Phase 5: V2 Vertical Replacement Slices
+
+- Implement V2 capabilities in focused vertical slices instead of requiring
+  full horizontal conversion of the remaining V1 stack first.
+- Reuse, adapt, bridge, replace, or retire legacy areas according to the
+  approved migration map.
+- Remove legacy paths only after replacement parity and retirement gates are
+  satisfied.
+
+### Phase 6: Authentication and Authorization
 
 - Integrate Supabase Auth or approved provider.
 - Add staff invitation flow.
@@ -3003,7 +3028,7 @@ npm run db:seed:demo
 - Add System Administrator self-elevation prevention.
 - Add scoped, expiring temporary support-access workflow.
 
-### Phase 5: Audit Trail
+### Phase 7: Audit Trail
 
 - Create `audit_events` table.
 - Add request IDs.
@@ -3014,7 +3039,7 @@ npm run db:seed:demo
 - Protect audit log from modification.
 - Audit account approvals, technical provisioning, support access, backup approval, and restore execution.
 
-### Phase 6: Private Attachments and Camera Capture
+### Phase 8: Private Attachments and Camera Capture
 
 - Create private storage bucket.
 - Add upload intent flow.
@@ -3025,7 +3050,7 @@ npm run db:seed:demo
 - Add attachment access tests.
 - Add storage backup plan.
 
-### Phase 7: Appointment Redesign
+### Phase 9: Appointment Redesign
 
 - Add expanded statuses.
 - Add patient request flow.
@@ -3036,7 +3061,7 @@ npm run db:seed:demo
 - Add in-app notifications and transactional email notifications.
 - Do not add SMS providers, SMS templates, SMS delivery tables, or SMS environment variables in the initial V2 implementation.
 
-### Phase 8: Financial Module
+### Phase 10: Financial Module
 
 - Add invoices and invoice items.
 - Add payments and allocations.
@@ -3049,7 +3074,7 @@ npm run db:seed:demo
 - Add daily cash closing.
 - Add reports and controlled exports.
 
-### Phase 9: Patient Portal
+### Phase 11: Patient Portal
 
 - Add patient dashboard.
 - Add approved treatment history.
@@ -3058,7 +3083,7 @@ npm run db:seed:demo
 - Add approved documents.
 - Add privacy information.
 
-### Phase 10: Responsive UI and Accessibility
+### Phase 12: Responsive UI and Accessibility
 
 - Add desktop sidebar.
 - Add mobile bottom navigation.
@@ -3068,7 +3093,7 @@ npm run db:seed:demo
 - Add keyboard and accessibility checks.
 - Test required viewport sizes.
 
-### Phase 11: Deployment, Monitoring, and Production Review
+### Phase 13: Deployment, Monitoring, and Production Review
 
 - Configure staging deployment.
 - Configure production deployment.
@@ -3089,9 +3114,12 @@ npm run db:seed:demo
 
 1. Finish the V1 regression safety net.
 2. Establish the TypeScript toolchain and type-check command.
-3. Migrate stable shared/backend foundations incrementally.
+3. Reuse stable shared foundations and migrate only the pieces that directly
+   support the next approved V2 step.
 4. Keep regression tests and production builds green.
-5. Continue converting remaining JavaScript/JSX while new V2 modules are written in TypeScript/TSX.
+5. Do not treat complete JavaScript/JSX elimination as a prerequisite for
+   PostgreSQL or early V2 replacement slices; write new V2 modules in
+   TypeScript/TSX.
 
 This modernization sequence supports the migration but does not replace the
 security and production-readiness requirements below.
@@ -3307,30 +3335,31 @@ Use this order to reduce risk:
 1. Inspect repository and document current schema and routes.
 2. Finish the V1 regression-test safety net for preserved business behavior.
 3. Add lint, TypeScript configuration, type-checking, and automated test scripts.
-4. Define shared domain types and runtime-validation boundaries.
-5. Migrate stable backend utilities, services, and repositories to TypeScript in focused batches.
-6. Migrate Express middleware, controllers, routes, and backend entry points to TypeScript.
-7. Migrate frontend API clients, utilities, hooks, and React modules to TypeScript/TSX incrementally while keeping builds green.
-8. Add PostgreSQL connection and migration framework.
-9. Implement branches and UUID identifiers.
-10. Implement annual patient/treatment counter transaction.
-11. Implement core patient and treatment repositories.
-12. Implement authentication integration.
-13. Implement the five roles, owner-dentist dual assignment, permission matrix, and authorization middleware.
-14. Implement Clinic Administrator approvals, System Administrator restrictions, self-elevation prevention, and temporary support access.
-15. Implement patient account linking and patient isolation tests.
-16. Implement audit service and audit table.
-17. Implement private object storage.
-18. Implement secure attachment upload and camera UI.
-19. Implement appointment request and conflict-safe scheduling.
-20. Implement invoices, payments, and receivables.
-21. Implement expenses and daily closing.
-22. Implement role-specific dashboards and responsive navigation.
-23. Implement staging deployment.
-24. Complete security and recovery tests.
+4. Reuse stable shared TypeScript foundations and migrate only low-risk modules
+   that clearly support the next approved V2 step.
+5. Record the selective-replacement strategy and classify current areas as
+   keep, adapt, replace, bridge, or retire-later.
+6. Add PostgreSQL connection and migration framework.
+7. Implement the first V2 persistence foundations without requiring all
+   remaining V1 routes, services, and pages to convert first.
+8. Replace capabilities in focused vertical domain slices with parity checks
+   and explicit retirement gates.
+9. Implement authentication integration.
+10. Implement the five roles, owner-dentist dual assignment, permission matrix, and authorization middleware.
+11. Implement Clinic Administrator approvals, System Administrator restrictions, self-elevation prevention, and temporary support access.
+12. Implement patient account linking and patient isolation tests.
+13. Implement audit service and audit table.
+14. Implement private object storage.
+15. Implement secure attachment upload and camera UI.
+16. Implement appointment request and conflict-safe scheduling.
+17. Implement invoices, payments, and receivables.
+18. Implement expenses and daily closing.
+19. Implement role-specific dashboards and responsive navigation.
+20. Implement staging deployment.
+21. Complete security and recovery tests.
 
-Do not combine the full TypeScript migration with PostgreSQL, authentication,
-storage, or finance implementation in one Codex task. Keep each migration batch
+Do not combine PostgreSQL, authentication, storage, finance, and broad
+extension-only TypeScript migration in one Codex task. Keep each step
 reviewable and protected by the regression-test baseline.
 
 ---

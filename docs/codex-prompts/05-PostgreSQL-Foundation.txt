@@ -1,0 +1,751 @@
+CODEX TASK — POSTGRESQL FOUNDATION FOR V2 SELECTIVE REPLACEMENT
+
+STATUS: READY AFTER THE SELECTIVE-REPLACEMENT TRANSITION CHANGES ARE HUMAN-REVIEWED AND COMMITTED
+
+IMPORTANT GATE
+
+The selective-replacement transition has completed successfully, but its documentation changes were left uncommitted for human review.
+
+Do not execute this PostgreSQL Foundation task until the following transition changes are reviewed and committed:
+
+- README.md
+- AGENTS.md
+- docs/architecture/decisions/README.md
+- docs/architecture/decisions/ADR-0001-adopt-incremental-v2-selective-replacement-migration.md
+- docs/architecture/v2-migration-map.md
+
+Expected transition commit message:
+`docs: adopt incremental V2 replacement strategy`
+
+If those changes are still uncommitted, STOP and report that the transition must be committed first.
+
+PURPOSE
+
+Establish the typed PostgreSQL foundation for the V2 target architecture without forcing the remaining V1 JavaScript/JSX application through a complete TypeScript conversion first.
+
+The accepted architecture strategy is now:
+
+    V1
+    mixed JavaScript/TypeScript + SQLite
+    stable tested reference/runtime
+            |
+            | behavior, tests, data semantics
+            v
+    V2 PostgreSQL Foundation
+            |
+            v
+    controlled V2 domain/data replacement slices
+    TypeScript + PostgreSQL
+            |
+            v
+    prove behavior/data parity
+            |
+            v
+    retire corresponding V1 path only when retirement gates pass
+
+This is a DATABASE FOUNDATION task only.
+
+Do not:
+- finish converting the legacy application to TypeScript;
+- migrate current business workflows to PostgreSQL;
+- copy real clinic data;
+- create full Patient/Treatment/Appointment schemas;
+- begin authentication/RBAC;
+- begin audit;
+- begin private object storage;
+- begin patient portal;
+- begin finance;
+- begin deployment;
+- perform a big-bang rewrite.
+
+SOURCE OF TRUTH
+
+Read first:
+
+- README.md
+- AGENTS.md
+- docs/architecture/current-system-audit.md
+- docs/architecture/v2-migration-map.md
+- docs/architecture/decisions/README.md
+- docs/architecture/decisions/ADR-0001-adopt-incremental-v2-selective-replacement-migration.md
+- docs/product/PRD.md
+- docs/product/OPEN-DECISIONS.md
+- docs/codex-prompts/03-TypeScript-Foundation.txt
+- completed TypeScript migration tasks through Batch 5
+- the completed V2 Selective Replacement Strategy Transition task
+- root/client/server package manifests
+- root/client/server TypeScript configuration
+
+Do not treat old TypeScript-first roadmap assumptions as authoritative if they conflict with ADR-0001 or `docs/architecture/v2-migration-map.md`.
+
+CURRENT VERIFIED MIGRATION STATE
+
+The transition task established these durable facts:
+
+- broad JS/JSX elimination is no longer a project goal by itself;
+- PostgreSQL can begin before 100% TypeScript conversion;
+- V1 remains the protected behavioral/runtime reference until replacement parity is proven;
+- compatibility bridges may remain while live consumers still depend on them;
+- future V2 capability is replaced incrementally in vertical slices;
+- retirement requires explicit parity/data/runtime/review gates.
+
+Current migration-map direction includes:
+
+Shared typed client foundation:
+- `client/src/lib/formatters.ts` -> KEEP
+- `client/src/lib/backupUi.ts` -> ADAPT
+- `client/src/lib/printDocument.ts` -> ADAPT
+- `client/src/lib/attachments.ts` -> ADAPT
+- `client/src/lib/validation.ts` -> ADAPT
+- `client/src/lib/forms.ts` -> ADAPT
+
+Current bridges:
+- `client/src/lib/attachments.js` -> BRIDGE
+- `client/src/lib/formatters.js` -> BRIDGE
+
+Batch 5 Appointment:
+- `server/src/services/appointmentService.ts` -> ADAPT
+- `server/src/services/appointmentService.js` -> BRIDGE
+- `server/src/routes/appointments.js` -> RETIRE-LATER
+- appointment JSX UI -> RETIRE-LATER
+- appointment API code in `client/src/lib/api.js` -> RETIRE-LATER
+- appointment SQLite persistence path in `server/src/db/database.js` -> RETIRE-LATER
+
+Other important map direction:
+- `server/src/services/patientService.js` -> REPLACE
+- `server/src/services/treatmentService.js` -> REPLACE
+- `server/src/utils/patientUtils.js` -> ADAPT
+- `server/src/utils/dateUtils.js` -> KEEP
+- `server/src/utils/validation.js` -> ADAPT
+- `client/src/lib/api.js` -> REPLACE
+- `server/src/services/backupService.js` -> REPLACE
+- `server/src/routes/backup.js` -> REPLACE
+- `server/src/db/database.js` -> RETIRE-LATER
+- `server/src/app.js` -> RETIRE-LATER
+- `server/src/index.js` -> RETIRE-LATER
+
+Verify these against the committed migration map before implementation.
+If repository state differs, report the difference before editing.
+
+DEPENDENCY GATE
+
+Begin only when:
+
+- V1 Regression Safety Net is completed, reviewed, and committed;
+- Legacy Cleanup is completed, reviewed, and committed;
+- TypeScript Foundation is completed, reviewed, and committed;
+- selective TypeScript work through Batch 5 is reviewed and committed;
+- the V2 selective-replacement transition is reviewed and committed;
+- ADR-0001 exists and is Accepted;
+- `docs/architecture/v2-migration-map.md` exists;
+- `npm run typecheck` passes;
+- the current V1 regression safety net passes;
+- `node --test` passes;
+- the working tree is clean except for unrelated user-approved changes.
+
+Do NOT require:
+- all `.js` files to be gone;
+- all `.jsx` files to be gone;
+- all legacy routes/services/pages to be TypeScript.
+
+PRE-IMPLEMENTATION BASELINE
+
+Before editing:
+
+1. Run `git status --short`.
+2. Run `git branch --show-current`.
+3. Confirm branch is `refactor/v2-cloud-migration`.
+4. Confirm ADR-0001 and the migration map are committed.
+5. Run `npm run typecheck`.
+6. Run `node --test server/src/services/v1RegressionSafetyNet.test.js`.
+7. Run `node --test`.
+8. Inspect:
+   - package manifests;
+   - TypeScript configs;
+   - `.env.example`;
+   - `server/src/config/runtimeConfig.js`;
+   - `server/src/db/`;
+   - current SQLite schema/bootstrap;
+   - database-facing services/routes;
+   - temporary/in-memory SQLite tests;
+   - Batch 5 Appointment service + bridge;
+   - migration map and ADR-0001.
+9. Inventory SQLite-specific assumptions:
+   - `node:sqlite`;
+   - `DatabaseSync`;
+   - SQLite PRAGMAs;
+   - sync query execution;
+   - `lastInsertRowid`;
+   - type coercion;
+   - auto-increment assumptions;
+   - date/time representation;
+   - transactions;
+   - foreign-key behavior;
+   - SQLite-only syntax/functions;
+   - local DB file paths;
+   - direct service-to-SQLite coupling.
+10. Classify database-facing areas as:
+   - V1 REFERENCE / RETIRE-LATER
+   - V2 POSTGRESQL FOUNDATION NOW
+   - REUSABLE / ADAPT LATER
+   - V2 DOMAIN REPLACEMENT LATER
+   - HIGH-RISK / DEFER
+11. Present a concise foundation plan before modifying files.
+12. List exact planned files before implementation.
+
+REQUIRED SUBAGENTS
+
+Use:
+
+- `repo_explorer`
+  - map active SQLite/database usage and V2 foundation seams.
+
+- `requirements_auditor`
+  - verify ADR-0001, README, AGENTS, PRD boundaries, and migration map alignment.
+
+- `test_auditor`
+  - identify config/pool/migration/safety tests and V1 parity protections.
+
+- dedicated custom `typescript_reviewer`
+  - review typed configuration, pool/query contracts, error handling, module resolution, mixed JS/TS coexistence, and unsafe typing.
+
+- `security_reviewer`
+  - review credentials, env boundaries, SQL parameterization, migration safety, test-database safety, logging, and accidental production/staging access.
+
+Optional but strongly preferred if already available:
+
+- `database_architect`
+  - PostgreSQL connection design;
+  - migration ordering;
+  - transaction boundaries;
+  - SQLite -> PostgreSQL compatibility;
+  - future schema/data-migration risks.
+
+Do not create or modify subagent definitions in this task.
+
+The parent agent is the only writer.
+All reviewer subagents remain read-only.
+Wait for required findings before editing.
+
+A. POSTGRESQL CLIENT / TOOLING
+
+Inspect the server workspace first.
+
+Add only the minimum backend dependency needed for PostgreSQL.
+
+Preferred direction:
+- `pg` / node-postgres;
+- small explicit data-access foundation;
+- no ORM/query-builder unless an accepted project decision requires one.
+
+If using `pg`:
+- install it only where required;
+- add declaration packages only if the selected version/current TypeScript setup actually needs them;
+- keep database dependencies backend-only.
+
+Do NOT introduce Prisma, Drizzle, Sequelize, TypeORM, Knex, or another ORM/query builder without explicit user approval or an accepted ADR.
+
+Do NOT:
+- upgrade unrelated packages;
+- replace npm;
+- run `npm audit fix`;
+- run `npm audit fix --force`;
+- add Supabase/cloud SDKs merely because PostgreSQL may later be hosted there.
+
+Review package-lock changes and report unexpected churn.
+
+B. POSTGRESQL ENVIRONMENT / CONFIGURATION
+
+Create the minimum typed PostgreSQL configuration.
+
+Prefer:
+- `DATABASE_URL`;
+- a separately named PostgreSQL test URL when integration tests need one;
+- SSL controls only when appropriate.
+
+Requirements:
+- no committed credentials;
+- no hardcoded staging/production URLs;
+- no server DB secrets exposed to the client;
+- safe `.env.example` placeholders only;
+- runtime validation before connection use;
+- clear errors without secret leakage;
+- local/test/staging/production separation;
+- no requirement for production credentials during local development/testing.
+
+Do NOT replace existing V1 SQLite runtime configuration.
+
+V1 SQLite configuration and V2 PostgreSQL configuration are allowed to coexist.
+
+C. POSTGRESQL CONNECTION FOUNDATION
+
+Create a small typed connection/pool layer.
+
+Requirements:
+- connection pool;
+- explicit lifecycle where practical;
+- avoid connection side effects merely from importing a module;
+- parameterized queries;
+- no credential logging;
+- testable initialization/use/shutdown;
+- clean shutdown where appropriate.
+
+Do not cut existing services over to PostgreSQL.
+
+Do not introduce a generic provider abstraction solely for elegance.
+
+D. MIGRATION MECHANISM
+
+Create deterministic version-controlled PostgreSQL migrations.
+
+Requirements:
+- ordered/reproducible migrations;
+- applied-migration bookkeeping;
+- applied migration files treated as immutable;
+- future changes use new migration files;
+- clear failure behavior;
+- failed migrations are not marked applied;
+- explicit migration command;
+- no destructive migration auto-run on normal server startup.
+
+Prefer commands such as:
+- `npm run db:migrate`
+- `npm run db:migrate:status`
+
+Use repository conventions where appropriate.
+
+Keep the mechanism small and maintainable.
+
+E. FOUNDATION SCHEMA SCOPE
+
+Keep schema scope deliberately narrow.
+
+Allowed:
+- migration bookkeeping/version table;
+- connection/configuration proof;
+- harmless foundation-only object if justified;
+- typed migration infrastructure.
+
+Do NOT create full schemas for:
+- Patient;
+- Treatment;
+- Appointment;
+- Attachments;
+- Finance;
+- Auth;
+- Audit;
+- Notifications;
+- Patient Portal.
+
+Do NOT copy SQLite data.
+
+Do NOT create domain repositories merely to prove PostgreSQL works.
+
+F. FUTURE V2 DATABASE CONVENTIONS
+
+Verify/document approved conventions for later domain work.
+
+Where already approved:
+- UUID internal primary keys;
+- separate readable patient/treatment codes;
+- exact monetary numeric type such as `NUMERIC(12,2)`;
+- `DATE` for date-only values;
+- timezone-aware timestamps for events;
+- UTC storage and Asia/Manila display at the application boundary;
+- foreign keys;
+- explicit uniqueness constraints;
+- `branch_id` where required;
+- append-only audit semantics when audit exists;
+- correction/soft-delete semantics where approved.
+
+Do not design complete domain schemas in this task.
+
+If V1 behavior conflicts with approved V2 conventions:
+- report it;
+- preserve V1;
+- defer transformation to the appropriate later migration/parity task.
+
+G. V1 SQLITE COEXISTENCE
+
+The V1 SQLite application must remain operational.
+
+Do NOT:
+- remove `node:sqlite`;
+- delete SQLite modules;
+- convert `server/src/db/database.js` just for TypeScript completeness;
+- migrate patient/treatment/appointment business services to PostgreSQL;
+- dual-write;
+- background-sync;
+- modify real SQLite data;
+- inspect real clinic rows;
+- force V1 tests onto PostgreSQL.
+
+V1 SQLite remains the reference/runtime source until focused V2 replacement tasks prove parity.
+
+H. SELECTIVE-REPLACEMENT BOUNDARY
+
+The PostgreSQL Foundation must support future V2 slices without moving current V1 consumers now.
+
+Future pattern:
+
+    V1 legacy path
+    JS/TS + SQLite
+          |
+          | behavior/data reference
+          v
+    V2 domain path
+    TypeScript
+          |
+          v
+    PostgreSQL repository/data access
+
+Those future domain paths are NOT part of this task.
+
+Do not create Patient/Treatment/Appointment repositories yet.
+
+I. BATCH 5 APPOINTMENT PROTECTION
+
+Do not undo Batch 5.
+
+Preserve:
+- `server/src/services/appointmentService.ts` as ADAPT;
+- `server/src/services/appointmentService.js` as BRIDGE while needed;
+- `server/src/routes/appointments.js` as active RETIRE-LATER path;
+- `server/src/db/database.js` as the V1 SQLite boundary.
+
+Do NOT convert the Appointment route to TypeScript here.
+
+Batch 5 discovered that server route TypeScript conversion needs Express declaration typing.
+
+Do NOT add Express declaration types merely to finish converting old V1 routes.
+
+When the first real V2 TypeScript Express route is implemented, handle Express declarations as an explicit reviewed dependency in that task.
+
+J. TEST DATABASE SAFETY
+
+PostgreSQL integration tests must never target:
+- production;
+- staging;
+- real clinic data;
+- arbitrary remote databases.
+
+If an integration test database is used:
+- require explicit test configuration;
+- use fictional data only;
+- verify the target is clearly test-only before destructive operations;
+- refuse destructive setup if safety cannot be proven;
+- clean only test-created state;
+- never print credentials.
+
+If no safe disposable/test PostgreSQL instance exists:
+- run unit/non-database foundation tests;
+- report PostgreSQL integration as NOT RUN;
+- state the exact missing prerequisite;
+- do not weaken safety;
+- do not connect to arbitrary infrastructure;
+- do not add Docker unless already present or explicitly approved.
+
+K. FOUNDATION DATA-ACCESS TYPES
+
+If immediately useful, add only narrow foundation-level contracts such as:
+- query executor;
+- transaction callback;
+- pool lifecycle;
+- migration record/status.
+
+Do NOT create generic abstractions without immediate use.
+
+Do NOT create full domain repositories.
+
+L. DOCUMENTATION
+
+Update only durable technical documentation.
+
+Appropriate topics:
+- PostgreSQL configuration strategy;
+- connection/pool lifecycle;
+- migration commands/bookkeeping;
+- test DB safety;
+- V1 SQLite coexistence;
+- how future V2 replacement slices consume PostgreSQL;
+- discovered SQLite/PostgreSQL compatibility risks.
+
+Update `docs/architecture/v2-migration-map.md` only if the new foundation legitimately changes a classification/status.
+
+Do not put PostgreSQL implementation details into the product PRD unless they represent an actual product requirement.
+
+Do not mark any domain as migrated merely because the foundation exists.
+
+M. RUNTIME BEHAVIOR THAT MUST REMAIN UNCHANGED
+
+This task must not change:
+- patient annual code behavior;
+- treatment annual code behavior;
+- patient workflows;
+- treatment workflows;
+- appointment workflows/status/history/follow-up;
+- discount rules;
+- balances/payment calculations;
+- attachments;
+- Excel exports;
+- print/PDF behavior;
+- backup behavior;
+- existing SQLite business-data behavior;
+- API routes/payload shapes;
+- UI/navigation;
+- authentication behavior;
+- deployment behavior.
+
+If PostgreSQL Foundation requires a business behavior change:
+STOP and report the blocker.
+
+N. TYPESCRIPT RULES
+
+All new PostgreSQL Foundation source should be TypeScript.
+
+Do NOT:
+- use `@ts-ignore`;
+- use `@ts-nocheck`;
+- introduce broad `any`;
+- weaken strictness;
+- use unsafe assertions merely to silence the compiler.
+
+Runtime-validate environment/external inputs.
+
+Do not mistake TypeScript for runtime validation.
+
+O. SQL SAFETY
+
+- parameterize query values;
+- never concatenate untrusted SQL values;
+- never print credentials;
+- never allow destructive migration/test logic to target an arbitrary DB;
+- use transactions where atomicity matters;
+- never mark failed migrations applied;
+- avoid SQLite-specific SQL in PostgreSQL foundation code.
+
+P. PROTECTED PROJECT CONFIGURATION
+
+Do not modify:
+- `.codex/agents/*.toml`
+- `.codex/config.toml`
+- project Skill definitions
+
+Do not modify AGENTS.md unless an actual committed-policy inconsistency is discovered.
+
+Do not modify product requirements for implementation convenience.
+
+VALIDATION
+
+After implementation:
+
+1. Run `npm run typecheck`.
+
+2. Run targeted tests for:
+   - PostgreSQL config parsing;
+   - connection/pool foundation;
+   - migration discovery/order;
+   - applied-migration bookkeeping/status;
+   - test-database safety guards;
+   - other foundation modules added.
+
+3. If a verified disposable/test PostgreSQL database is configured:
+   - verify connection;
+   - apply foundation migrations;
+   - verify status;
+   - rerun migration safely;
+   - verify only test-created state;
+   - clean only test-created state where appropriate.
+
+4. Run:
+   `node --test server/src/services/v1RegressionSafetyNet.test.js`
+
+5. Run:
+   `node --test`
+
+6. Run:
+   `npm run build --workspace client`
+
+7. Run an existing lint command only if one is already defined and safe.
+
+8. Search for:
+   - committed DB URLs/passwords;
+   - client-side DB env exposure;
+   - unsafe SQL interpolation;
+   - accidental service cutover;
+   - dual-write behavior;
+   - unnecessary legacy JS->TS conversions.
+
+9. Run `git status --short`.
+
+10. Inspect:
+   - `git diff --stat`
+   - full diff
+   - package manifests
+   - package-lock
+   - migration files
+   - documentation changes
+
+11. Confirm:
+   - only PostgreSQL Foundation files and directly necessary tests/config/docs changed;
+   - no V1 domain implementation was replaced;
+   - no real clinic data was touched.
+
+IF VALIDATION FAILS
+
+Fix only in-scope issues introduced by this task.
+
+Do not:
+- weaken DB safety;
+- use real/staging/production data;
+- change V1 business behavior;
+- expand into a domain migration;
+- convert unrelated legacy code;
+- upgrade unrelated dependencies.
+
+If the blocker requires:
+- a full domain schema;
+- service cutover;
+- business data transformation;
+- authentication/RBAC;
+- storage;
+- deployment;
+- feature redesign
+
+STOP and report it for the correct later phase.
+
+GIT BOUNDARY
+
+Allowed read-only Git inspection:
+- `git status`
+- `git diff`
+- `git diff --stat`
+- `git branch --show-current`
+- `git log`
+- `git show`
+- `git show-ref`
+- `git grep`
+
+Do not:
+- stage;
+- commit;
+- push;
+- merge;
+- rebase;
+- reset;
+- switch branches;
+- create/delete branches;
+- create/delete tags;
+- rewrite history.
+
+Leave all changes uncommitted for human review.
+
+DONE WHEN
+
+- typed backend-only PostgreSQL configuration exists;
+- typed connection/pool foundation exists;
+- lifecycle is safe/testable;
+- deterministic migration mechanism exists;
+- explicit migration commands exist;
+- migration bookkeeping works safely;
+- test-database safety guard exists;
+- safe integration verification is completed or clearly reported NOT RUN;
+- V1 SQLite remains operational for current business workflows;
+- no full domain schema/data migration occurred;
+- no dual-write occurred;
+- no real clinic data was touched;
+- no legacy JS/JSX was converted merely for completeness;
+- Batch 5 remains intact;
+- `npm run typecheck` passes;
+- targeted foundation tests pass;
+- V1 regression passes;
+- `node --test` passes;
+- client build passes;
+- final diff is focused.
+
+BEFORE COMPLETION
+
+1. Run `git status --short`.
+2. Inspect the full diff.
+3. Confirm no unrelated files changed.
+4. List exact files added/modified.
+5. Explain each dependency change.
+6. Explain PostgreSQL connection architecture in plain language.
+7. Explain the migration mechanism in plain language.
+8. State whether a disposable/test PostgreSQL integration check ran.
+9. List SQLite -> PostgreSQL compatibility risks discovered.
+10. State how the foundation changes the V2 migration map, if at all.
+11. Confirm Batch 5 remains intact.
+12. Confirm no legacy file was converted simply to improve TypeScript percentage.
+13. Provide suggested commit message only:
+
+`chore: establish PostgreSQL foundation`
+
+Do not create the commit.
+
+COMPLETION REPORT
+
+- Summary
+- Branch
+- Dependency-gate result
+- ADR-0001 verification
+- V2 migration-map verification
+- Subagents used
+- Files added
+- Files modified
+- Dependencies added/changed
+- PostgreSQL configuration strategy
+- Connection/pool architecture
+- Migration mechanism
+- Migration commands
+- Test-database safety controls
+- V1 SQLite coexistence strategy
+- Selective-replacement integration
+- Migration-map classification impact
+- Batch 5 compatibility result
+- SQLite/PostgreSQL compatibility risks
+- TypeScript reviewer findings
+- Database architect findings, if used
+- Security reviewer findings
+- Production behavior changes, if any
+- Commands run
+- Type-check result
+- Targeted-test results
+- PostgreSQL integration-test result
+- Regression-test result
+- Full-test result
+- Build result
+- Lockfile review
+- Known limitations
+- Deferred domain-schema work
+- Deferred data-migration work
+- Final git status
+- Suggested commit message
+- Recommended next task
+
+RECOMMENDED NEXT TASK
+
+Do not begin automatically.
+
+After human review/commit of PostgreSQL Foundation, prepare:
+
+`Core PostgreSQL Data Model + Migration Parity — first controlled V2 data phase`
+
+That next task must be based on:
+- the actual PostgreSQL Foundation completion report;
+- ADR-0001;
+- `docs/architecture/v2-migration-map.md`;
+- V1 regression/parity contracts.
+
+It should introduce only the first required V2 domain data structures and fictional migration/parity verification while keeping V1 SQLite intact until the relevant retirement gates pass.
+
+Do not automatically begin:
+- service cutover;
+- real clinic data migration;
+- authentication/RBAC;
+- audit;
+- private storage;
+- patient portal;
+- finance;
+- deployment;
+- another broad legacy JS->TS conversion batch.

@@ -26,9 +26,11 @@ The active codebase is a Node.js workspace with `client/` and `server/`, but app
 
 ## TypeScript Migration Policy
 
-The approved V2 codebase will migrate incrementally from JavaScript/JSX to TypeScript/TSX before major new V2 modules are built.
+The approved V2 codebase will migrate incrementally from JavaScript/JSX to TypeScript/TSX while the repository transitions toward the target V2 architecture.
 
 Do not perform a whole-application TypeScript rewrite in one task. Preserve regression-tested behavior during conversion and allow JavaScript and TypeScript to coexist temporarily when required.
+
+Do not migrate legacy JavaScript/JSX solely to reach 100% TypeScript. Reuse, adapt, replace, bridge, or retire legacy code based on V2 fit and verified parity needs.
 
 New V2 application source should use TypeScript by default:
 - `.ts` for backend, utilities, services, repositories, schemas, scripts, and shared non-React code
@@ -36,19 +38,7 @@ New V2 application source should use TypeScript by default:
 
 Do not use `any`, `@ts-ignore`, unsafe type assertions, or disabled compiler checks as broad substitutes for resolving type errors.
 
-TypeScript compile-time types do not replace runtime validation. Continue validating HTTP input, environment variables, database results where needed, storage metadata, and other trust boundaries.
-
-For TypeScript migration work, run the relevant regression tests, `npm run typecheck`, and the applicable production build before declaring the task complete.## TypeScript Migration Policy
-
-The approved V2 codebase will migrate incrementally from JavaScript/JSX to TypeScript/TSX before major new V2 modules are built.
-
-Do not perform a whole-application TypeScript rewrite in one task. Preserve regression-tested behavior during conversion and allow JavaScript and TypeScript to coexist temporarily when required.
-
-New V2 application source should use TypeScript by default:
-- `.ts` for backend, utilities, services, repositories, schemas, scripts, and shared non-React code
-- `.tsx` for React components and pages containing JSX
-
-Do not use `any`, `@ts-ignore`, unsafe type assertions, or disabled compiler checks as broad substitutes for resolving type errors.
+Do not remove compatibility bridges unless all import and runtime consumers have been proven moved. Preserve V1 paths until replacement parity is proven in a focused reviewed task.
 
 TypeScript compile-time types do not replace runtime validation. Continue validating HTTP input, environment variables, database results where needed, storage metadata, and other trust boundaries.
 
@@ -112,4 +102,3 @@ Task specification
 ## Subagent Policy
 
 Use subagents first for independent read-heavy work. Wait for all requested subagents before the parent produces conclusions. Keep subagents read-only unless the user explicitly authorizes a write task, and never allow multiple agents to edit overlapping files. The parent agent remains responsible for the final plan, changes, validation, and report. Never expose secrets or real patient data. Do not run destructive Git, database, storage, backup, or deployment commands. Return concise findings with file references instead of raw command output.
-
