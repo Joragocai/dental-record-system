@@ -1,0 +1,550 @@
+CODEX TASK — TRANSITION TO V2 SELECTIVE REPLACEMENT STRATEGY
+
+STATUS: RUN ONLY AFTER TYPESCRIPT BATCH 5 IS HUMAN-REVIEWED AND COMMITTED
+
+PURPOSE
+
+Change the repository's migration strategy from:
+
+    "Convert the entire existing JavaScript/JSX application to TypeScript first,
+     then migrate the converted application to PostgreSQL"
+
+to:
+
+    "Keep V1 stable as the tested behavioral reference.
+     Reuse good TypeScript work already completed.
+     Build/replace V2 capabilities incrementally in TypeScript using the target V2 architecture.
+     Introduce PostgreSQL as the V2 persistence foundation.
+     Retire corresponding legacy JavaScript/SQLite paths only after behavior/data parity is proven."
+
+This is a one-time STRATEGY TRANSITION AND DOCUMENTATION task.
+
+Do NOT implement a new application feature in this task.
+Do NOT start PostgreSQL implementation in this task.
+Do NOT continue bulk JS/JSX -> TS conversion in this task.
+
+The purpose is to make the new migration method explicit, durable, and usable by future Codex sessions.
+
+CURRENT VERIFIED STATE
+
+The repository already has valuable migration work that must not be discarded:
+
+- V1 regression safety net exists.
+- TypeScript foundation exists.
+- Shared client utilities have already been migrated where useful.
+- Batch 5 migrated the Appointment service to TypeScript while preserving the existing SQLite boundary.
+- Batch 5 kept `server/src/services/appointmentService.js` as a temporary compatibility bridge.
+- The appointment route remained JavaScript because route TypeScript conversion exposed a missing Express declaration-type prerequisite.
+- Batch 5 targeted tests, typecheck, V1 regression tests, full `node --test`, and client build passed.
+- Current SQLite behavior remains active.
+
+Do NOT revert Batch 5.
+Do NOT recreate already-good migrated TypeScript files merely to make them "new V2" files.
+
+SOURCE OF TRUTH
+
+Read first:
+
+- README.md
+- AGENTS.md
+- docs/architecture/current-system-audit.md
+- docs/product/PRD.md, if present
+- docs/product/OPEN-DECISIONS.md, if present
+- docs/architecture/decisions/README.md, if present
+- all existing ADRs under `docs/architecture/decisions/`
+- the TypeScript Foundation task
+- TypeScript migration Batches 1–5
+- current package.json / workspace package files
+- root/client/server tsconfig files
+- current regression tests
+
+Also inspect the current repository instead of relying only on old migration plans.
+
+DEPENDENCY GATE
+
+Before editing:
+
+1. Run `git status --short`.
+2. Verify branch is `refactor/v2-cloud-migration`.
+3. Confirm Batch 5 has been committed.
+4. Confirm the working tree is clean.
+5. Run `npm run typecheck`.
+6. Run the current V1 regression safety net.
+7. Run `node --test`.
+8. Do not continue if the current committed baseline is failing unexpectedly.
+
+If Batch 5 is still uncommitted:
+STOP and report that the user must review/commit Batch 5 first.
+
+REQUIRED READ-ONLY REVIEW
+
+Use these project subagents if available:
+
+- `repo_explorer`
+  - map the current architecture and remaining legacy JS/JSX by domain;
+  - identify V1 code still active at runtime;
+  - identify already-useful TypeScript code.
+
+- `requirements_auditor`
+  - confirm the strategy preserves the intended V1 behavior and V2 requirements;
+  - identify any documentation that still incorrectly requires 100% TypeScript conversion before PostgreSQL.
+
+- `test_auditor`
+  - identify which V1 behaviors are protected strongly enough to serve as migration/parity contracts;
+  - identify important behavioral gaps that future V2 replacement slices must cover.
+
+- dedicated custom `typescript_reviewer`
+  - classify migrated TypeScript as reusable/adaptable/temporary;
+  - identify remaining mixed JS/TS interoperability constraints;
+  - identify TypeScript foundation gaps that should be solved only when needed by V2 implementation.
+
+Strongly use `database_architect` if it is already available.
+Do not create or modify subagent definitions in this task.
+
+The parent/main agent is the only writer.
+All reviewers remain read-only.
+
+NEW MIGRATION PRINCIPLES
+
+The repository must clearly adopt these principles:
+
+1. V1 IS A REFERENCE IMPLEMENTATION, NOT THROWAWAY CODE
+   - Keep stable V1 code available while the corresponding V2 capability is not yet proven.
+   - Use V1 code, tests, and current behavior as evidence for what must be preserved.
+
+2. DO NOT BULK-CONVERT FOR THE SAKE OF FILE EXTENSIONS
+   - "Zero JavaScript files" is not a milestone by itself.
+   - Do not convert legacy code that will soon be structurally replaced for PostgreSQL, auth/RBAC, private storage, or other V2 architecture.
+
+3. REUSE GOOD CODE
+   - Already-clean migrated TypeScript should remain and be reused when it fits V2.
+   - Pure helpers and stable business logic may be migrated directly if reuse is cheaper and safer than replacement.
+
+4. REPLACE ARCHITECTURE THAT WILL CHANGE HEAVILY
+   - Legacy persistence/database code should not be converted to TypeScript merely to be rewritten again for PostgreSQL.
+   - Large legacy services/routes/pages should be assessed based on future V2 fit, not extension.
+
+5. BUILD V2 IN VERTICAL DOMAIN SLICES
+   - Work feature/domain by feature/domain.
+   - Example domains:
+     - Patient
+     - Treatment
+     - Appointment
+     - Attachments
+     - Dashboard/reporting
+     - Backup/export
+     - Authentication/RBAC
+     - Audit
+     - Patient Portal
+     - Finance
+
+6. EACH V2 SLICE SHOULD USE THE TARGET ARCHITECTURE WHEN THAT FOUNDATION EXISTS
+   - New V2 production code is TypeScript by default.
+   - PostgreSQL becomes the target persistence layer after PostgreSQL Foundation is established.
+   - Do not create unnecessary intermediate TypeScript+SQLite rewrites of code that is about to be replaced.
+
+7. PRESERVE PARITY BEFORE RETIRING LEGACY PATHS
+   - Do not delete a V1 implementation merely because a V2 file exists.
+   - Retire legacy code only after:
+     - required behavior is covered;
+     - data migration/parity is verified;
+     - targeted tests pass;
+     - applicable regression/integration tests pass;
+     - the new runtime path is confirmed active.
+
+8. NO BIG-BANG REWRITE
+   - Do not create a separate full application and wait until the end to test it.
+   - Replace capabilities incrementally with reviewable, reversible slices.
+
+9. CLASSIFY LEGACY/MIGRATED FILES BY FUTURE ROLE
+   Use these categories:
+
+   KEEP
+   - already-good code that fits V2 with little/no architectural change.
+
+   ADAPT
+   - useful existing code that should remain but will later need V2 integration changes.
+
+   REPLACE
+   - code whose architecture is expected to change materially; do not spend effort fully converting it first.
+
+   BRIDGE
+   - temporary JS/TS/runtime interoperability file needed during transition.
+
+   RETIRE-LATER
+   - legacy implementation that remains as reference/runtime fallback until V2 parity is proven.
+
+10. TEST BUSINESS BEHAVIOR, NOT INTERNAL IMPLEMENTATION IDENTITY
+    - V2 does not need to reproduce the same internal function layout.
+    - It must preserve approved externally observable behavior and data semantics.
+    - Example:
+      - V1 can use SQLite and readable IDs internally.
+      - V2 can use PostgreSQL + UUIDs internally.
+      - User/business behavior must still satisfy the approved requirements.
+
+REQUIRED DELIVERABLES
+
+A. CREATE OR UPDATE AN ARCHITECTURE DECISION RECORD
+
+Inspect the ADR folder and determine the next available ADR number.
+
+Create an ADR with a title equivalent to:
+
+`Adopt Incremental V2 Selective Replacement Migration`
+
+The ADR must record:
+
+Context:
+- the original full JS->TS-first migration plan;
+- conversion friction discovered during the first migration batches;
+- temporary JS/TS bridges;
+- Batch 5 route typing blocker;
+- expected duplicate work if legacy SQLite architecture is converted completely before PostgreSQL/V2 redesign.
+
+Decision:
+- keep V1 as stable tested reference;
+- stop bulk conversion as a project goal;
+- reuse existing TypeScript where valuable;
+- establish PostgreSQL foundation;
+- implement V2 by incremental vertical replacement;
+- preserve behavior/data parity before retiring V1 paths;
+- no big-bang rewrite.
+
+Alternatives considered:
+1. finish 100% JS/JSX -> TS first;
+2. full greenfield rewrite;
+3. selective reuse + incremental replacement.
+
+Consequences:
+- some JavaScript will intentionally remain temporarily;
+- compatibility bridges may remain temporarily;
+- progress is measured by completed V2 capabilities/parity rather than percentage of TS files;
+- future feature slices may replace legacy files instead of converting them;
+- migration requires disciplined parity tests and clear retirement gates.
+
+Status:
+- Accepted, because this task implements a user-approved strategy.
+
+Do not create an ADR if an existing ADR already records the same decision.
+Update/link the existing ADR instead.
+
+B. CREATE A V2 MIGRATION MAP
+
+Create:
+
+`docs/architecture/v2-migration-map.md`
+
+unless an equivalent document already exists.
+
+The document must classify current production areas using:
+
+- KEEP
+- ADAPT
+- REPLACE
+- BRIDGE
+- RETIRE-LATER
+
+At minimum include:
+
+Shared client TypeScript foundation:
+- backupUi
+- printDocument
+- attachments
+- formatters
+- validation
+- forms
+
+Appointment Batch 5:
+- TypeScript appointment service
+- JavaScript appointment service bridge
+- JavaScript appointment route
+- Appointment React/UI files
+- appointment API code
+- SQLite database boundary
+
+Remaining Patient domain
+Remaining Treatment domain
+Attachments
+Dashboard/reporting
+Backup/export
+Shared client API
+Server validation/utilities
+Server routes/services
+Runtime configuration
+SQLite database layer
+Application bootstrap/shared infrastructure
+
+For each area include:
+- current state;
+- classification;
+- reason;
+- expected V2 action;
+- retirement/parity condition where applicable.
+
+Do NOT guess file names that do not exist.
+Use repository inspection.
+
+C. UPDATE README ROADMAP
+
+Update the roadmap so it no longer states/implies:
+
+    "Finish complete JS/JSX -> TypeScript migration before PostgreSQL."
+
+The roadmap should instead communicate approximately:
+
+V1 Regression Safety Net                         DONE
+Legacy Cleanup                                   DONE
+TypeScript Foundation                            DONE
+Shared TypeScript Foundations / Selective TS     DONE/ONGOING AS NEEDED
+Migration Strategy Transition                    THIS STEP
+PostgreSQL Foundation                            NEXT
+Core PostgreSQL Data Model + Migration Parity
+V2 Vertical Replacement Slices
+  - Patient
+  - Treatment
+  - Appointment
+  - other domains
+Security/platform foundations as required
+New V2 product features
+Full integration/security/UAT
+Production readiness
+
+Do not falsely mark unfinished work complete.
+
+D. UPDATE AGENTS.MD ONLY IF NEEDED
+
+If AGENTS.md currently tells Codex to continue bulk JS/JSX conversion, revise that rule.
+
+Add only concise durable instructions such as:
+
+- New V2 production code is TypeScript by default.
+- Do not migrate legacy JS/JSX solely to reach 100% TypeScript.
+- Reuse, adapt, replace, bridge, or retire legacy code based on V2 fit.
+- Preserve V1 until replacement parity is proven.
+- Do not remove compatibility bridges without proving all import/runtime consumers have moved.
+- Do not mix unrelated domain replacement work into one task.
+
+Do not rewrite AGENTS.md unnecessarily.
+Do not modify subagent definitions.
+
+E. REVIEW THE PRD WITHOUT POLLUTING IT
+
+The migration strategy is primarily an architecture/process decision.
+
+Do NOT add implementation migration mechanics to `docs/product/PRD.md`.
+
+Only update PRD content if inspection proves a product requirement is currently missing or contradicted.
+Otherwise leave PRD unchanged.
+
+Do not move architectural details such as TypeScript/SQLite/PostgreSQL file migration into the PRD.
+
+F. REVIEW OPEN DECISIONS
+
+If `docs/product/OPEN-DECISIONS.md` exists:
+- do not add already-resolved migration-strategy questions as open decisions;
+- add only genuinely unresolved product/architecture choices that block the next phase.
+
+G. MARK OLD TYPESCRIPT-MIGRATION ROADMAP PROMPTS APPROPRIATELY
+
+Do not delete historical task prompts.
+
+If the repository has statuses/indexing for prompt files:
+- mark future "complete all remaining JS/JSX conversion" prompts as superseded/draft where appropriate;
+- keep completed Batch 1–5 prompts as historical records;
+- do not rewrite completed task history.
+
+If no prompt-status convention exists, simply report which old assumptions are superseded.
+
+H. DEFINE THE NEW PHASE EXIT/RETIREMENT RULES
+
+Document that a legacy path may be retired only when all applicable conditions are true:
+
+1. target V2 path exists;
+2. approved requirements are implemented;
+3. behavior/parity tests pass;
+4. relevant data migration is verified;
+5. new runtime path is active;
+6. no live consumers still require the legacy implementation;
+7. typecheck/tests/build pass;
+8. removal is included in a focused reviewed task.
+
+POSTGRESQL HANDOFF
+
+This task must NOT implement PostgreSQL.
+
+However, it must inspect the existing PostgreSQL Foundation prompt and report whether it assumes the old "100% TS first" strategy.
+
+If it does:
+- do not execute it;
+- list the exact assumptions that need revision;
+- recommend a revised PostgreSQL Foundation task that supports the new selective-replacement strategy.
+
+The future PostgreSQL Foundation should conceptually support:
+
+V1:
+    JavaScript/TypeScript mixed
+    SQLite
+    stable reference/runtime
+
+V2:
+    TypeScript
+    PostgreSQL
+    new target persistence foundation
+
+without requiring all V1 services/routes/pages to be converted first.
+
+Do NOT dual-write in the foundation phase unless explicitly approved later.
+Do NOT migrate real clinic data in the foundation phase.
+
+EXPRESS TYPE BLOCKER
+
+Batch 5 discovered that server route `.ts` conversion currently lacks Express declaration types.
+
+Do not add dependencies in this strategy-transition task.
+
+Record this as a V2 server TypeScript prerequisite:
+
+- when the first V2 TypeScript Express route is implemented, add/verify the minimum compatible Express type declarations as an explicit, reviewed dependency change;
+- do not add them merely to finish converting old routes;
+- do not weaken TypeScript configuration to avoid the dependency.
+
+BATCH 5 CLASSIFICATION
+
+Do not undo Batch 5.
+
+Inspect it and classify its output.
+
+Expected direction, subject to repository evidence:
+
+- `server/src/services/appointmentService.ts`
+  likely KEEP or ADAPT
+
+- `server/src/services/appointmentService.js`
+  BRIDGE
+
+- `server/src/routes/appointments.js`
+  RETIRE-LATER or ADAPT depending on future Appointment V2 design
+
+- `server/src/db/database.js`
+  RETIRE-LATER as the active V1 SQLite boundary until PostgreSQL replacement/parity is ready
+
+Do not force these classifications if repository evidence shows otherwise.
+Explain the final classification.
+
+NO APPLICATION SOURCE CHANGES
+
+This task may modify only planning/documentation files necessary to record the new strategy.
+
+Do NOT modify:
+- client application source;
+- server application source;
+- tests;
+- package dependencies;
+- tsconfig files;
+- database schema;
+- migrations;
+- subagent TOML files;
+- skill definitions.
+
+No feature implementation.
+
+GIT BOUNDARY
+
+Codex may use read-only Git commands:
+- git status
+- git diff
+- git diff --stat
+- git branch --show-current
+- git log
+- git show
+- git grep
+
+Codex must not:
+- stage;
+- commit;
+- push;
+- merge;
+- rebase;
+- reset;
+- switch branches;
+- create/delete branches;
+- create/delete tags;
+- rewrite history.
+
+Leave all documentation changes uncommitted for human review.
+
+VALIDATION
+
+After documentation edits:
+
+1. Run `git diff --check`.
+2. Inspect the complete documentation diff.
+3. Confirm no application source was changed.
+4. Run `npm run typecheck`.
+5. Run the current V1 regression safety net.
+6. Run `node --test`.
+7. Run `npm run build --workspace client`.
+8. Report any pre-existing warning separately.
+9. Confirm the migration strategy documents do not contradict each other.
+
+DONE WHEN
+
+This task is complete when:
+
+- the selective-replacement strategy is durably documented;
+- an ADR records the decision;
+- README roadmap reflects the new sequencing;
+- AGENTS.md reflects the new operating rule only if needed;
+- `docs/architecture/v2-migration-map.md` classifies current areas;
+- Batch 5 work is preserved and classified;
+- PRD remains product-focused;
+- remaining JavaScript is no longer treated as failure by itself;
+- explicit legacy retirement gates exist;
+- PostgreSQL Foundation assumptions needing revision are identified;
+- no application source code was modified;
+- validation passes;
+- changes remain uncommitted.
+
+COMPLETION REPORT
+
+Report:
+
+- Summary
+- Branch
+- Dependency-gate result
+- Subagents used
+- Architecture decision created/updated
+- Migration strategy adopted
+- Files added
+- Files modified
+- Files intentionally not modified
+- Batch 5 KEEP/ADAPT/REPLACE/BRIDGE/RETIRE-LATER classification
+- Current domain migration map summary
+- README roadmap changes
+- AGENTS.md changes, if any
+- PRD changes, if any
+- Open decisions, if any
+- Superseded migration assumptions
+- PostgreSQL Foundation prompt assumptions requiring revision
+- Express typing prerequisite status
+- Validation commands/results
+- Final git status
+- Suggested commit message
+- Recommended next task
+
+Suggested commit message:
+
+`docs: adopt incremental V2 replacement strategy`
+
+Do not create the commit.
+
+RECOMMENDED NEXT STEP AFTER HUMAN REVIEW/COMMIT
+
+1. Optionally use the project `grill-me` skill to challenge the PostgreSQL/V2 migration design if the user wants another architecture review.
+2. Revise the PostgreSQL Foundation task to use the selective-replacement strategy.
+3. Establish PostgreSQL Foundation.
+4. Build the first V2 domain replacement slice against the target architecture.
+5. Compare V2 behavior/data semantics with the protected V1 requirements.
+6. Retire legacy paths only when their replacement gates are satisfied.
+
+Do not start these next steps automatically.
