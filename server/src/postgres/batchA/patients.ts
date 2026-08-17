@@ -508,3 +508,26 @@ export async function listLegacyPatientMigrationStates(
 
   return result.rows.map(mapLegacyPatientMigrationRow);
 }
+
+export async function listLegacyPatientMigrationStatesByCode(
+  executor: PgQueryExecutor,
+  sourceSystem: string,
+  legacyPatientCode: string
+): Promise<LegacyPatientMigrationState[]> {
+  const result = await executor.query<LegacyPatientMigrationRow>(
+    `SELECT
+       m.source_system,
+       m.legacy_patient_row_id,
+       m.legacy_patient_code,
+       m.created_at AS mapping_created_at,
+       p.*
+     FROM legacy_patient_identity_map m
+     JOIN patients p ON p.id = m.patient_id
+     WHERE m.source_system = $1
+       AND m.legacy_patient_code = $2
+     ORDER BY m.legacy_patient_row_id ASC, m.legacy_patient_code ASC`,
+    [sourceSystem, legacyPatientCode]
+  );
+
+  return result.rows.map(mapLegacyPatientMigrationRow);
+}

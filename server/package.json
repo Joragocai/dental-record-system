@@ -9,6 +9,7 @@
     "db:migrate:status": "tsx src/postgres/cli/migrateStatus.ts",
     "test:postgres:foundation": "node --import tsx --test \"src/postgres/*.pgtest.ts\" \"src/postgres/cli/*.pgtest.ts\"",
     "test:postgres:batch-a": "node --import tsx --test \"src/postgres/batchA/*.pgtest.ts\"",
+    "test:postgres:batch-b": "node --import tsx --test \"src/postgres/batchB/*.pgtest.ts\"",
     "start": "node src/index.js"
   },
   "dependencies": {
