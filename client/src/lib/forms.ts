@@ -1,4 +1,24 @@
-export const patientFieldGroups = [
+type FieldInputType = "text" | "date" | "datalist" | "select" | "textarea" | "number" | "email";
+
+type FormFieldDefinition = [
+  name: string,
+  label: string,
+  type: FieldInputType,
+  required?: boolean,
+  readOnly?: boolean,
+  options?: string[],
+  helperText?: string
+];
+
+interface PatientFieldGroup {
+  title: string;
+  fields: FormFieldDefinition[];
+}
+
+type MedicalConditionField = [fieldName: string, label: string];
+type FormDefaultsRecord = Record<string, string | number>;
+
+export const patientFieldGroups: PatientFieldGroup[] = [
   {
     title: "Basic Information",
     fields: [
@@ -78,7 +98,7 @@ export const patientFieldGroups = [
   }
 ];
 
-export const medicalConditionFields = [
+export const medicalConditionFields: MedicalConditionField[] = [
   ["condition_high_blood_pressure", "High Blood Pressure"],
   ["condition_low_blood_pressure", "Low Blood Pressure"],
   ["condition_epilepsy_convulsions", "Epilepsy / Convulsions"],
@@ -116,7 +136,7 @@ export const medicalConditionFields = [
   ["condition_arthritis_rheumatism", "Arthritis / Rheumatism"]
 ];
 
-export const emptyPatient = {
+export const emptyPatient: FormDefaultsRecord = {
   patient_id: "",
   date_registered: "",
   last_name: "",
@@ -216,7 +236,7 @@ export const emptyPatient = {
   condition_arthritis_rheumatism: 0
 };
 
-export const emptyTreatment = {
+export const emptyTreatment: FormDefaultsRecord = {
   treatment_id: "",
   patient_id: "",
   treatment_date: "",
@@ -238,7 +258,7 @@ export const emptyTreatment = {
 
 export const appointmentStatusOptions = ["Scheduled", "Completed", "Cancelled", "No-show"];
 
-export const emptyAppointment = {
+export const emptyAppointment: FormDefaultsRecord = {
   appointment_date: "",
   appointment_time: "",
   planned_procedure: "",

@@ -1,0 +1,534 @@
+CODEX TASK — VERTICAL TYPESCRIPT MIGRATION PHASE — BATCH 5 / FIRST FEATURE SLICE
+
+STATUS: READY ONLY AFTER TYPESCRIPT BATCH 4 IS REVIEWED AND COMMITTED
+
+Read these files first and treat them as the source of truth:
+- README.md
+- AGENTS.md
+- docs/architecture/current-system-audit.md
+- docs/codex-prompts/03-TypeScript-Foundation.txt
+- the approved TypeScript migration Batch 1 task
+- the approved TypeScript migration Batch 2 task
+- the approved TypeScript migration Batch 3 task
+- the approved TypeScript migration Batch 4 task
+
+Migration strategy change:
+Batches 1–4 intentionally migrated shared client foundations horizontally.
+
+Completed shared TypeScript foundation includes:
+- `client/src/lib/backupUi.ts`
+- `client/src/lib/printDocument.ts`
+- `client/src/lib/attachments.ts`
+- `client/src/lib/formatters.ts`
+- `client/src/lib/validation.ts`
+- `client/src/lib/forms.ts`
+- direct behavior-lock tests added during the migration
+- compatibility bridges may still exist where required by the current mixed JS/TS + `node --test` setup
+
+From Batch 5 onward, stop choosing files merely because they are in the same technical folder.
+
+Use VERTICAL FEATURE SLICES.
+
+A vertical slice means:
+- choose one business capability/domain;
+- follow that capability through the smallest meaningful set of frontend/backend layers;
+- migrate only the files necessary for that capability;
+- keep the slice reviewable;
+- preserve current behavior;
+- leave unrelated domains untouched.
+
+The initial candidate domains are:
+1. Patient
+2. Treatment
+3. Appointment
+
+Do not assume Patient must be first.
+Inspect the repository and select the safest first vertical slice based on the real dependency graph.
+
+GOAL
+
+Complete ONE first vertical TypeScript slice across a coherent business domain.
+
+The preferred outcome is a feature slice that crosses multiple application layers, such as:
+
+Feature UI/caller
+        ↓
+typed shared client utilities already migrated
+        ↓
+client API boundary or feature API caller
+        ↓
+Express route
+        ↓
+service/business logic
+        ↓
+feature-specific utility/helpers
+        ↓
+existing SQLite boundary remains behaviorally unchanged
+
+This is a TypeScript migration task only.
+
+Do NOT begin:
+- PostgreSQL migration;
+- database-provider replacement;
+- authentication;
+- authorization/RBAC;
+- audit trail;
+- private object storage;
+- patient portal redesign;
+- finance redesign;
+- notifications;
+- deployment;
+- later V2 roadmap phases.
+
+The existing SQLite runtime remains active.
+
+Do not mix TypeScript migration with SQLite → PostgreSQL work.
+
+DEPENDENCY GATE
+
+Begin only after:
+- TypeScript Foundation is reviewed and committed;
+- TypeScript Batches 1–4 are reviewed and committed;
+- `npm run typecheck` passes;
+- the current V1 regression safety net passes;
+- the working tree is clean except for unrelated changes explicitly identified by the user.
+
+If Batch 4 changes are still uncommitted, STOP.
+
+SUBAGENT DISCOVERY GATE
+
+Before editing, confirm the dedicated custom project subagent `typescript_reviewer` is callable.
+
+If it cannot be discovered/spawned:
+- STOP before modifying files;
+- report the exact discovery/configuration problem;
+- do not silently substitute a generic reviewer.
+
+REQUIRED DISCOVERY BEFORE EDITING
+
+1. Run `git status --short`.
+2. Verify the current branch.
+3. Run `npm run typecheck`.
+4. Run the current V1 regression safety net.
+5. Confirm the shared TypeScript foundation from Batches 1–4 exists.
+6. Confirm existing compatibility bridges are still intentional and unchanged.
+7. Inventory the remaining JS/JSX files for the Patient, Treatment, and Appointment domains.
+8. For each candidate domain, map:
+   - React pages/components;
+   - client form/validation usage;
+   - client API calls;
+   - server route(s);
+   - server service(s);
+   - domain-specific utilities;
+   - tests;
+   - direct SQLite/database dependencies.
+9. Identify shared files that contain code for multiple domains, especially:
+   - `client/src/lib/api.js`;
+   - shared React components;
+   - server route aggregators;
+   - shared services/utilities.
+10. Do not migrate a large shared file merely to reach one feature.
+11. Rank Patient, Treatment, and Appointment using:
+   - dependency size;
+   - existing test coverage;
+   - business-rule risk;
+   - amount of cross-domain coupling;
+   - number of files;
+   - amount of direct database coupling;
+   - amount of React state/form complexity;
+   - likelihood of preserving behavior without architectural redesign.
+12. Present a short ranking:
+   - SAFEST FIRST SLICE
+   - SECOND
+   - DEFER FOR NOW
+13. State the exact selected feature and exact files before editing.
+
+VERTICAL-SLICE SELECTION RULE
+
+Choose ONE domain only.
+
+Preferred first-slice characteristics:
+- existing regression coverage;
+- small route/service surface;
+- limited cross-domain coupling;
+- already consumes the migrated client utilities;
+- no need to redesign the database layer;
+- no need to migrate a huge shared API/bootstrap file;
+- can be validated end-to-end.
+
+Do not choose a domain simply because its filenames appear first.
+
+If no candidate can form a safe vertical slice without broad architecture changes:
+- STOP;
+- explain the blocker;
+- propose the smallest preparation batch;
+- do not fall back to arbitrary horizontal migration without reporting why.
+
+MINIMUM VERTICALITY
+
+The selected slice should cross at least TWO meaningful application layers when safely possible.
+
+Examples:
+- React/client caller + server route/service
+- client API boundary + server route/service
+- route + service + domain utility
+
+A batch that migrates only unrelated utilities in one folder is not a vertical slice.
+
+If the feature is too large for one batch, create a coherent sub-slice such as:
+
+PATIENT SLICE A
+- feature contracts
+- client API call(s)
+- patient route/service
+
+PATIENT SLICE B
+- patient page/components
+- integration cleanup
+
+Both must remain Patient-focused.
+
+Do not mix Patient + Treatment + Appointment in one Batch 5 implementation.
+
+SHARED FILE RULE
+
+Some files may serve multiple domains.
+
+Example:
+- `client/src/lib/api.js`
+
+If a shared file contains Patient, Treatment, Appointment, and other APIs:
+- do not migrate the entire file merely for one feature;
+- do not perform a broad refactor solely to split it;
+- migrate the selected feature around the existing shared JS boundary when safe;
+- if a tiny behavior-preserving extraction is clearly necessary and reviewer-approved, explain it before editing;
+- otherwise defer the shared file to a later cross-cutting cleanup batch.
+
+The same rule applies to shared route aggregators, bootstrap files, and mixed-domain modules.
+
+SQLITE BOUNDARY
+
+The active data source remains SQLite during this phase.
+
+Allowed:
+- TypeScript-migrate a service that currently calls the existing SQLite data-access code;
+- type the inputs/outputs around that boundary;
+- preserve current SQL/runtime behavior.
+
+Not allowed:
+- introduce PostgreSQL;
+- dual-write;
+- change schemas;
+- rewrite SQL for PostgreSQL;
+- add database-provider abstractions merely for future elegance;
+- modify real SQLite data;
+- inspect real clinic rows.
+
+If the selected slice directly depends on a high-risk database module:
+- prefer leaving that module in JS temporarily while typing the service boundary;
+- migrate the database module only in a later explicitly approved high-risk/infrastructure batch unless unavoidable.
+
+TYPE-SAFETY RULES
+
+For migrated files:
+- use strict TypeScript;
+- use `.ts` for non-React modules;
+- use `.tsx` for React JSX modules;
+- preserve current runtime behavior;
+- add minimum accurate types;
+- use domain-specific interfaces/types where they clarify actual contracts;
+- preserve legacy nullable/optional values accurately;
+- avoid broad `any`;
+- use `unknown` only when values are genuinely untrusted and narrow them;
+- no `@ts-ignore`;
+- no `@ts-nocheck`;
+- no weakening compiler settings;
+- no unsafe assertions merely to silence TypeScript;
+- do not invent enums/literal unions unless the current contract proves the values are exhaustive.
+
+Do not treat TypeScript as runtime validation.
+
+BEHAVIOR-PRESERVATION RULES
+
+The selected slice must preserve all current V1 behavior.
+
+Depending on the selected domain, preserve:
+
+PATIENT
+- patient creation/edit behavior;
+- annual readable patient codes;
+- patient fields;
+- classification/PWD behavior;
+- medical/dental history;
+- current validation;
+- patient display/search behavior.
+
+TREATMENT
+- readable treatment codes;
+- treatment dates;
+- tooth/procedure data;
+- discount behavior;
+- amount/net/paid/balance calculations;
+- follow-up date/time;
+- existing validation and history behavior.
+
+APPOINTMENT
+- appointment date/time;
+- planned procedure;
+- statuses;
+- history;
+- cancellation/no-show/completion behavior;
+- follow-up scheduling behavior;
+- current validation.
+
+Do not redesign behavior while migrating types.
+
+If a behavior issue is discovered:
+- report it separately;
+- preserve current behavior unless the task specifically authorizes a fix.
+
+TEST STRATEGY
+
+Before migration:
+1. Identify targeted tests for the selected feature.
+2. Identify gaps in direct behavior coverage.
+3. Add only the minimum behavior-lock tests needed to make the migration safe.
+4. When practical, run behavior-lock tests against the current JS implementation before renaming.
+
+During migration:
+1. Migrate the smallest dependency-aware feature set.
+2. Run targeted tests after each meaningful layer.
+3. Run `npm run typecheck` frequently.
+4. Do not continue expanding the slice if a newly migrated layer reveals a major architecture blocker.
+
+After migration:
+1. Run selected feature tests.
+2. Run `npm run typecheck`.
+3. Run the complete V1 regression safety net.
+4. Run:
+   `node --test`
+5. Run:
+   `npm run build --workspace client`
+6. Search for stale `.js` references caused by renamed files.
+7. Search for:
+   - `@ts-ignore`
+   - `@ts-nocheck`
+   - new broad `any`
+   - unsafe assertions
+8. Inspect the complete diff.
+9. Confirm the selected feature remains behaviorally intact.
+
+REQUIRED SUBAGENTS
+
+Use:
+- `repo_explorer`
+  - map Patient/Treatment/Appointment feature boundaries and dependencies;
+  - rank safest first vertical slice.
+
+- `requirements_auditor`
+  - verify selected feature behavior remains consistent with README.md, current-system audit, and V1 requirements.
+
+- `test_auditor`
+  - identify feature behavior coverage, missing tests, and regression risks.
+
+- dedicated custom `typescript_reviewer`
+  - review TS/TSX boundaries;
+  - React props/state typing where relevant;
+  - JS/TS interoperability;
+  - service/route contracts;
+  - legacy nullability;
+  - unsafe assertions/suppressions;
+  - migration blast radius.
+
+Conditional:
+- `security_reviewer`
+  - use when the selected feature touches sensitive attachment handling, authentication assumptions, secrets, patient-data exposure, authorization assumptions, backup/export behavior, or another security-sensitive boundary.
+
+The parent agent is the only writer.
+All reviewers remain read-only.
+Wait for required findings before editing.
+
+PROTECTED CONFIGURATION
+
+Do not modify:
+- `.codex/agents/*.toml`
+- `.codex/config.toml`
+- skill definitions
+- `tsconfig.json`
+- `client/tsconfig.json`
+- `server/tsconfig.json`
+- TypeScript dependencies
+
+If the current foundation blocks the selected vertical slice:
+- STOP;
+- explain the exact blocker;
+- propose the smallest foundation correction separately;
+- do not silently modify compiler/test-runner configuration.
+
+COMPATIBILITY BRIDGES
+
+Existing `.js` compatibility bridges created during prior batches may remain while needed.
+
+Do not remove them merely for cleanup.
+
+If the selected vertical slice requires a new compatibility bridge:
+- prove the resolver/runtime need;
+- keep it one-purpose and minimal;
+- report it explicitly;
+- do not create bridges as a default migration pattern.
+
+REACT MIGRATION RULES
+
+If `.jsx` files are selected:
+- rename `.jsx` → `.tsx`;
+- type props accurately;
+- type local state only as specifically as current behavior permits;
+- type event handlers appropriately;
+- do not redesign component state architecture;
+- do not introduce new state libraries;
+- do not reorganize components for style;
+- preserve rendered output and navigation;
+- preserve current form validation and submit behavior.
+
+ROUTE/API/SERVICE RULES
+
+If server routes/services are selected:
+- preserve route paths;
+- preserve HTTP methods;
+- preserve payload shapes;
+- preserve response shapes;
+- preserve status codes;
+- preserve current error behavior;
+- preserve current SQLite calls;
+- do not add authentication/RBAC unless it already exists in V1;
+- do not redesign the API.
+
+Where request/response values are external/untrusted:
+- keep runtime validation;
+- TypeScript types alone are not sufficient.
+
+DO NOT MIGRATE BY FILE COUNT
+
+Success is not:
+- “converted N files.”
+
+Success is:
+- “one coherent feature slice is now TypeScript across meaningful layers with preserved behavior and passing tests.”
+
+A 4-file coherent vertical slice is better than 12 unrelated files.
+
+GIT BOUNDARY
+
+Codex may use read-only Git inspection commands:
+- `git status`
+- `git diff`
+- `git diff --stat`
+- `git branch --show-current`
+- `git log`
+- `git grep`
+
+Codex must not:
+- stage;
+- commit;
+- push;
+- merge;
+- rebase;
+- reset;
+- switch branches;
+- create/delete branches;
+- create/delete tags;
+- rewrite history.
+
+Leave all changes uncommitted for human review.
+
+DONE WHEN
+
+Batch 5 is complete when:
+- exactly one feature/domain was selected;
+- the selection was justified from the dependency graph;
+- the slice crosses meaningful application layers;
+- unrelated domains were not migrated;
+- current SQLite remains active;
+- no PostgreSQL work began;
+- behavior is preserved;
+- targeted tests pass;
+- `npm run typecheck` passes;
+- V1 regression passes;
+- `node --test` passes;
+- client build passes;
+- no unsafe TS suppressions were introduced;
+- final diff is focused and reviewable.
+
+BEFORE COMPLETION
+
+1. Run `git status --short`.
+2. Inspect the full diff.
+3. List every renamed/added/modified file.
+4. State the selected domain.
+5. Show the vertical path that was migrated, for example:
+
+   Patient UI
+   → client API boundary
+   → patient route
+   → patient service
+   → existing SQLite boundary
+
+6. Explain which layers remain JS and why.
+7. List behavior-lock tests added/updated.
+8. Report TypeScript reviewer findings.
+9. Report security reviewer findings if used.
+10. Re-inventory the remaining JS/JSX files by domain.
+11. Recommend the next vertical slice based on actual dependency findings.
+12. Provide the suggested commit message only.
+
+Use a feature-specific commit message such as:
+- `refactor: migrate patient workflow to TypeScript`
+- `refactor: migrate treatment workflow to TypeScript`
+- `refactor: migrate appointment workflow to TypeScript`
+
+Do not choose the commit message until the actual selected domain is known.
+
+COMPLETION REPORT
+
+- Summary
+- Branch
+- Dependency-gate result
+- `typescript_reviewer` discovery result
+- Subagents used
+- Candidate-domain ranking
+- Selected vertical slice and rationale
+- Vertical path migrated
+- Files renamed
+- Files added
+- Files modified
+- Types/contracts introduced
+- React typing decisions, if applicable
+- API/route/service typing decisions, if applicable
+- JS/TS interoperability decisions
+- Compatibility bridge, if any
+- Behavior locked by tests
+- Production behavior changes, if any
+- SQLite coexistence result
+- Commands run
+- Type-check result
+- Targeted-test results
+- Regression-test result
+- Full-test result
+- Build result
+- TypeScript reviewer findings
+- Security reviewer findings, if used
+- Deferred files within the selected domain
+- Remaining JS/JSX inventory by domain
+- Known limitations
+- Final git status
+- Suggested commit message
+- Recommended next vertical slice
+
+RECOMMENDED NEXT TASK
+
+Human-review and commit Batch 5 if approved.
+
+Then prepare the next vertical TypeScript slice from the actual remaining dependency inventory.
+
+Do not begin the next slice automatically.
+Do not begin PostgreSQL or later V2 roadmap phases automatically.
