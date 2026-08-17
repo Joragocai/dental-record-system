@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS drs_v2_foundation_probe (
+  id UUID PRIMARY KEY,
+  key TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
