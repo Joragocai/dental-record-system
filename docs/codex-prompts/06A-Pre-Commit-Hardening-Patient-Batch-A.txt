@@ -1,0 +1,265 @@
+STATUS: EXECUTABLE HARDENING TASK — BATCH A PRE-COMMIT
+
+This document defines the final pre-commit hardening task for the existing
+Phase 06A Branch + Patient PostgreSQL implementation.
+
+The main Batch A implementation already exists.
+
+Do not redo Batch A.
+Do not begin Batch B.
+
+This task only fixes and validates remaining Batch A issues before human review
+and commit.
+
+Current hardening focus:
+- atomic Patient + legacy identity-map migration
+- safe rerun/idempotency behavior
+- complete field-level migration parity
+- optional blank-string -> NULL normalization
+- safer PostgreSQL integration-test cleanup
+- Patient-code year/timezone boundary behavior
+- final TypeScript, regression, integration, and build validation
+
+Leave all changes uncommitted for human review.
+
+If every required validation passes, this task may report:
+READY FOR COMMIT
+
+Otherwise, report the exact remaining blocker and stop.
+
+Read README.md and AGENTS.md first.
+
+Continue Phase 06A on the CURRENT feature branch only.
+
+This is a PRE-COMMIT HARDENING task for the existing uncommitted
+Branch + Patient PostgreSQL Batch A implementation.
+
+Do NOT redo Batch A.
+Do NOT create Batch B.
+Do NOT begin Treatment, Appointment, service/API cutover, auth, RBAC,
+audit, storage, finance, portal, or deployment work.
+Do NOT modify committed migration 0001.
+Do NOT use real patient or clinic data.
+
+The current implementation is close, but do NOT treat the previous
+READY FOR COMMIT conclusion as authoritative until the issues below
+are resolved and revalidated.
+
+FIRST VERIFY
+
+Run:
+- node -v
+- npm -v
+- git branch --show-current
+- git status --short
+
+Require:
+- Node major version 24
+- branch: feat/v2-patient-data-model-batch-a
+- current Batch A changes still uncommitted
+
+Then inspect the exact current implementations of:
+- server/src/postgres/batchA/patientMigration.ts
+- server/src/postgres/batchA/patientIntegration.pgtest.ts
+- server/src/postgres/batchA/patientDomain.pgtest.ts
+- server/src/postgres/batchA/patientCodeAllocation.ts
+- server/src/postgres/batchA/patients.ts
+- server/src/postgres/migrations/0002_branch_patient_core.sql
+- docs/architecture/postgresql-patient-batch-a.md
+- the Phase 06A task specification
+
+Use focused read-only reviewers as useful, especially:
+- typescript_reviewer
+- test_auditor
+- security_reviewer
+
+HARDENING ISSUE 1 — PATIENT + LEGACY MAP MUST BE ATOMIC
+
+Current migrateLegacyPatient() performs the patient insert and
+legacy_patient_identity_map insert as separate operations.
+
+Make one patient migration unit transactional so that:
+- patient row + legacy identity mapping succeed together; or
+- neither remains if either operation fails.
+
+Use the existing PostgreSQL transaction foundation.
+Do not add a generic transaction framework.
+
+Add tests proving:
+- identity-map insert failure rolls back the patient insert;
+- patient insert failure leaves no mapping;
+- successful migration persists both.
+
+Do not merely document that callers should use a transaction while the
+actual integration path still calls the non-transactional sequence.
+
+HARDENING ISSUE 2 — RERUN / IDEMPOTENCY SAFETY
+
+The current mapping path generates a new random UUID and inserts blindly on
+each call.
+
+The Phase 06A specification requires safe rerun/idempotency behavior.
+
+Implement a narrow, explicit rerun policy based on the legacy identity keys.
+
+Requirements:
+- rerunning the same fictional legacy patient must not create a second patient;
+- rerunning must not create a second mapping;
+- conflicting legacy identity / patient-code mappings must fail clearly;
+- the behavior must be deterministic and tested;
+- do not silently overwrite mismatched migrated data.
+
+A safe no-op/reuse of an existing matching mapping is acceptable.
+A deliberate pre-write conflict failure is also acceptable if it preserves
+one-to-one identity and the migration harness can safely be rerun.
+Choose the smallest behavior that satisfies the Phase 06A contract.
+
+Add a LIVE PostgreSQL integration assertion for the second run.
+
+HARDENING ISSUE 3 — FULL FIELD-LEVEL PARITY
+
+The current live integration test checks only a subset of the Patient fields.
+
+Strengthen the fictional parity test so it verifies the complete mapped
+Patient record, not only:
+- patient code
+- branch
+- name
+- a few condition flags
+
+Requirements:
+- every persisted V1 Patient field represented by Batch A must be accounted for;
+- generated V2 UUID may be compared through mapping rather than to a source value;
+- branch_location is validated through the explicit fictional mapping rule;
+- all condition fields are checked after integer -> boolean conversion;
+- date/timestamp transformations are checked;
+- nullable/optional fields are checked;
+- source row count / target row count / identity-map count are checked;
+- no source row silently disappears;
+- no extra target patient is created.
+
+Prefer a reusable expected-transformation/parity helper instead of dozens of
+unrelated hand-written assertions if that keeps the test maintainable.
+
+HARDENING ISSUE 4 — EMPTY STRING / NULL RULE MUST MATCH THE APPROVED MAPPING
+
+The pre-edit mapping matrix states that optional blank strings are normalized
+to NULL in V2, but normalizeOptionalString() currently preserves an empty
+string as "".
+
+Resolve this inconsistency.
+
+Unless the committed Phase 06A source of truth says otherwise:
+- null/undefined -> NULL
+- empty or whitespace-only optional strings -> NULL
+- meaningful text -> preserve the meaningful value
+
+Do not apply this normalization to required fields unless explicitly approved.
+
+Add focused tests using the existing fictional fixture fields that currently
+contain empty strings.
+
+Update the architecture note only if needed so documentation and code say the
+same thing.
+
+HARDENING ISSUE 5 — TEST DATABASE DESTRUCTIVE SETUP
+
+Review the integration test's current:
+
+DROP SCHEMA public CASCADE; CREATE SCHEMA public;
+
+The test-safety contract says cleanup/destructive setup must affect only a
+verified disposable/test target and only test-created state.
+
+Do not rely merely on "localhost" plus a database name containing "test" if
+that could destroy unrelated state in a shared local test database.
+
+Use the narrowest safe approach supported by the existing foundation, such as:
+- an explicitly verified disposable database with a stronger dedicated-target
+  guard; or
+- an isolated test schema/search_path; or
+- cleanup limited to the known test-created objects.
+
+Do not weaken test safety.
+Do not connect to staging/production/real data.
+
+Add/adjust safety coverage if the setup mechanism changes.
+
+ADDITIONAL CHECK — PATIENT CODE YEAR BOUNDARY
+
+Review getCalendarYear(), which currently derives the year from the runtime
+environment's local timezone.
+
+Verify this against the project's approved clinic/business timezone semantics.
+
+The generated P-YYYY-#### code must not depend accidentally on the host
+machine timezone at the New Year boundary.
+
+Add a boundary test around the approved business timezone's year change.
+Do not change visible V1 code format.
+
+TYPESCRIPT RULES
+
+Do not introduce:
+- broad any
+- @ts-ignore
+- @ts-nocheck
+- unsafe double assertions merely to satisfy the compiler
+
+Keep the new contracts narrow.
+
+VALIDATION
+
+After fixes run:
+
+- git diff --check
+- npm run typecheck
+- npm run test:postgres:foundation
+- npm run test:postgres:batch-a
+- node --test server/src/services/v1RegressionSafetyNet.test.js
+- node --test
+- npm run build --workspace client
+
+The safe live PostgreSQL Batch A integration test MUST run and pass, not skip,
+before READY FOR COMMIT can be reported.
+
+Also inspect/search for:
+- accidental V1 Patient service/route cutover
+- dual-write logic
+- real patient/clinic data
+- credentials in source/logs
+- PII logging
+- unsafe SQL interpolation
+- modifications to migration 0001
+- Treatment/Appointment schema creep
+
+FINAL REPORT
+
+Report:
+- atomic migration fix
+- rerun/idempotency policy and tests
+- full field-level parity result
+- empty-string/NULL normalization result
+- destructive test setup safety result
+- patient-code year-boundary/timezone result
+- files changed during hardening
+- typecheck result
+- foundation test result
+- Batch A test result
+- live PostgreSQL integration result
+- V1 regression result
+- full test result
+- client build result
+- final git status
+- whether migration 0001 remained unchanged
+- whether V1 Patient runtime remains SQLite
+- commit-readiness status
+- suggested commit message only
+
+Leave all changes uncommitted.
+Do not begin the next batch.
+Stop after the completion report.
+
+If all of the above pass, the suggested commit message remains:
+
+feat: add PostgreSQL patient data-model foundation

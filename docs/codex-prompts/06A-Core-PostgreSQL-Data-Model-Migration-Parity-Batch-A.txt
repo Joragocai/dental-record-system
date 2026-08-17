@@ -1,3 +1,22 @@
+STATUS: EXECUTABLE TASK — BATCH A
+
+This document defines the implementation task for Phase 06A:
+Core PostgreSQL Data Model + Migration Parity — Branch + Patient.
+
+This task establishes the first controlled V2 PostgreSQL domain-data slice.
+
+Scope:
+- Branch PostgreSQL foundation
+- Patient PostgreSQL data model
+- annual Patient code allocation
+- legacy Patient ID -> V2 UUID mapping
+- fictional V1 -> V2 Patient migration/parity
+
+Do not begin Batch B or later phases from this document.
+
+If a separate Phase 06A pre-commit hardening task exists, complete that task
+before considering Batch A ready for commit.
+
 Read README.md and AGENTS.md first.
 
 Continue Phase 5 / Batch A only after applying the following explicit human decisions.

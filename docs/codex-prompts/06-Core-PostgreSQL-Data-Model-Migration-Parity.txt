@@ -1,9 +1,15 @@
 CODEX TASK — CORE POSTGRESQL DATA MODEL + MIGRATION PARITY
 BATCH A — BRANCH + PATIENT
 
-STATUS: READY AFTER THE POSTGRESQL FOUNDATION IS HUMAN-REVIEWED AND COMMITTED
+STATUS: PHASE OVERVIEW / REFERENCE
 
-PURPOSE
+This document defines the overall Core PostgreSQL Data Model +
+Migration Parity phase.
+
+Do not execute this document directly.
+
+Current executable task:
+06A-Core-PostgreSQL-Data-Model-Migration-Parity-Batch-A.txt
 
 Build the first controlled V2 domain-data slice on top of the committed PostgreSQL Foundation.
 
