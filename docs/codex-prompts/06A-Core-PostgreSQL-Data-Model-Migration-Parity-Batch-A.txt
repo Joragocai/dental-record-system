@@ -1,0 +1,102 @@
+STATUS: EXECUTABLE TASK — BATCH A
+
+This document defines the implementation task for Phase 06A:
+Core PostgreSQL Data Model + Migration Parity — Branch + Patient.
+
+This task establishes the first controlled V2 PostgreSQL domain-data slice.
+
+Scope:
+- Branch PostgreSQL foundation
+- Patient PostgreSQL data model
+- annual Patient code allocation
+- legacy Patient ID -> V2 UUID mapping
+- fictional V1 -> V2 Patient migration/parity
+
+Do not begin Batch B or later phases from this document.
+
+If a separate Phase 06A pre-commit hardening task exists, complete that task
+before considering Batch A ready for commit.
+
+Read README.md and AGENTS.md first.
+
+Continue Phase 5 / Batch A only after applying the following explicit human decisions.
+
+HUMAN DECISION 1 — IMPLEMENTATION BRANCH
+
+Repository policy in README.md and AGENTS.md is authoritative for implementation work.
+
+This Batch A implementation must run on a focused feature branch created from:
+refactor/v2-cloud-migration
+
+Do NOT require the active branch itself to be named refactor/v2-cloud-migration.
+
+The human will create/switch the branch. Codex must not create or switch branches.
+
+Expected focused branch for this task:
+feat/v2-patient-data-model-batch-a
+
+Before editing, verify:
+- active branch is feat/v2-patient-data-model-batch-a
+- its history includes the committed PostgreSQL Foundation and Phase 5 prompt
+- working tree is clean
+- Node major version is 24
+- all existing dependency-gate tests still pass
+
+If these checks pass, continue.
+
+HUMAN DECISION 2 — LEGACY BRANCH MAPPING
+
+Do NOT invent or infer a production clinic branch list.
+
+For Batch A, implement the normalized Branch foundation and Patient.branch_id, but treat production branch normalization as unresolved and deferred until a real approved branch list is provided.
+
+Migration/parity behavior for Batch A:
+
+1. The migration harness must require an explicit legacy branch_location -> V2 branch mapping.
+2. Use only fictional branch rows and fictional mappings in tests.
+3. Do not fuzzy-match, guess, auto-create, or silently normalize unknown branch_location values.
+4. If a source branch_location is missing from the supplied mapping, fail clearly before writing that patient.
+5. The mapping must resolve to an existing V2 branch UUID.
+6. Patient.branch_id must use that explicitly resolved V2 branch UUID.
+7. Field-level parity must verify that each fictional source branch_location resolves to the expected fictional branch.
+8. Do not add real clinic branch names or branch UUIDs.
+9. Do not read real patient/clinic data.
+10. Do not add a permanent legacy branch text field to the Patient domain merely to avoid the mapping decision.
+11. Document that real-data migration remains blocked until the clinic's canonical production branch list and mapping are approved.
+
+This decision resolves the Batch A schema blocker while preserving the rule that no real branch normalization may be guessed.
+
+SCOPE REMAINS UNCHANGED
+
+Continue only with:
+- minimal Branch PostgreSQL foundation
+- Patient PostgreSQL schema
+- concurrency-safe annual Patient code allocation
+- legacy Patient ID -> V2 UUID migration mapping
+- fictional V1 -> V2 Patient migration/parity verification
+
+Do NOT:
+- migrate Treatment or Appointment data
+- cut over Patient services/routes
+- dual-write
+- change V1 SQLite behavior
+- begin auth/RBAC/audit/storage/finance/portal/deployment
+- modify committed migration 0001
+- use real clinic data
+
+Before editing:
+- finish/confirm the required read-only security review if it has not actually returned
+- present the V1 -> V2 Patient field-mapping matrix
+- present the concise implementation plan
+- list exact planned files
+
+Then execute the existing Batch A task specification with these two human decisions treated as the resolved interpretation of the prior blockers.
+
+For this first real PostgreSQL domain-schema phase, do not claim READY FOR COMMIT unless safe disposable/test PostgreSQL integration validation actually runs successfully.
+
+If no safe PostgreSQL test database is configured, finish with:
+
+IMPLEMENTATION COMPLETE — POSTGRESQL INTEGRATION VALIDATION PENDING
+
+Leave all changes uncommitted.
+Stop after the completion report.

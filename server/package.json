@@ -7,7 +7,8 @@
     "dev": "nodemon src/index.js",
     "db:migrate": "tsx src/postgres/cli/migrate.ts",
     "db:migrate:status": "tsx src/postgres/cli/migrateStatus.ts",
-    "test:postgres:foundation": "node --import tsx --test \"src/postgres/**/*.pgtest.ts\"",
+    "test:postgres:foundation": "node --import tsx --test \"src/postgres/*.pgtest.ts\" \"src/postgres/cli/*.pgtest.ts\"",
+    "test:postgres:batch-a": "node --import tsx --test \"src/postgres/batchA/*.pgtest.ts\"",
     "start": "node src/index.js"
   },
   "dependencies": {
