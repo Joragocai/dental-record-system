@@ -1,0 +1,317 @@
+STATUS: EXECUTABLE REVIEW — PHASE 06 FINAL REVIEW / CLOSURE
+
+Project: Khurana Calliap Dental Record System
+Phase: 06 — Core PostgreSQL Data Model + Migration Parity
+Branch: refactor/v2-cloud-migration
+
+PURPOSE
+
+Perform the final Phase 06 review after the completed and integrated:
+- 06A Branch + Patient
+- 06B Treatment
+- 06C Appointment
+
+This is a closure/audit task, not a new implementation batch.
+
+Do NOT create a 06D.
+Do NOT begin Phase 07.
+Do NOT perform runtime cutover.
+Do NOT commit, stage, push, merge, rebase, or switch branches.
+
+SOURCE-OF-TRUTH ORDER
+
+Read:
+1. README.md
+2. AGENTS.md
+3. docs/codex-prompts/06-Core-PostgreSQL-Data-Model-Migration-Parity.txt
+4. docs/codex-prompts/06A-Core-PostgreSQL-Data-Model-Migration-Parity-Batch-A.txt
+5. docs/codex-prompts/06B-Core-PostgreSQL-Data-Model-Migration-Parity-Treatment.txt
+6. docs/codex-prompts/06C-Core-PostgreSQL-Data-Model-Migration-Parity-Appointment.txt
+7. docs/architecture/postgresql-foundation.md
+8. docs/architecture/postgresql-patient-batch-a.md
+9. docs/architecture/postgresql-treatment-batch-b.md
+10. docs/architecture/postgresql-appointment-batch-c.md
+11. docs/architecture/v2-migration-map.md
+12. ADR-0001 for the selective-replacement strategy
+13. actual PostgreSQL foundation, migration, Batch A/B/C code and tests
+
+PRE-REVIEW GATE
+
+Verify:
+- Node major version is 24
+- active branch is exactly refactor/v2-cloud-migration
+- working tree is clean
+- local branch is synchronized with origin/refactor/v2-cloud-migration
+- Phase 06A merge is present
+- Phase 06B merge is present
+- Phase 06C merge is present
+- migrations 0001, 0002, 0003, 0004 exist in order
+- there is no 0005 Phase 06 domain migration
+- no feature branch is required for this read/review pass
+
+If the working tree is dirty before review, STOP and report it.
+
+REQUIRED READ-ONLY REVIEWERS
+
+Use:
+- repo_explorer
+- requirements_auditor
+- test_auditor
+- typescript_reviewer
+- security_reviewer
+
+Use database_architect only if already available and useful.
+
+Reviewers must remain read-only.
+
+PHASE 06 CLOSURE QUESTIONS
+
+Answer each with evidence from the repository.
+
+1. PostgreSQL Foundation
+- config remains backend-only
+- pool remains lazy
+- transactions work
+- migrations are deterministic/checksummed
+- mutation guards remain intact
+- test-database safety guards remain intact
+
+2. Migration Chain
+Verify exact order:
+- 0001_v2_foundation_probe.sql
+- 0002_branch_patient_core.sql
+- 0003_treatment_core.sql
+- 0004_appointment_core.sql
+
+Confirm earlier committed migrations were not rewritten after their integration.
+
+3. Patient / Branch Batch A
+Verify:
+- UUID internal identity
+- visible P-YYYY-0001 semantics
+- annual concurrency-safe counter
+- explicit branch mapping
+- legacy patient identity map
+- transactional migration
+- idempotent rerun
+- complete parity coverage
+- Asia/Manila year-boundary behavior
+
+4. Treatment Batch B
+Verify:
+- UUID internal identity
+- visible T-YYYY-0001 semantics
+- dedicated annual concurrency-safe counter
+- V2 Patient UUID relationship through Batch A seam
+- dedicated legacy Treatment identity map
+- transactional migration
+- idempotent rerun
+- complete persisted parity
+- Treatment financial fields remain parity-only and do not become Finance ledger work
+
+5. Appointment Batch C
+Verify:
+- UUID internal identity
+- no invented business appointment code
+- legacy SQLite row id remains migration identity only
+- dedicated legacy Appointment identity map
+- Patient UUID relationship through Batch A
+- branch_id is the documented migration-time Patient branch snapshot
+- no invented Treatment/provider FK
+- optional local wall-clock Appointment TIME semantics
+- V1 status semantics preserved
+- duplicate-equivalent legacy appointments remain independently migratable
+- no speculative uniqueness/double-booking constraint
+- transactional and rerun-safe migration
+
+6. V1 Coexistence
+Confirm:
+- Patient/Treatment/Appointment active V1 runtime remains SQLite
+- no dual-write path exists
+- no partially activated PostgreSQL route exists
+- no V1 runtime code was prematurely retired
+
+7. Scope Boundary
+Confirm Phase 06 did NOT implement:
+- Authentication
+- RBAC
+- Audit
+- private storage
+- notification delivery
+- Patient portal
+- Finance ledger
+- production deployment
+- full Appointment double-booking runtime
+
+8. Security / Safety
+Inspect for:
+- raw credentials
+- raw DATABASE_URL logging
+- PII logging
+- unsafe SQL interpolation
+- broad destructive test setup
+- unsafe production/staging mutation path
+- TypeScript suppression or broad any in new PostgreSQL code
+
+IMPORTANT: LIVE POSTGRESQL CLOSURE GATE
+
+The most recent human post-merge run showed:
+- typecheck passed
+- Foundation tests passed
+- Batch A/B/C unit/domain tests passed
+- V1 regression passed
+- full node tests passed
+- client build passed
+BUT the live Batch A/B/C PostgreSQL integration tests were SKIPPED because the
+required database environment was not available in that shell.
+
+Do NOT misreport those skipped tests as passed.
+
+For final Phase 06 closure, a safe live PostgreSQL integration run is required
+after all A/B/C code is integrated together on refactor/v2-cloud-migration.
+
+First inspect the project's documented/local test configuration and determine
+the repository-supported way to run the integration tests against the safe
+local test PostgreSQL database.
+
+Do not invent credentials.
+Do not weaken testSafety.ts.
+Do not point tests at production/staging.
+Do not print secrets or raw database URLs.
+
+If safe local test DB configuration is available, run:
+- npm run test:postgres:batch-a
+- npm run test:postgres:batch-b
+- npm run test:postgres:batch-c
+
+and verify their live integration tests actually RUN and PASS with skipped=0
+for the integration prerequisite.
+
+If the safe local test DB configuration is not available in the current
+environment, STOP closure with:
+
+PHASE 06 IMPLEMENTATION COMPLETE — FINAL LIVE POSTGRESQL CLOSURE VALIDATION PENDING
+
+Report exactly what environment prerequisite is missing and the safe documented
+command/configuration the human must provide. Do not edit code just to remove
+the skip.
+
+FULL VALIDATION
+
+When the live PostgreSQL prerequisite is available, run:
+
+- node -v
+- npm -v
+- git diff --check
+- npm run typecheck
+- npm run test:postgres:foundation
+- npm run test:postgres:batch-a
+- npm run test:postgres:batch-b
+- npm run test:postgres:batch-c
+- node --test server/src/services/v1RegressionSafetyNet.test.js
+- node --test
+- npm run build --workspace client
+
+For Batch A/B/C, explicitly report:
+- pass count
+- fail count
+- skipped count
+- whether the live integration test ran
+
+CLOSURE DOCUMENT REVIEW
+
+Review the Phase 06 overview status.
+
+Only if ALL closure gates pass, including live PostgreSQL A/B/C integration,
+make minimal documentation-only closure updates:
+
+1. In:
+   docs/codex-prompts/06-Core-PostgreSQL-Data-Model-Migration-Parity.txt
+
+   change the phase status to a completed/reference state, for example:
+   STATUS: PHASE COMPLETE / REFERENCE
+
+   and replace the current executable task pointer with:
+   Current executable task:
+   None — Phase 06 complete.
+
+2. Mark the 06A, 06B, and 06C executable task prompts as completed/reference
+   only if their existing format supports a small status-line update without
+   rewriting their historical instructions.
+
+3. Update docs/architecture/v2-migration-map.md only if a minimal closure note
+   is useful and does not rewrite historical classifications.
+
+Do not make implementation changes during closure.
+Do not modify migrations.
+Do not change package files.
+Do not change source/runtime code.
+
+After any documentation-only closure edits, run:
+- git diff --check
+- git status --short
+- git diff --stat
+- git diff --name-only
+
+Expected closure diff should contain documentation files only.
+
+PHASE 06 COMPLETE RULE
+
+Report:
+
+PHASE 06 COMPLETE — READY FOR CLOSURE DOC COMMIT
+
+only if:
+- all architectural review items pass
+- migrations 0001-0004 are correct and unchanged
+- typecheck passes
+- Foundation tests pass
+- Batch A live integration runs and passes
+- Batch B live integration runs and passes
+- Batch C live integration runs and passes
+- V1 regression passes
+- full tests pass
+- client build passes
+- no scope creep or unsafe cutover exists
+- closure diff, if any, is documentation-only
+
+Otherwise report:
+PHASE 06 IMPLEMENTATION COMPLETE — CLOSURE BLOCKED
+
+and list the exact blocker(s).
+
+FINAL REPORT
+
+Report:
+- Phase 06 status
+- branch / origin synchronization
+- reviewers used
+- migration chain verification
+- Foundation review
+- Batch A review
+- Batch B review
+- Batch C review
+- V1 coexistence review
+- security/safety review
+- scope-boundary review
+- live PostgreSQL A result
+- live PostgreSQL B result
+- live PostgreSQL C result
+- typecheck
+- V1 regression
+- full tests
+- client build
+- documentation closure changes, if any
+- exact final git status
+- closure readiness
+- suggested closure-doc commit message
+- next roadmap phase name only
+
+Suggested closure documentation commit message, only if docs changed:
+
+docs: close Phase 06 PostgreSQL migration parity
+
+Leave closure documentation changes uncommitted for human review.
+
+Do not begin Phase 07 automatically.
+Stop after the final Phase 06 closure report.
