@@ -93,13 +93,15 @@ class FakeMigrationRunner implements PgMigrationRunner {
 test("listMigrationFiles returns ordered SQL migrations with checksums", async () => {
   const migrations = await listMigrationFiles();
 
-  assert.equal(migrations.length, 3);
+  assert.equal(migrations.length, 4);
   assert.equal(migrations[0]?.name, "0001_v2_foundation_probe.sql");
   assert.equal(migrations[1]?.name, "0002_branch_patient_core.sql");
   assert.equal(migrations[2]?.name, "0003_treatment_core.sql");
+  assert.equal(migrations[3]?.name, "0004_appointment_core.sql");
   assert.equal(migrations[0]?.checksum.length, 64);
   assert.equal(migrations[1]?.checksum.length, 64);
   assert.equal(migrations[2]?.checksum.length, 64);
+  assert.equal(migrations[3]?.checksum.length, 64);
 });
 
 test("compareMigrationState reports pending, applied, and orphaned migrations", () => {
@@ -143,12 +145,14 @@ test("runPendingMigrationsFromList records applied migrations and skips reruns",
   assert.deepEqual(firstRun.applied, [
     "0001_v2_foundation_probe.sql",
     "0002_branch_patient_core.sql",
-    "0003_treatment_core.sql"
+    "0003_treatment_core.sql",
+    "0004_appointment_core.sql"
   ]);
   assert.deepEqual(runner.listAppliedMigrationNames(), [
     "0001_v2_foundation_probe.sql",
     "0002_branch_patient_core.sql",
-    "0003_treatment_core.sql"
+    "0003_treatment_core.sql",
+    "0004_appointment_core.sql"
   ]);
 
   const secondRun = await runPendingMigrationsFromList(runner, migrations, migrationTableName);
@@ -156,7 +160,8 @@ test("runPendingMigrationsFromList records applied migrations and skips reruns",
   assert.deepEqual(secondRun.skipped, [
     "0001_v2_foundation_probe.sql",
     "0002_branch_patient_core.sql",
-    "0003_treatment_core.sql"
+    "0003_treatment_core.sql",
+    "0004_appointment_core.sql"
   ]);
 });
 
@@ -194,10 +199,11 @@ test("getMigrationStatus remains read-only when the migration table is absent", 
 
   const statuses = await getMigrationStatus(runner);
 
-  assert.equal(statuses.length, 3);
+  assert.equal(statuses.length, 4);
   assert.equal(statuses[0]?.applied, false);
   assert.equal(statuses[1]?.applied, false);
   assert.equal(statuses[2]?.applied, false);
+  assert.equal(statuses[3]?.applied, false);
   assert.equal(
     runner.executedSql.some((statement) => statement.startsWith(`CREATE TABLE IF NOT EXISTS ${migrationTableName}`)),
     false

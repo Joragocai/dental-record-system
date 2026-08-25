@@ -62,6 +62,8 @@ requires more than the present unit and service-level parity tests.
 
 | Area | Classification | Notes |
 | --- | --- | --- |
+| `server/src/postgres/migrations/0004_appointment_core.sql` | KEEP | Batch C Appointment foundation migration; extend only through later ordered migrations. |
+| `server/src/postgres/batchC/*.ts` | KEEP | Dedicated PostgreSQL Appointment foundation and fictional parity helpers; no runtime cutover yet. |
 | `server/src/services/appointmentService.ts` | ADAPT | Useful typed domain and service base for future replacement slices. |
 | `server/src/services/appointmentService.js` | BRIDGE | Preserve while JavaScript route consumers still import it. |
 | `server/src/routes/appointments.js` | RETIRE-LATER | Active V1 route path; replacement depends on broader V2 API and auth work. |
