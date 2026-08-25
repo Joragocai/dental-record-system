@@ -1,0 +1,617 @@
+STATUS: EXECUTABLE TASK — PHASE 06C / APPOINTMENT
+
+Project: Khurana Calliap Dental Record System
+Phase: 06 — Core PostgreSQL Data Model + Migration Parity
+Batch: 06C — Appointment
+Execution branch: feat/v2-appointment-data-model-batch-c
+Base/integration branch: refactor/v2-cloud-migration
+
+PURPOSE
+
+Implement the next narrow PostgreSQL domain-data slice for Appointment after
+the completed Branch + Patient (06A) and Treatment (06B) PostgreSQL foundations.
+
+This task is ONLY for:
+- Appointment PostgreSQL data model
+- required legacy identity mapping
+- fictional V1 SQLite -> V2 PostgreSQL migration/parity
+- focused schema/data integrity needed for migration safety
+
+Do NOT cut over the active V1 Appointment runtime yet.
+
+SOURCE-OF-TRUTH ORDER
+
+Read and follow, in this order:
+
+1. README.md
+2. AGENTS.md
+3. docs/codex-prompts/06-Core-PostgreSQL-Data-Model-Migration-Parity.txt
+4. docs/codex-prompts/06A-Core-PostgreSQL-Data-Model-Migration-Parity-Batch-A.txt
+5. docs/codex-prompts/06B-Core-PostgreSQL-Data-Model-Migration-Parity-Treatment.txt
+6. docs/architecture/postgresql-patient-batch-a.md
+7. docs/architecture/postgresql-treatment-batch-b.md
+8. docs/architecture/v2-migration-map.md
+9. ADR-0001 for the accepted selective-replacement migration strategy
+10. the actual V1 Appointment schema, service, route, utilities, tests, and UI
+    in the repository
+
+The repository implementation is authoritative for existing V1 persisted
+behavior. Do not invent Appointment fields from memory.
+
+BRANCH / GIT GATE
+
+Before any edits, verify:
+
+- Node major version is 24
+- active branch is exactly:
+  feat/v2-appointment-data-model-batch-c
+- the branch was created from the current:
+  refactor/v2-cloud-migration
+- working tree is clean
+- Phase 06A Branch + Patient is already integrated in branch history
+- Phase 06B Treatment is already integrated in branch history
+- PostgreSQL Foundation is present
+- migration 0001 is unchanged
+- migration 0002 is unchanged
+- migration 0003 is present and unchanged
+- docs/architecture/postgresql-patient-batch-a.md exists
+- docs/architecture/postgresql-treatment-batch-b.md exists
+- docs/architecture/v2-migration-map.md exists
+
+If any gate fails, STOP and report the blocker.
+
+Do not create, switch, merge, rebase, stage, commit, or push Git branches.
+
+REQUIRED PRE-EDIT REVIEW
+
+Use the available read-only reviewers:
+
+- repo_explorer
+- requirements_auditor
+- test_auditor
+- typescript_reviewer
+- security_reviewer
+
+Use database_architect only if already available and useful.
+
+Before editing, inspect the exact V1 Appointment domain, including at minimum:
+
+- SQLite appointment-related table definitions
+- Appointment service/repository logic
+- Appointment routes
+- appointmentService.ts from the prior TypeScript Batch 5 work
+- the remaining JS compatibility bridge
+- Appointment UI fields only as needed to confirm persisted semantics
+- appointment validation
+- appointment status behavior
+- appointment history behavior
+- follow-up / next-appointment behavior
+- patient linkage
+- treatment linkage, if any
+- branch/location linkage, if any
+- dentist/provider linkage, if any
+- appointment identifier generation, if any
+- created/updated timestamps
+- cancellation/completion/no-show/reschedule behavior, if persisted
+- any double-booking checks in V1
+- any downstream dependencies
+
+Do not infer a field merely because it appears in UI text.
+Confirm whether it is persisted.
+
+MANDATORY V1 -> V2 FIELD-MAPPING MATRIX
+
+Before code changes, produce a field-mapping matrix covering EVERY persisted
+V1 Appointment field.
+
+For each field include:
+
+- V1 field name
+- V1 SQLite type / representation
+- actual V1 behavior / meaning
+- nullable/required behavior
+- V2 target field
+- PostgreSQL type
+- transformation rule
+- whether behavior is preserved exactly or semantically
+- risk / ambiguity
+
+Also list:
+
+- intentionally omitted V1 fields
+- derived/read-model-only values
+- denormalized legacy values
+- compatibility/fallback fields
+- unresolved business semantics
+
+If a material Appointment decision cannot be derived safely from the
+repository/docs, STOP before implementation and report the exact human decision
+required.
+
+Do NOT silently choose a major Appointment business rule.
+
+BATCH 06C SCOPE
+
+The intended Batch C scope is:
+
+1. Appointment PostgreSQL schema
+2. internal UUID Appointment identity
+3. preservation of any visible V1 Appointment/business identifier, if one
+   actually exists
+4. Appointment -> Patient linkage using V2 Patient UUID
+5. Treatment linkage only if V1 actually persists it and the relationship can
+   safely use the Phase 06B Treatment identity seam
+6. Branch linkage only if V1 persisted semantics require it
+7. legacy Appointment identity mapping when needed for safe reruns or future
+   references
+8. fictional V1 Appointment -> V2 Appointment migration helper/harness
+9. complete field-level migration parity
+10. rerun/idempotency behavior
+11. transactional Appointment + legacy-map migration
+12. focused PostgreSQL integration validation
+13. architecture/migration-map documentation updates
+
+OUT OF SCOPE
+
+Do NOT implement:
+
+- Appointment service/API cutover
+- Appointment route conversion
+- Appointment UI replacement
+- dual writes
+- deletion of V1 Appointment code
+- full booking workflow replacement
+- notification delivery
+- email
+- patient portal
+- Authentication
+- RBAC
+- audit log implementation
+- Finance
+- attachment/storage migration
+- dashboards
+- deployment
+- real production migration
+- real clinic/patient data
+
+Keep the active V1 Appointment path on SQLite.
+
+PATIENT IDENTITY RULE
+
+V2 Appointment must reference V2 Patient UUID if V1 Appointment belongs to a
+Patient.
+
+During fictional migration:
+- resolve legacy patient identity only through the Phase 06A
+  legacy_patient_identity_map seam
+- do not match by name, email, phone, or fuzzy logic
+- missing/conflicting Patient mapping must fail before Appointment write
+
+TREATMENT IDENTITY RULE
+
+If V1 Appointment persists a Treatment reference:
+- inspect the exact relationship
+- resolve through the Phase 06B Treatment migration seam when appropriate
+- do not guess by text or fuzzy matching
+- missing/conflicting Treatment mapping must fail before Appointment write
+
+If V1 Appointment does NOT persist a Treatment relationship, do not invent one.
+
+BRANCH RULE
+
+If V1 Appointment persists branch/location semantics:
+- map explicitly to an existing V2 branch UUID
+- follow the approved explicit mapping approach from Batch A
+- do not fuzzy-match branch names
+- do not auto-create branches during Appointment migration
+
+If branch is not persisted in V1 Appointment and cannot safely be inferred from
+an authoritative relationship, STOP before adding branch_id merely for future
+convenience.
+
+APPOINTMENT BUSINESS IDENTIFIER
+
+Inspect V1 first.
+
+If V1 has a human-readable Appointment identifier:
+- preserve its visible semantics
+- use a separate UUID PK internally
+- preserve any generation/reset rule only when confirmed by V1
+
+If V1 has no visible Appointment business code:
+- do not invent one merely for consistency with Patient/Treatment
+
+LEGACY APPOINTMENT IDENTITY MAP
+
+Inspect whether a dedicated legacy Appointment map is useful for:
+- rerun/idempotency
+- future references
+- history/status records
+- downstream migration
+
+If needed, use a narrow explicit mapping:
+source_system + legacy row identity/business identity -> V2 Appointment UUID.
+
+If no map is needed, document why the existing stable identity seam is
+sufficient.
+
+Do not use a legacy SQLite integer as the V2 primary key.
+
+STATUS / HISTORY
+
+Inspect V1 carefully.
+
+If Appointment status is persisted:
+- preserve the actual V1 values and semantics in this parity batch
+- use explicit constraints only when the allowed values are confirmed
+
+If Appointment history is stored in a separate table:
+- include it in Batch 06C only if it is necessary to preserve the core
+  Appointment persisted record and migration parity
+- otherwise document it as the immediate next dependency and STOP if omitting
+  it would make migrated Appointment state materially incomplete
+
+Do not redesign history into the future audit model in this batch.
+
+FOLLOW-UP / NEXT APPOINTMENT
+
+V1 Treatment already contains legacy follow-up fields.
+
+Inspect whether the Appointment table independently stores follow-up links,
+reschedule lineage, parent/child appointment references, or next-appointment
+data.
+
+Preserve actual persisted semantics without duplicating unrelated Treatment
+fields.
+
+DOUBLE-BOOKING
+
+The V2 project requires transaction-safe appointment double-book prevention,
+but Phase 06C is a data-model/migration-parity batch, not the Appointment
+runtime replacement phase.
+
+Therefore:
+
+- inspect and document current V1 double-booking behavior
+- add indexes/constraints only when they are safe, directly supported by
+  confirmed Appointment semantics, and do not incorrectly reject legitimate
+  historical data
+- do NOT build the full V2 booking service or transaction workflow in this
+  batch
+- document transaction-safe booking enforcement as a required later
+  Appointment domain-replacement behavior if it is not safely expressible in
+  this migration slice
+
+Do not introduce a speculative exclusion constraint without proving its
+compatibility with real V1 appointment status/time semantics.
+
+TRANSACTIONAL MIGRATION
+
+A single fictional Appointment migration unit must be atomic.
+
+If Appointment and legacy map rows are both needed:
+- both succeed; or
+- neither remains
+
+Use the existing PostgreSQL transaction foundation.
+Do not create a second transaction framework.
+
+RERUN / IDEMPOTENCY
+
+The fictional migration harness must be safe to rerun.
+
+At minimum:
+
+- rerunning the same source Appointment creates no duplicate
+- a matching existing migration is reused/no-op
+- conflicting source identity/business identity fails clearly
+- mismatched persisted state is not silently overwritten
+- tests prove stable row counts after rerun
+
+DATES / TIMES / TIMESTAMPS
+
+Inspect V1 representation first.
+
+Use:
+- DATE for date-only business dates
+- TIME only if the project needs a true time-only column and the V1 semantics
+  support it
+- TIMESTAMPTZ for actual event instants
+
+Do not accidentally reinterpret a local clinic appointment wall-clock time as
+UTC.
+
+Clinic/business timezone defaults to Asia/Manila unless the accepted project
+configuration says otherwise.
+
+If V1 stores appointment date + time separately, preserve those semantics
+unless a safe canonical representation is explicitly justified and tested.
+
+NULL / EMPTY STRING RULES
+
+Follow the approved migration convention unless V1 requires exact empty-string
+preservation:
+
+- null/undefined optional text -> NULL
+- blank/whitespace-only optional text -> NULL
+- meaningful optional text -> preserve meaning
+- required fields must be explicitly validated
+
+POSTGRESQL MIGRATION
+
+Add the next ordered migration only.
+
+Expected sequence:
+- 0001 PostgreSQL foundation — MUST remain unchanged
+- 0002 Branch + Patient Batch A — MUST remain unchanged
+- 0003 Treatment Batch B — MUST remain unchanged
+- 0004 Appointment Batch C — new migration for this task
+
+Use the repository's exact migration naming convention.
+
+Do not edit committed migrations 0001, 0002, or 0003.
+
+Prefer explicit constraints:
+- PK
+- FK
+- UNIQUE where confirmed
+- NOT NULL where required
+- CHECK constraints for confirmed invariants
+- ON DELETE behavior that protects historical clinical/scheduling records
+
+Avoid destructive cascades unless explicitly justified by existing
+requirements.
+
+FICTIONAL TEST DATA ONLY
+
+All migration/parity fixtures must be fictional.
+
+Do not read or copy real patient, clinic, dentist, treatment, or appointment
+data.
+
+TEST-DATABASE SAFETY
+
+The live PostgreSQL integration test must use the existing safe test-database
+guard.
+
+It must never destructively target:
+- production
+- staging
+- production DATABASE_URL
+- real clinic data
+
+Cleanup must be limited to verified test-created state.
+
+Do not use broad DROP SCHEMA public CASCADE.
+
+TEST REQUIREMENTS
+
+Add focused tests that cover, as applicable after repository inspection:
+
+1. complete V1 -> V2 field transformation
+2. full persisted field-level parity
+3. Appointment -> Patient UUID mapping
+4. missing Patient mapping failure
+5. conflicting Patient mapping failure
+6. Treatment mapping success/failure if V1 persists Treatment linkage
+7. Branch mapping success/failure if V1 persists Branch linkage
+8. Appointment + legacy-map atomicity
+9. rollback when Appointment insert fails
+10. rollback when legacy-map insert fails
+11. safe rerun/idempotency
+12. conflicting legacy Appointment identity
+13. conflicting business identifier if one exists
+14. optional blank -> NULL normalization
+15. date/time/timestamp semantics
+16. status preservation
+17. history preservation if history belongs in this batch
+18. source row count == expected migrated row count
+19. no duplicate/excess target rows
+20. stable legacy map row count
+21. no source Appointment silently disappears
+22. safe live PostgreSQL integration
+23. migration order includes 0004
+
+The live PostgreSQL integration test MUST run and pass.
+
+If it skips because no safe TEST_DATABASE_URL exists, do NOT report READY FOR
+COMMIT.
+
+Report instead:
+
+IMPLEMENTATION COMPLETE — POSTGRESQL INTEGRATION VALIDATION PENDING
+
+TYPESCRIPT RULES
+
+New V2 code is TypeScript by default.
+
+Reuse the existing Batch 5 TypeScript Appointment knowledge where useful, but
+do NOT turn this task into a route/service cutover.
+
+Keep strict typing.
+
+Do not introduce:
+- broad any
+- @ts-ignore
+- @ts-nocheck
+- unsafe double assertions
+- unnecessary global abstractions
+- import-time DB singletons
+
+PACKAGE / SCRIPT HYGIENE
+
+Add only minimal Batch C test scripts.
+
+Keep:
+- Foundation tests isolated
+- Batch A tests isolated
+- Batch B tests isolated
+- Batch C tests isolated
+
+Do not add dependencies unless strictly necessary.
+If no dependency is needed, package-lock.json should remain unchanged.
+
+DOCUMENTATION
+
+Add a focused durable architecture note, for example:
+
+docs/architecture/postgresql-appointment-batch-c.md
+
+Document:
+- scope
+- Appointment identity strategy
+- Patient relationship
+- Treatment relationship decision
+- Branch relationship decision
+- legacy Appointment mapping decision
+- complete field-mapping summary
+- status/history semantics
+- date/time/timezone semantics
+- rerun/idempotency
+- transactional migration
+- double-booking findings and what is deferred
+- known limitations
+- real-data migration blockers
+- explicitly deferred runtime/API/UI cutover
+
+Update:
+- docs/architecture/v2-migration-map.md
+
+Do not rewrite unrelated architecture docs.
+
+NO RUNTIME CUTOVER
+
+Critical:
+
+After Batch C:
+- V1 Appointment service/routes/UI remain functional
+- active Appointment persistence remains SQLite
+- PostgreSQL Appointment code is foundation/migration work only
+- no dual writes
+- no partially activated V2 Appointment route
+
+VALIDATION SEQUENCE
+
+After implementation run:
+
+- node -v
+- npm -v
+- git diff --check
+- npm run typecheck
+- npm run test:postgres:foundation
+- npm run test:postgres:batch-a
+- npm run test:postgres:batch-b
+- the new Batch C targeted PostgreSQL test command
+- node --test server/src/services/v1RegressionSafetyNet.test.js
+- node --test
+- npm run build --workspace client
+
+Also inspect/search for:
+
+- accidental Appointment service/route cutover
+- dual writes
+- Finance schema creep
+- auth/RBAC/storage/audit scope creep
+- credentials
+- PII logging
+- raw DB URL logging
+- unsafe SQL interpolation
+- real data
+- changes to migrations 0001/0002/0003
+- unsafe TypeScript suppression/casts
+
+FINAL DIFF REVIEW
+
+Before completion:
+
+- inspect git status
+- inspect git diff --check
+- inspect git diff --stat
+- inspect exact changed-file list
+- verify no unrelated files changed
+- verify migrations 0001/0002/0003 unchanged
+- verify V1 Appointment runtime still uses SQLite
+- verify Phase 06A Patient tests remain intact
+- verify Phase 06B Treatment tests remain intact
+- verify no Finance work was added
+
+COMMIT-READINESS RULE
+
+Report READY FOR COMMIT only if:
+
+- field mapping is complete
+- no unresolved material Appointment semantics remain
+- typecheck passes
+- Foundation tests pass
+- Batch A tests pass
+- Batch B tests pass
+- Batch C tests pass
+- safe live PostgreSQL Batch C integration runs and passes
+- V1 regression passes
+- full tests pass
+- client build passes
+- no runtime cutover occurred
+- no real data was used
+- migrations 0001/0002/0003 remained unchanged
+
+Otherwise report the precise blocker.
+
+FINAL COMPLETION REPORT
+
+Report:
+
+- Summary
+- Branch
+- dependency-gate result
+- Node/npm versions
+- Batch A verification
+- Batch B verification
+- PostgreSQL Foundation verification
+- reviewers used
+- pre-implementation V1 Appointment findings
+- complete V1 -> V2 field-mapping summary
+- files added
+- files modified
+- migration added
+- confirmation 0001 unchanged
+- confirmation 0002 unchanged
+- confirmation 0003 unchanged
+- Appointment schema summary
+- Patient FK strategy
+- Treatment FK strategy, if applicable
+- Branch strategy, if applicable
+- Appointment identity/business-code strategy
+- legacy Appointment mapping strategy
+- status/history strategy
+- date/time/timezone behavior
+- double-booking findings
+- atomic migration result
+- rerun/idempotency result
+- full parity result
+- test DB safety result
+- live PostgreSQL integration result
+- TypeScript reviewer findings
+- security reviewer findings
+- V1 SQLite coexistence result
+- Batch A compatibility
+- Batch B compatibility
+- commands run
+- all validation results
+- package/lockfile impact
+- docs changes
+- known limitations
+- real-data migration blockers
+- deferred runtime/API/UI cutover
+- final git status
+- commit-readiness status
+- suggested commit message
+- recommended next task only
+
+If READY FOR COMMIT, suggested commit message:
+
+feat: add PostgreSQL appointment data-model foundation
+
+Leave all implementation changes uncommitted for human review.
+
+Do not begin the next phase automatically.
+Stop after the completion report.
