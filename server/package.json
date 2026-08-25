@@ -10,6 +10,7 @@
     "test:postgres:foundation": "node --import tsx --test \"src/postgres/*.pgtest.ts\" \"src/postgres/cli/*.pgtest.ts\"",
     "test:postgres:batch-a": "node --import tsx --test \"src/postgres/batchA/*.pgtest.ts\"",
     "test:postgres:batch-b": "node --import tsx --test \"src/postgres/batchB/*.pgtest.ts\"",
+    "test:postgres:batch-c": "node --import tsx --test \"src/postgres/batchC/*.pgtest.ts\"",
     "start": "node src/index.js"
   },
   "dependencies": {
