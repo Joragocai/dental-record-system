@@ -1,4 +1,5 @@
 import type { QueryResultRow } from "pg";
+import { normalizePgDateOnly, type PgDateOnlyValue } from "../dateOnly.js";
 import type { PgQueryExecutor } from "../pool.js";
 
 export type AppointmentStatus = "Scheduled" | "Completed" | "Cancelled" | "No-show";
@@ -34,7 +35,7 @@ interface AppointmentRow extends QueryResultRow {
   id: string;
   patient_id: string;
   branch_id: string;
-  appointment_date: string;
+  appointment_date: PgDateOnlyValue;
   appointment_time: string | null;
   planned_procedure: string | null;
   notes: string | null;
@@ -89,7 +90,7 @@ export function mapAppointmentRow(row: AppointmentRow): NewAppointmentRecord {
     id: String(row.id),
     patientId: String(row.patient_id),
     branchId: String(row.branch_id),
-    appointmentDate: String(row.appointment_date),
+    appointmentDate: normalizePgDateOnly(row.appointment_date, "Appointment appointment_date"),
     appointmentTime: normalizeAppointmentTime(row.appointment_time === null ? null : String(row.appointment_time)),
     plannedProcedure: row.planned_procedure === null ? null : String(row.planned_procedure),
     notes: row.notes === null ? null : String(row.notes),

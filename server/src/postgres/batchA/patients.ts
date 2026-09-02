@@ -1,4 +1,5 @@
 import type { QueryResultRow } from "pg";
+import { normalizeNullablePgDateOnly, normalizePgDateOnly, type PgDateOnlyValue } from "../dateOnly.js";
 import type { PgQueryExecutor } from "../pool.js";
 
 export const patientConditionFieldNames = [
@@ -131,11 +132,11 @@ interface PatientRow extends QueryResultRow {
   id: string;
   patient_code: string;
   branch_id: string;
-  date_registered: string;
+  date_registered: PgDateOnlyValue;
   last_name: string;
   first_name: string;
   middle_name: string | null;
-  birthday: string;
+  birthday: PgDateOnlyValue;
   age: number | null;
   gender: string;
   religion: string | null;
@@ -143,9 +144,9 @@ interface PatientRow extends QueryResultRow {
   nickname: string | null;
   patient_occupation: string | null;
   dental_insurance: string | null;
-  insurance_effective_date: string | null;
+  insurance_effective_date: PgDateOnlyValue | null;
   previous_dentist: string | null;
-  last_dental_visit: string | null;
+  last_dental_visit: PgDateOnlyValue | null;
   mobile_number: string;
   email_address: string | null;
   discount_eligibility: string;
@@ -281,11 +282,11 @@ function mapPatientRow(row: PatientRow): NewPatientRecord {
     id: String(row.id),
     patientCode: String(row.patient_code),
     branchId: String(row.branch_id),
-    dateRegistered: String(row.date_registered),
+    dateRegistered: normalizePgDateOnly(row.date_registered, "Patient date_registered"),
     lastName: String(row.last_name),
     firstName: String(row.first_name),
     middleName: row.middle_name === null ? null : String(row.middle_name),
-    birthday: String(row.birthday),
+    birthday: normalizePgDateOnly(row.birthday, "Patient birthday"),
     age: row.age === null ? null : Number(row.age),
     gender: String(row.gender),
     religion: row.religion === null ? null : String(row.religion),
@@ -293,9 +294,12 @@ function mapPatientRow(row: PatientRow): NewPatientRecord {
     nickname: row.nickname === null ? null : String(row.nickname),
     patientOccupation: row.patient_occupation === null ? null : String(row.patient_occupation),
     dentalInsurance: row.dental_insurance === null ? null : String(row.dental_insurance),
-    insuranceEffectiveDate: row.insurance_effective_date === null ? null : String(row.insurance_effective_date),
+    insuranceEffectiveDate: normalizeNullablePgDateOnly(
+      row.insurance_effective_date,
+      "Patient insurance_effective_date"
+    ),
     previousDentist: row.previous_dentist === null ? null : String(row.previous_dentist),
-    lastDentalVisit: row.last_dental_visit === null ? null : String(row.last_dental_visit),
+    lastDentalVisit: normalizeNullablePgDateOnly(row.last_dental_visit, "Patient last_dental_visit"),
     mobileNumber: String(row.mobile_number),
     emailAddress: row.email_address === null ? null : String(row.email_address),
     discountEligibility: String(row.discount_eligibility),

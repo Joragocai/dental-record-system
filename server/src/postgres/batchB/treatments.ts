@@ -1,4 +1,5 @@
 import type { QueryResultRow } from "pg";
+import { normalizeNullablePgDateOnly, normalizePgDateOnly, type PgDateOnlyValue } from "../dateOnly.js";
 import type { PgQueryExecutor } from "../pool.js";
 
 export interface NewTreatmentRecord {
@@ -43,9 +44,9 @@ interface TreatmentRow extends QueryResultRow {
   id: string;
   treatment_code: string;
   patient_id: string;
-  treatment_date: string;
+  treatment_date: PgDateOnlyValue;
   tooth_numbers: string | null;
-  next_appointment_date: string | null;
+  next_appointment_date: PgDateOnlyValue | null;
   next_appointment_time: string | null;
   procedure: string;
   dentists: string;
@@ -112,9 +113,12 @@ export function mapTreatmentRow(row: TreatmentRow): NewTreatmentRecord {
     id: String(row.id),
     treatmentCode: String(row.treatment_code),
     patientId: String(row.patient_id),
-    treatmentDate: String(row.treatment_date),
+    treatmentDate: normalizePgDateOnly(row.treatment_date, "Treatment treatment_date"),
     toothNumbers: row.tooth_numbers === null ? null : String(row.tooth_numbers),
-    nextAppointmentDate: row.next_appointment_date === null ? null : String(row.next_appointment_date),
+    nextAppointmentDate: normalizeNullablePgDateOnly(
+      row.next_appointment_date,
+      "Treatment next_appointment_date"
+    ),
     nextAppointmentTime: row.next_appointment_time === null ? null : String(row.next_appointment_time),
     procedure: String(row.procedure),
     dentists: String(row.dentists),
