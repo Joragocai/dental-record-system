@@ -1,0 +1,86 @@
+PHASE 08D — APPLICATION USER IDENTITY, STATUS, ROLES & BRANCH FOUNDATION
+
+STATUS
+Approved current task.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+SEQUENCE
+08A backend access-token verification — complete.
+08B Express authentication middleware and protected session boundary — complete.
+08C client login/session/recovery foundation — complete.
+08D establishes the application-side clinic user/access identity model that future authorization will consume.
+
+GOAL
+Create a PostgreSQL-backed application-user foundation that links verified Supabase Auth UUIDs to approved clinic users, user lifecycle status, one-or-more application roles, and one-or-more allowed branches, without yet enforcing permissions or exposing role-management APIs.
+
+APPROVED PRODUCT DECISIONS
+- Staff cannot self-register.
+- Clinic Administrator-managed staff creation/provisioning is deferred until authorization exists.
+- `app_users.auth_user_id` is nullable so a pending clinic staff record may exist before the future Supabase account is technically provisioned.
+- Passwords and bearer tokens are never stored in application-user tables.
+- Supabase/Postgres JWT `role` claims never become clinic roles.
+- Approved application roles remain separate: Patient, Personnel, Dentist, Clinic Administrator, System Administrator.
+- One account may have multiple application roles. The owner-dentist uses Dentist + Clinic Administrator.
+- System Administrator is technical only and must not implicitly receive Dentist or Clinic Administrator roles.
+- A user may be assigned multiple branches.
+
+SCOPE
+1. Verify clean synchronized branch before editing. Do not perform Git writes.
+2. Add a new ordered PostgreSQL migration only; do not edit migrations 0001–0004.
+3. Create `app_users`, `roles`, `user_roles`, and `user_branches` with UUID identities, foreign keys, integrity constraints, and useful indexes.
+4. `app_users` must support statuses `pending`, `active`, `suspended`, and `deactivated`; `auth_user_id` must be nullable but unique when present.
+5. Keep an application email and display name with non-blank constraints; make normalized email identity unique case-insensitively.
+6. Seed exactly five stable role definitions with stable machine codes:
+   - PATIENT
+   - PERSONNEL
+   - DENTIST
+   - CLINIC_ADMINISTRATOR
+   - SYSTEM_ADMINISTRATOR
+7. Model user-role and user-branch membership as many-to-many relationships with duplicate assignments prevented at the database level.
+8. Add a typed `ApplicationUserRepository` with parameterized PostgreSQL access for user lookup by auth UUID/application UUID plus role and branch membership lookup. Validate database row shapes at the repository trust boundary.
+9. Add typed safe application-user domain errors. Malformed auth UUIDs must fail before repository/SQL access. Database-driver details must not leak through domain errors.
+10. Add an `ApplicationUserService` that resolves an authenticated provider UUID to an active `ApplicationUserContext` containing application user ID, auth UUID, email, display name, status, role codes, and branch UUIDs.
+11. Service behavior:
+   - unknown auth identity => typed NOT_FOUND error;
+   - pending application user => typed PENDING error;
+   - suspended/deactivated user => typed INACTIVE error;
+   - active user with zero roles => valid context with an empty roles array; authorization later denies by default;
+   - multiple roles and multiple branches are preserved deterministically.
+12. Do not change `GET /api/auth/session` response in this phase and do not expose role/branch data to the client yet.
+13. Add focused non-live tests for identity validation, safe errors, active/no-role behavior, multiple-role behavior, deterministic branch/role mapping, and repository parameterization.
+14. Add safe PostgreSQL integration coverage using fictional identities to verify schema/role seeds/status handling/duplicate constraints/multiple roles/multiple branches and absence of password/token columns.
+15. Add an explicit PostgreSQL access-foundation test script at server/root level.
+16. Add architecture documentation and update the migration map.
+17. Preserve current V1 runtime routes and all completed Patient/authentication behavior.
+
+OUT OF SCOPE
+- No staff account creation/provisioning API.
+- No Supabase Admin API and no service-role key.
+- No public signup.
+- No Patient account activation/linking.
+- No permission table or permission enforcement yet.
+- No authorization middleware or branch-access enforcement yet.
+- No role-management endpoints or self-role assignment.
+- No audit trail.
+- No MFA or privileged reauthentication.
+- No Patient/Treatment/Appointment route cutover.
+- No frontend role-based menus.
+
+VALIDATION
+Run:
+- git diff --check (use the repository’s CRLF-aware variant where necessary)
+- npm run typecheck
+- PostgreSQL foundation tests
+- new application-user access foundation tests
+- Batch A Patient tests (safe live skips acceptable in DevSpace)
+- server authentication tests
+- V1 regression tests
+- full Node tests
+- client production build
+
+If live PostgreSQL tests skip in DevSpace because DATABASE_URL/TEST_DATABASE_URL are unavailable, report the exact manual command for the user’s secret-enabled shell. Leave all changes uncommitted.
