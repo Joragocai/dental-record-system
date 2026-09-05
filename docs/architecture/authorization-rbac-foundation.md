@@ -1,0 +1,168 @@
+# V2 Authorization / RBAC Foundation
+
+## Status
+
+Phase 08E establishes the internal backend authorization policy foundation. It consumes the active `ApplicationUserContext` created in Phase 08D and resolves effective application permissions from PostgreSQL role mappings. It is intentionally not mounted on the current V1 clinic routes yet.
+
+## Separation of Responsibilities
+
+The security path is intentionally layered:
+
+```text
+Supabase Auth
+  -> verified provider identity
+  -> ApplicationUserService
+  -> active clinic application user + roles + branch assignments
+  -> AuthorizationService
+  -> effective permission grants + branch policy decision
+  -> future protected controller/domain service
+```
+
+Supabase/JWT role claims are authentication-provider metadata only and are never interpreted as clinic roles or permissions.
+
+## Schema
+
+Migration `0006_authorization_rbac_foundation.sql` adds:
+
+- `permissions`
+- `role_permissions`
+
+Permission scope values are:
+
+- `GLOBAL` — permission does not require a branch assignment.
+- `BRANCH` — permission requires the target branch to be present in the user’s approved `user_branches` assignments.
+- `OWN` — reserved for future patient ownership policies. Phase 08E denies OWN-scoped checks until an explicit ownership-aware evaluator exists.
+
+The initial permission set is deliberately focused on the next security boundaries rather than attempting to model the entire final permission matrix in one migration.
+
+## Initial Role Grants
+
+### Patient
+
+No permissions are granted in Phase 08E. Patient access requires explicit patient-account linking and ownership isolation, which is intentionally deferred.
+
+### Personnel
+
+Branch-scoped:
+
+- `patient.list`
+- `patient.read`
+- `patient.create`
+- `patient.demographics.update`
+- `treatment.read`
+
+Personnel does not receive `treatment.internal_notes.read` or `treatment.finalize`.
+
+### Dentist
+
+Branch-scoped:
+
+- `patient.list`
+- `patient.read`
+- `patient.create`
+- `patient.demographics.update`
+- `treatment.read`
+- `treatment.internal_notes.read`
+- `treatment.finalize`
+
+### Clinic Administrator
+
+Global:
+
+- `user.read`
+- `staff_account.create`
+- `role_assignment.approve`
+
+The Clinic Administrator role does not receive routine patient or clinical access by itself. The clinic owner who is also the dentist receives clinical access because the same account separately holds the Dentist role.
+
+### System Administrator
+
+Global:
+
+- `user.read`
+- `role_definition.configure`
+
+The System Administrator receives no routine patient or treatment permission. Temporary support access remains a future separately controlled workflow.
+
+## Effective Permission Union
+
+A user may hold multiple application roles. The authorization repository resolves the distinct union of grants for all approved roles. This supports the owner-dentist account without creating a special combined role.
+
+For example:
+
+```text
+DENTIST
++
+CLINIC_ADMINISTRATOR
+=
+clinical Dentist grants
++
+administrative Clinic Administrator grants
+```
+
+Explicit future safeguards can still restrict high-risk actions even when a role union contains a permission.
+
+## Branch Enforcement
+
+Roles never bypass branch assignment automatically.
+
+For a BRANCH-scoped permission, the requested resource/operation branch UUID must be present in the `ApplicationUserContext.branchIds` list established from `user_branches`.
+
+A matching permission with the wrong branch is denied.
+
+GLOBAL permissions do not require a branch assignment.
+
+## Deny by Default
+
+The authorization service denies when:
+
+- the required permission is not granted;
+- a BRANCH permission is checked without a branch-aware decision;
+- the requested branch is malformed;
+- the requested branch is not assigned to the user;
+- an OWN-scoped permission is encountered before ownership evaluation exists.
+
+An active application user with zero roles or zero permission grants remains a valid authenticated identity but receives no operational access.
+
+## Current Runtime Boundary
+
+Phase 08E does not:
+
+- add Express authorization middleware;
+- modify `GET /api/auth/session`;
+- expose roles/permissions/branches to the frontend;
+- protect the legacy Patient/Treatment/Appointment routes;
+- add user or role mutation APIs;
+- introduce a Supabase service-role key;
+- implement staff account provisioning;
+- implement patient ownership;
+- implement audit or MFA.
+
+This avoids creating the appearance that the existing V1 HTTP surface is protected before the actual middleware and route cutover gates are complete.
+
+## Staff Account Provisioning Dependency
+
+The future Clinic Administrator staff-account workflow can depend on the `staff_account.create` permission established here. The intended later sequence is:
+
+```text
+verified Clinic Administrator identity
+  -> application-user resolution
+  -> authorization requires staff_account.create
+  -> approved staff record/role/branch workflow
+  -> backend-only managed-auth provisioning
+  -> staff member activates and sets their own password
+```
+
+No privileged provider provisioning credential is introduced in Phase 08E.
+
+## Next Gates
+
+Recommended next security work:
+
+1. Express authorization middleware that composes Authentication, ApplicationUserService, and AuthorizationService on a small protected test boundary.
+2. Application-user/role management workflows with Clinic Administrator approval and self-elevation prevention.
+3. Clinic Administrator-managed staff account provisioning after those authorization checks are live.
+4. Patient-account linking and OWN/patient isolation policy.
+5. Append-only audit logging.
+6. MFA and privileged reauthentication.
+7. Protected Patient domain route integration only after the required security gates are proven.

@@ -1,0 +1,112 @@
+PHASE 08E — AUTHORIZATION / RBAC FOUNDATION
+
+STATUS
+Approved current task.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+SEQUENCE
+08A token verification — complete.
+08B Express authentication middleware — complete.
+08C client login/session/recovery — complete.
+08D application-user identity/status/roles/branches — complete.
+08E establishes trusted permission grants and deny-by-default authorization decisions. It does not yet mount authorization middleware on clinic routes.
+
+GOAL
+Add a PostgreSQL-backed permission and role-permission foundation plus a typed backend AuthorizationService that consumes the active ApplicationUserContext from Phase 08D, computes effective permissions from separate application roles, enforces branch scope for branch-scoped permissions, and denies by default.
+
+APPROVED PRODUCT DECISIONS
+- Authentication proves provider identity only; provider/JWT role claims are never clinic permissions.
+- Clinic roles remain separate even when one account has multiple roles.
+- Owner-dentist receives the union of DENTIST + CLINIC_ADMINISTRATOR grants.
+- SYSTEM_ADMINISTRATOR is technical only and receives no routine patient/clinical permissions.
+- CLINIC_ADMINISTRATOR receives no routine patient/clinical access by that role alone; the owner gains clinical access through the separate DENTIST role.
+- PERSONNEL may read complete clinical/treatment records but not internal dentist notes or treatment finalization.
+- Branch-scoped permissions require an explicitly allowed branch.
+- Active users with no role/grants are denied by default.
+- Staff self-registration remains disabled.
+- Future staff-account creation is initiated by an authorized Clinic Administrator. The backend may later use a privileged provider API as an automated technical operation, but no provider service-role key or provisioning endpoint is introduced in 08E.
+
+SCOPE
+1. Verify a clean synchronized branch. Do not perform Git write operations.
+2. Add a new ordered migration `0006_authorization_rbac_foundation.sql`; do not edit migrations 0001–0005.
+3. Add `permissions` and `role_permissions` tables with UUID identities, stable machine codes, display names/descriptions, scope metadata, constraints, and useful indexes.
+4. Support permission scopes `GLOBAL`, `BRANCH`, and `OWN`; 08E may seed only GLOBAL and BRANCH permissions. OWN exists for later patient-ownership work and must deny unless a future ownership-aware evaluator explicitly handles it.
+5. Seed a focused, reviewable permission set required for the next protected V2 steps:
+   - `user.read` — GLOBAL
+   - `staff_account.create` — GLOBAL
+   - `role_assignment.approve` — GLOBAL
+   - `role_definition.configure` — GLOBAL
+   - `patient.list` — BRANCH
+   - `patient.read` — BRANCH
+   - `patient.create` — BRANCH
+   - `patient.demographics.update` — BRANCH
+   - `treatment.read` — BRANCH
+   - `treatment.internal_notes.read` — BRANCH
+   - `treatment.finalize` — BRANCH
+6. Seed role-permission mappings conservatively from the approved permission matrix:
+   - PATIENT: no grants in 08E; patient ownership/linking is deferred.
+   - PERSONNEL: `patient.list`, `patient.read`, `patient.create`, `patient.demographics.update`, `treatment.read`.
+   - DENTIST: PERSONNEL patient grants plus `treatment.internal_notes.read` and `treatment.finalize`.
+   - CLINIC_ADMINISTRATOR: `user.read`, `staff_account.create`, `role_assignment.approve`; no clinical grants by role alone.
+   - SYSTEM_ADMINISTRATOR: `user.read`, `role_definition.configure`; no patient/clinical grants.
+7. Add a typed `AuthorizationRepository` that resolves effective distinct permission grants from application role codes using parameterized PostgreSQL access and runtime validation at the DB trust boundary.
+8. Add typed authorization errors with safe messages/status codes. Persistence details, permission internals, and database connection information must not leak.
+9. Add `AuthorizationContext` by composing Phase 08D `ApplicationUserContext` with deterministic permission grants.
+10. Add `AuthorizationService` methods to:
+    - resolve effective grants from current roles;
+    - require a permission globally;
+    - require a permission for a target branch;
+    - reject unknown/not-granted permissions with 403;
+    - reject malformed/missing branch evaluation context safely;
+    - deny OWN-scoped permissions until ownership evaluation is explicitly implemented.
+11. Branch authorization must compare the requested resource branch UUID against `ApplicationUserContext.branchIds`; roles do not bypass branch assignment automatically.
+12. Do not modify `GET /api/auth/session`, client auth responses, current V1 routes, or Patient HTTP routes in 08E.
+13. Do not add authorization middleware to Express yet. Keep this as an internal policy/service foundation so a later protected-boundary phase can wire it with focused route tests.
+14. Add non-live tests covering:
+    - deterministic union for owner-dentist;
+    - personnel allowed branch-scoped patient read but denied internal notes/finalize;
+    - Clinic Administrator denied clinical access by that role alone;
+    - System Administrator denied patient/clinical access;
+    - active/no-role user denied by default;
+    - matching branch allowed, other branch denied;
+    - malformed branch rejected before policy acceptance;
+    - GLOBAL grants do not require branch assignment;
+    - OWN scope denied until implemented;
+    - repository uses parameterized role input and validates rows;
+    - persistence errors are sanitized.
+15. Add safe PostgreSQL integration coverage using fictional identities for seeded permission rows, role mappings, duplicate constraints, owner-dentist union, System Administrator restrictions, and branch checks.
+16. Update migration-framework tests for migration 0006.
+17. Add architecture documentation and update the V2 migration map.
+18. Reuse the existing root/server `test:postgres:access` scripts, which already target `src/access/*.pgtest.ts` and `src/postgres/access/*.pgtest.ts`, so the new authorization tests run without introducing package-script churn.
+
+OUT OF SCOPE
+- No Express authorization middleware yet.
+- No staff-account creation/provisioning endpoint or UI.
+- No Supabase Admin API/service-role key.
+- No user/role mutation APIs.
+- No patient account linking/ownership evaluation yet.
+- No audit trail.
+- No MFA/reauthentication.
+- No temporary support-access workflow.
+- No Patient/Treatment/Appointment route cutover.
+- No frontend role-based navigation.
+
+VALIDATION
+Run:
+- repository CRLF-aware diff check where necessary;
+- npm run typecheck;
+- PostgreSQL foundation tests;
+- Phase 08D application-user access tests;
+- new Phase 08E authorization tests;
+- Batch A Patient tests;
+- server authentication tests;
+- V1 regression tests;
+- full Node tests;
+- client production build.
+
+If live PostgreSQL authorization integration skips in DevSpace due absent secret-bound DATABASE_URL/TEST_DATABASE_URL, report the exact test command for the user’s normal secret-enabled shell and do not claim final commit readiness until the live 08E test passes.

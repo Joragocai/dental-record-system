@@ -90,6 +90,10 @@ requires more than the present unit and service-level parity tests.
 | `server/src/repositories/applicationUserRepository.ts` | KEEP | Phase 08D parameterized PostgreSQL application-user repository with runtime row validation for user identity, roles, and branch memberships. |
 | `server/src/services/applicationUserService.ts`, `applicationUserIdentity.ts`, and `applicationUserErrors.ts` | KEEP | Phase 08D internal application-user context boundary. Resolves verified auth UUIDs to active clinic identity plus deterministic role/branch membership while keeping safe status and persistence errors. It does not enforce permissions yet. |
 | `docs/architecture/application-user-access-foundation.md` | KEEP | Records the Phase 08D identity/status/role/branch model and the separation between provider authentication and future application authorization. |
+| `server/src/postgres/migrations/0006_authorization_rbac_foundation.sql` | KEEP | Phase 08E normalized permission and role-permission foundation with explicit GLOBAL/BRANCH/OWN scope metadata and conservative seeded grants. |
+| `server/src/repositories/authorizationRepository.ts` | KEEP | Phase 08E parameterized permission-union repository. Resolves effective grants only from trusted application role codes and validates permission rows at the PostgreSQL boundary. |
+| `server/src/services/authorizationService.ts` and `authorizationErrors.ts` | KEEP | Phase 08E deny-by-default authorization policy boundary with separate global and branch-aware decisions. OWN scope remains denied until patient ownership is explicitly implemented. |
+| `docs/architecture/authorization-rbac-foundation.md` | KEEP | Records Phase 08E role grants, branch enforcement, System Administrator restrictions, owner-dentist role union, and remaining middleware/provisioning gates. |
 | Existing V1 clinic routes in `server/src/routes/*.js` | RETIRE-LATER | They remain unauthenticated local-runtime paths until focused protected-route replacement/integration tasks are complete; the new auth router is the intentional exception. |
 
 ## Patient Domain
