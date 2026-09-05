@@ -1,0 +1,61 @@
+PHASE 07A — V2 PATIENT DOMAIN REPLACEMENT: POSTGRESQL READ PATH
+
+STATUS
+Approved current task.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+GOAL
+Create the first production-quality V2 Patient runtime read path using TypeScript + PostgreSQL while keeping the current SQLite/V1 application fully active.
+
+SCOPE
+1. Verify the branch is correct, synchronized, and the working tree is clean before editing. Do not perform Git write operations.
+2. Read README.md, AGENTS.md, ADR-0001, docs/architecture/v2-migration-map.md, Phase 06 Patient/PostgreSQL documentation, and the relevant V1 Patient and Batch A PostgreSQL code before editing.
+3. Preserve V1 Patient read behavior as the parity reference:
+   - list patients;
+   - search by last name, first name, readable patient code, or mobile number;
+   - read one patient by stable V2 UUID;
+   - read/resolve one patient by readable patient code;
+   - deterministic name ordering.
+4. Build a TypeScript PostgreSQL repository/service read path. This is runtime/domain code, not migration-only code.
+5. Preserve UUID as internal V2 identity and P-YYYY-0001 as the readable patient code.
+6. Reuse the existing Batch A schema and safe PostgreSQL DATE normalization. Do not modify applied migrations 0001-0004.
+7. Keep branch relationships explicit and UUID-based. Branch display metadata may be read, but branch authorization/filtering is deferred.
+8. Preserve YYYY-MM-DD plain-date semantics and null handling for Patient date/optional fields.
+9. Keep the active V1 SQLite Patient route/service and all current client consumers unchanged.
+10. Do not cut over server/src/routes/patients.js.
+11. Do not remove SQLite Patient code, JSX pages, compatibility paths, or other V1 consumers.
+12. Do not implement Patient create/update replacement in this task.
+13. Do not implement Authentication, RBAC, audit, private storage, portal, finance, Treatment replacement, Appointment replacement, or deployment work.
+14. Do not widen a Patient API response before authentication/authorization exists.
+15. Add focused tests for repository/service behavior: list/search, UUID/code lookup, deterministic ordering, branch linkage, null handling, date-only normalization, and live fictional PostgreSQL integration using the repository test-safety guard.
+16. Run git diff --check, typecheck, relevant PostgreSQL tests, targeted Patient read tests, V1 regression, full Node tests, and client build.
+17. Leave changes uncommitted for human review.
+
+IMPLEMENTATION NOTES
+- Repository SQL must be parameterized.
+- Keep HTTP concerns out of the repository/service.
+- A V2 internal DTO may use camelCase; do not mutate the current V1 snake_case HTTP contract.
+- Reuse existing PostgreSQL row/date mapping rather than duplicating DATE conversion rules.
+- Keep V1 alphabetical list/search semantics; add a stable patient-code tie-breaker only where V1 ordering is otherwise undefined.
+- Keep branchId explicit in the Patient record. If branch display metadata is returned, source it from the normalized branches table.
+- Never expose credentials or real patient data in tests/logs.
+
+COMPLETION REPORT
+Report:
+- files changed;
+- repository/service design;
+- behavior/parity results;
+- live PostgreSQL result or exact safe prerequisite skip reason;
+- typecheck/test/build results;
+- V1 coexistence result;
+- known limitations and deferred work;
+- final Git status;
+- commit-readiness;
+- recommended Phase 07B task.
+
+Do not commit, push, merge, switch branches, or begin Phase 07B automatically.

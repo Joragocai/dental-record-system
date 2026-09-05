@@ -6,6 +6,8 @@ import { createPgPoolManager } from "../pool.js";
 import { assertSafeTestDatabaseTarget, getPgIntegrationReadiness } from "../testSafety.js";
 import { insertBranch } from "./branches.js";
 import { allocateAnnualPatientCode } from "./patientCodeAllocation.js";
+import { createPatientReadRepository } from "../../repositories/patientRepository.js";
+import { createPatientReadService } from "../../services/patientReadService.js";
 import { buildFictionalLegacyPatientRow, fictionalBranch, fictionalBranchMappings } from "./patientFixtures.js";
 import { mapLegacyPatientToDraft, migrateLegacyPatient } from "./patientMigration.js";
 import { getPatientByCode } from "./patients.js";
@@ -101,6 +103,82 @@ test("Batch A PostgreSQL integration preserves fictional patient parity", async 
     assert.equal(Number(mapRows.rows[0]?.legacy_patient_row_id), legacyPatient.id);
     assert.equal(mapRows.rows[0]?.legacy_patient_code, legacyPatient.patient_id);
     assert.equal(mapRows.rows[0]?.patient_id, persisted.id);
+  } finally {
+    await pool.shutdown();
+  }
+});
+
+test("Phase 07A Patient read path preserves list, search, identity, branch, DATE, and NULL semantics", async (t) => {
+  const readiness = getPgIntegrationReadiness(process.env);
+  if (!readiness.ready) {
+    t.skip(readiness.reason || "TEST_DATABASE_URL is not configured for safe PostgreSQL integration.");
+    return;
+  }
+
+  const pool = createPgPoolManager(buildTestDatabaseConfig());
+  await resetKnownBatchATestTables(pool);
+
+  try {
+    await runPendingMigrations(pool);
+    await insertBranch(pool, fictionalBranch);
+
+    const firstLegacyPatient = buildFictionalLegacyPatientRow({
+      id: 201,
+      patient_id: "P-2026-0011",
+      last_name: "Example",
+      first_name: "Bea",
+      middle_name: null,
+      insurance_effective_date: null,
+      last_dental_visit: null,
+      email_address: null,
+      created_at: "2026-08-02T08:00:00.000Z",
+      updated_at: "2026-08-02T08:00:00.000Z"
+    });
+    const secondLegacyPatient = buildFictionalLegacyPatientRow({
+      id: 202,
+      patient_id: "P-2026-0012",
+      last_name: "Example",
+      first_name: "Ana",
+      middle_name: "Zed",
+      mobile_number: "09990001112",
+      created_at: "2026-08-03T08:00:00.000Z",
+      updated_at: "2026-08-03T08:00:00.000Z"
+    });
+
+    const firstMigrated = await migrateLegacyPatient(pool, firstLegacyPatient, fictionalBranchMappings);
+    const secondMigrated = await migrateLegacyPatient(pool, secondLegacyPatient, fictionalBranchMappings);
+    const service = createPatientReadService(createPatientReadRepository(pool));
+
+    const listed = await service.listPatients();
+    assert.deepEqual(
+      listed.map((patient) => patient.patientCode),
+      [secondLegacyPatient.patient_id, firstLegacyPatient.patient_id]
+    );
+
+    const searchedByName = await service.searchPatients("ana");
+    assert.deepEqual(searchedByName.map((patient) => patient.patientCode), [secondLegacyPatient.patient_id]);
+
+    const searchedByCode = await service.searchPatients(firstLegacyPatient.patient_id);
+    assert.deepEqual(searchedByCode.map((patient) => patient.patientCode), [firstLegacyPatient.patient_id]);
+
+    const searchedByMobile = await service.searchPatients("0001112");
+    assert.deepEqual(searchedByMobile.map((patient) => patient.patientCode), [secondLegacyPatient.patient_id]);
+
+    const byId = await service.getPatientById(firstMigrated.patient.id);
+    const byCode = await service.getPatientByCode(secondLegacyPatient.patient_id);
+
+    assert.ok(byId);
+    assert.ok(byCode);
+    assert.equal(byId.id, firstMigrated.patient.id);
+    assert.equal(byId.patientCode, firstLegacyPatient.patient_id);
+    assert.equal(byId.branchId, fictionalBranch.id);
+    assert.equal(byId.dateRegistered, firstLegacyPatient.date_registered);
+    assert.equal(byId.birthday, firstLegacyPatient.birthday);
+    assert.equal(byId.insuranceEffectiveDate, null);
+    assert.equal(byId.lastDentalVisit, null);
+    assert.equal(byId.emailAddress, null);
+    assert.equal(byCode.id, secondMigrated.patient.id);
+    assert.equal(byCode.patientCode, secondLegacyPatient.patient_id);
   } finally {
     await pool.shutdown();
   }

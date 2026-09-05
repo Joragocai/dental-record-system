@@ -76,7 +76,9 @@ requires more than the present unit and service-level parity tests.
 | Area | Classification | Notes |
 | --- | --- | --- |
 | `server/src/postgres/migrations/0002_branch_patient_core.sql` | KEEP | Batch A foundation migration for normalized branch and patient PostgreSQL structures; later phases should extend with new ordered migrations only. |
-| `server/src/postgres/batchA/*.ts` | KEEP | Dedicated PostgreSQL branch/patient foundation and fictional parity helpers for future V2 patient replacement work. |
+| `server/src/postgres/batchA/*.ts` | KEEP | Dedicated PostgreSQL branch/patient foundation and fictional parity helpers; Phase 07A also reuses this mapping layer for V2 Patient reads. |
+| `server/src/repositories/patientRepository.ts` | KEEP | Phase 07A typed PostgreSQL Patient read repository boundary for list, search, UUID lookup, and readable-code lookup. |
+| `server/src/services/patientReadService.ts` | KEEP | Phase 07A internal V2 Patient read service; intentionally not wired to the unauthenticated V1 HTTP route yet. |
 | Patient JSX pages and components | RETIRE-LATER | Working V1 UI remains active until a V2 patient slice exists. |
 | `server/src/routes/patients.js` | RETIRE-LATER | Active legacy route surface; replacement should happen with V2 persistence and auth. |
 | `server/src/services/patientService.js` | REPLACE | Current service is tightly aligned to legacy persistence assumptions. |

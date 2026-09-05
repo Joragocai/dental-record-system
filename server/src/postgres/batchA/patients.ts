@@ -462,6 +462,34 @@ export async function insertPatient(executor: PgQueryExecutor, patient: NewPatie
   return mapPatientRow(row);
 }
 
+const patientNameOrderSql =
+  "ORDER BY last_name ASC, first_name ASC, middle_name ASC NULLS FIRST, patient_code ASC";
+
+export async function listPatients(executor: PgQueryExecutor): Promise<NewPatientRecord[]> {
+  const result = await executor.query<PatientRow>(`SELECT * FROM patients ${patientNameOrderSql}`);
+  return result.rows.map(mapPatientRow);
+}
+
+export async function searchPatients(executor: PgQueryExecutor, query: string): Promise<NewPatientRecord[]> {
+  const normalizedQuery = String(query).trim();
+  if (!normalizedQuery) {
+    return listPatients(executor);
+  }
+
+  const value = `%${normalizedQuery}%`;
+  const result = await executor.query<PatientRow>(
+    `SELECT * FROM patients
+     WHERE last_name ILIKE $1
+        OR first_name ILIKE $1
+        OR patient_code ILIKE $1
+        OR mobile_number ILIKE $1
+     ${patientNameOrderSql}`,
+    [value]
+  );
+
+  return result.rows.map(mapPatientRow);
+}
+
 export async function getPatientByCode(
   executor: PgQueryExecutor,
   patientCode: string
