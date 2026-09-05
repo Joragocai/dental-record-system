@@ -7,14 +7,14 @@ import {
   type PatientWriteInput,
   type PatientWriteValidationResult
 } from "./patientWriteRules.js";
+import { PatientDomainError, toPatientPersistenceError } from "./patientDomainErrors.js";
+import { normalizePatientId } from "./patientIdentity.js";
 
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-export class PatientWriteValidationError extends Error {
+export class PatientWriteValidationError extends PatientDomainError {
   readonly errors: readonly string[];
 
   constructor(errors: readonly string[]) {
-    super(errors[0] || "Patient data is invalid.");
+    super("INVALID_INPUT", errors);
     this.name = "PatientWriteValidationError";
     this.errors = [...errors];
   }
@@ -31,14 +31,6 @@ function assertValidInput(result: PatientWriteValidationResult): void {
   }
 }
 
-function assertPatientId(patientId: string): string {
-  const normalized = String(patientId).trim();
-  if (!uuidPattern.test(normalized)) {
-    throw new PatientWriteValidationError(["Patient ID must be a valid UUID."]);
-  }
-  return normalized;
-}
-
 export type PatientRepositoryFactory = (executor: PgQueryExecutor) => PatientRepository;
 
 export function createPatientWriteService(
@@ -51,55 +43,63 @@ export function createPatientWriteService(
       assertValidInput(validation);
       const timestamp = now.toISOString();
 
-      return pool.withTransaction(async (executor) => {
-        const repository = repositoryFactory(executor);
-        if (!(await repository.branchExists(validation.data.branchId))) {
-          throw new PatientWriteValidationError(["Branch does not exist."]);
-        }
+      try {
+        return await pool.withTransaction(async (executor) => {
+          const repository = repositoryFactory(executor);
+          if (!(await repository.branchExists(validation.data.branchId))) {
+            throw new PatientDomainError("BRANCH_NOT_FOUND");
+          }
 
-        const allocation = await repository.allocateCode(now);
-        if (await repository.getByCode(allocation.patientCode)) {
-          throw new Error(`Patient code conflict: ${allocation.patientCode} already exists.`);
-        }
+          const allocation = await repository.allocateCode(now);
+          if (await repository.getByCode(allocation.patientCode)) {
+            throw new PatientDomainError("CODE_CONFLICT");
+          }
 
-        const patient: NewPatientRecord = {
-          ...validation.data,
-          id: crypto.randomUUID(),
-          patientCode: allocation.patientCode,
-          createdAt: timestamp,
-          updatedAt: timestamp
-        };
+          const patient: NewPatientRecord = {
+            ...validation.data,
+            id: crypto.randomUUID(),
+            patientCode: allocation.patientCode,
+            createdAt: timestamp,
+            updatedAt: timestamp
+          };
 
-        return repository.insert(patient);
-      });
+          return repository.insert(patient);
+        });
+      } catch (error) {
+        throw toPatientPersistenceError(error);
+      }
     },
 
     async updatePatient(patientId: string, input: PatientWriteInput, now = new Date()): Promise<NewPatientRecord | null> {
-      const normalizedPatientId = assertPatientId(patientId);
+      const normalizedPatientId = normalizePatientId(patientId);
       const validation = validateAndNormalizePatientWriteInput(input, now);
       assertValidInput(validation);
       const timestamp = now.toISOString();
 
-      return pool.withTransaction(async (executor) => {
-        const repository = repositoryFactory(executor);
-        const existing = await repository.getById(normalizedPatientId);
-        if (!existing) return null;
+      try {
+        return await pool.withTransaction(async (executor) => {
+          const repository = repositoryFactory(executor);
+          const existing = await repository.getById(normalizedPatientId);
+          if (!existing) return null;
 
-        if (!(await repository.branchExists(validation.data.branchId))) {
-          throw new PatientWriteValidationError(["Branch does not exist."]);
-        }
+          if (!(await repository.branchExists(validation.data.branchId))) {
+            throw new PatientDomainError("BRANCH_NOT_FOUND");
+          }
 
-        const patient: NewPatientRecord = {
-          ...existing,
-          ...validation.data,
-          id: existing.id,
-          patientCode: existing.patientCode,
-          createdAt: existing.createdAt,
-          updatedAt: timestamp
-        };
+          const patient: NewPatientRecord = {
+            ...existing,
+            ...validation.data,
+            id: existing.id,
+            patientCode: existing.patientCode,
+            createdAt: existing.createdAt,
+            updatedAt: timestamp
+          };
 
-        return repository.update(patient);
-      });
+          return repository.update(patient);
+        });
+      } catch (error) {
+        throw toPatientPersistenceError(error);
+      }
     }
   };
 }

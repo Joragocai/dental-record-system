@@ -1,0 +1,35 @@
+PHASE 07C — V2 PATIENT DOMAIN HARDENING & CUTOVER READINESS
+
+STATUS
+Approved current task.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+GOAL
+Harden the completed Phase 07A/07B PostgreSQL Patient domain so it is technically ready for later protected-route integration without exposing it through the current unauthenticated V1 API.
+
+SCOPE
+1. Verify branch, sync state, and clean working tree before editing. Do not perform Git write operations.
+2. Read README.md, AGENTS.md, ADR-0001, docs/architecture/v2-migration-map.md, Phase 07A/07B task specs, and the complete V2 Patient read/write path.
+3. Keep server/src/routes/patients.js and the current SQLite/V1 runtime untouched.
+4. Add a clean internal Patient domain boundary/facade for future authenticated controllers.
+5. Validate UUID identities and readable P-YYYY-0001 Patient codes before PostgreSQL access.
+6. Add consistent typed safe Patient-domain errors for invalid input/identity, not found, branch not found, patient-code conflict, and internal persistence failure.
+7. Do not expose SQL, connection details, database-driver messages, credentials, or sensitive Patient content through domain errors.
+8. Preserve UUID identity, immutable Patient code/created timestamp, annual code generation, transaction safety, branch UUID relationships, YYYY-MM-DD dates, null normalization, and V1 validation parity.
+9. Add focused tests for malformed identities before SQL, not-found behavior, branch/code conflicts, safe persistence-error behavior, identity immutability, and continued read/write parity.
+10. Add safe live PostgreSQL concurrency coverage proving concurrent fictional Patient creates receive distinct patient codes/UUIDs without duplicates.
+11. Do not implement route cutover, public V2 endpoints, auth, RBAC, branch authorization, audit logging, portal, other domains, or deployment.
+12. Do not modify applied migrations 0001-0004.
+13. Document Patient cutover readiness and the remaining blockers: authentication, authorization/branch enforcement, audit logging, protected controller/route integration, end-to-end testing, and UAT.
+14. Run git diff --check, npm run typecheck, PostgreSQL foundation tests, complete Batch A tests, V1 regression tests, full Node tests, and client production build.
+15. Leave all changes uncommitted for human review.
+
+COMPLETION REPORT
+Report files changed, hardening decisions, domain-error behavior, concurrency result, live PostgreSQL result or exact safe skip reason, all validation results, remaining cutover blockers, final Git status, commit readiness, and recommended next Phase 07 domain slice.
+
+Do not commit, push, merge, switch branches, or begin the next task automatically.

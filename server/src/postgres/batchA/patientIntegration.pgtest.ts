@@ -8,7 +8,8 @@ import { insertBranch } from "./branches.js";
 import { allocateAnnualPatientCode } from "./patientCodeAllocation.js";
 import { createPatientReadRepository } from "../../repositories/patientRepository.js";
 import { createPatientReadService } from "../../services/patientReadService.js";
-import { createPatientWriteService, PatientWriteValidationError } from "../../services/patientWriteService.js";
+import { createPatientWriteService } from "../../services/patientWriteService.js";
+import { PatientDomainError } from "../../services/patientDomainErrors.js";
 import type { PatientWriteInput } from "../../services/patientWriteRules.js";
 import { buildFictionalLegacyPatientRow, fictionalBranch, fictionalBranchMappings } from "./patientFixtures.js";
 import { mapLegacyPatientToDraft, migrateLegacyPatient } from "./patientMigration.js";
@@ -257,14 +258,14 @@ test("Phase 07B Patient write path creates, updates, validates branch, and rolls
     const missingBranchId = "33333333-3333-4333-8333-333333333333";
     await assert.rejects(
       service.createPatient(buildPhase07BWriteInput({ branchId: missingBranchId }), createdAt),
-      (error) => error instanceof PatientWriteValidationError && error.errors.includes("Branch does not exist.")
+      (error) => error instanceof PatientDomainError && error.code === "BRANCH_NOT_FOUND"
     );
     assert.equal(await getCount(pool, "patients"), 1);
 
     await pool.query("DELETE FROM patient_code_counters WHERE calendar_year = $1", [2026]);
     await assert.rejects(
       service.createPatient(buildPhase07BWriteInput({ mobileNumber: "09170000003" }), createdAt),
-      /Patient code conflict: P-2026-0001 already exists/
+      (error) => error instanceof PatientDomainError && error.code === "CODE_CONFLICT"
     );
 
     const counterResult = await pool.query<{ count: string | number }>(
@@ -273,6 +274,51 @@ test("Phase 07B Patient write path creates, updates, validates branch, and rolls
     );
     assert.equal(Number(counterResult.rows[0]?.count ?? 0), 0);
     assert.equal(await getCount(pool, "patients"), 1);
+  } finally {
+    await pool.shutdown();
+  }
+});
+
+test("Phase 07C concurrent Patient creates allocate distinct annual codes and UUIDs", async (t) => {
+  const readiness = getPgIntegrationReadiness(process.env);
+  if (!readiness.ready) {
+    t.skip(readiness.reason || "TEST_DATABASE_URL is not configured for safe PostgreSQL integration.");
+    return;
+  }
+
+  const pool = createPgPoolManager(buildTestDatabaseConfig());
+  await resetKnownBatchATestTables(pool);
+
+  try {
+    await runPendingMigrations(pool);
+    await insertBranch(pool, fictionalBranch);
+    const service = createPatientWriteService(pool);
+    const now = new Date("2026-08-17T12:00:00.000Z");
+
+    const created = await Promise.all(
+      Array.from({ length: 5 }, (_, index) =>
+        service.createPatient(
+          buildPhase07BWriteInput({
+            firstName: `Concurrent${index + 1}`,
+            mobileNumber: `0917000001${index}`
+          }),
+          now
+        )
+      )
+    );
+
+    const patientCodes = created.map((patient) => patient.patientCode);
+    const patientIds = created.map((patient) => patient.id);
+    assert.equal(new Set(patientCodes).size, 5);
+    assert.equal(new Set(patientIds).size, 5);
+    assert.deepEqual([...patientCodes].sort(), [
+      "P-2026-0001",
+      "P-2026-0002",
+      "P-2026-0003",
+      "P-2026-0004",
+      "P-2026-0005"
+    ]);
+    assert.equal(await getCount(pool, "patients"), 5);
   } finally {
     await pool.shutdown();
   }

@@ -80,7 +80,10 @@ requires more than the present unit and service-level parity tests.
 | `server/src/repositories/patientRepository.ts` | KEEP | Phase 07A/07B typed PostgreSQL Patient repository boundary for reads plus branch checks, annual code allocation, insert, and immutable-identity update operations. |
 | `server/src/services/patientReadService.ts` | KEEP | Phase 07A internal V2 Patient read service; intentionally not wired to the unauthenticated V1 HTTP route yet. |
 | `server/src/services/patientWriteRules.ts` | KEEP | Phase 07B typed V2 Patient write normalization/validation boundary preserving applicable V1 patient rules while using UUID branch identity. |
-| `server/src/services/patientWriteService.ts` | KEEP | Phase 07B internal V2 Patient create/update service; owns transaction orchestration, UUID creation, annual code allocation, branch validation, and immutable patient identity/code behavior. Not wired to V1 routes yet. |
+| `server/src/services/patientWriteService.ts` | KEEP | Phase 07B/07C internal V2 Patient create/update service; owns transaction orchestration, UUID creation, annual code allocation, branch validation, immutable patient identity/code behavior, and safe persistence-error translation. Not wired to V1 routes yet. |
+| `server/src/services/patientDomainService.ts` | KEEP | Phase 07C internal Patient facade for future authenticated controllers; provides typed not-found behavior and composes the hardened read/write services without exposing repository details. |
+| `server/src/services/patientDomainErrors.ts` and `patientIdentity.ts` | KEEP | Phase 07C typed safe domain errors plus UUID/readable-code validation before PostgreSQL access. |
+| `docs/architecture/patient-cutover-readiness.md` | KEEP | Records completed Patient persistence/domain work and the authentication, authorization, audit, protected-route, E2E, migration-verification, and UAT gates that still block route cutover. |
 | Patient JSX pages and components | RETIRE-LATER | Working V1 UI remains active until a V2 patient slice exists. |
 | `server/src/routes/patients.js` | RETIRE-LATER | Active legacy route surface; replacement should happen with V2 persistence and auth. |
 | `server/src/services/patientService.js` | REPLACE | Current service is tightly aligned to legacy persistence assumptions. |

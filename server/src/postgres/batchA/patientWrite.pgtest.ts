@@ -5,9 +5,9 @@ import type { PgPoolManager, PgQueryExecutor } from "../pool.js";
 import { createPatientRepository, type PatientRepository } from "../../repositories/patientRepository.js";
 import {
   createPatientWriteService,
-  PatientWriteValidationError,
   type PatientRepositoryFactory
 } from "../../services/patientWriteService.js";
+import { PatientDomainError } from "../../services/patientDomainErrors.js";
 import {
   validateAndNormalizePatientWriteInput,
   type PatientWriteInput
@@ -223,7 +223,7 @@ test("Patient V2 create rejects a missing branch before code allocation", async 
 
   await assert.rejects(
     service.createPatient(buildWriteInput(), new Date("2026-08-17T12:00:00.000Z")),
-    (error) => error instanceof PatientWriteValidationError && error.errors.includes("Branch does not exist.")
+    (error) => error instanceof PatientDomainError && error.code === "BRANCH_NOT_FOUND"
   );
   assert.equal(allocationCalled, false);
   assert.deepEqual(log, ["begin", "rollback"]);
@@ -240,7 +240,7 @@ test("Patient V2 create rolls back when persistence fails after code allocation"
 
   await assert.rejects(
     service.createPatient(buildWriteInput(), new Date("2026-08-17T12:00:00.000Z")),
-    /fictional insert failure/
+    (error) => error instanceof PatientDomainError && error.code === "PERSISTENCE_ERROR" && !error.message.includes("fictional")
   );
   assert.deepEqual(log, ["begin", "rollback"]);
 });
@@ -261,7 +261,7 @@ test("Patient V2 create rejects a code conflict within the same transaction", as
 
   await assert.rejects(
     service.createPatient(buildWriteInput(), new Date("2026-08-17T12:00:00.000Z")),
-    /Patient code conflict: P-2026-0008 already exists/
+    (error) => error instanceof PatientDomainError && error.code === "CODE_CONFLICT"
   );
   assert.equal(insertCalled, false);
   assert.deepEqual(log, ["begin", "rollback"]);
@@ -310,7 +310,7 @@ test("Patient V2 update rejects malformed UUID before starting a transaction", a
 
   await assert.rejects(
     service.updatePatient("not-a-uuid", buildWriteInput(), new Date("2026-08-17T12:00:00.000Z")),
-    (error) => error instanceof PatientWriteValidationError && error.errors.includes("Patient ID must be a valid UUID.")
+    (error) => error instanceof PatientDomainError && error.code === "INVALID_IDENTITY"
   );
   assert.deepEqual(log, []);
 });
