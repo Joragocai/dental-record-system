@@ -1,0 +1,58 @@
+PHASE 08B — EXPRESS AUTHENTICATION MIDDLEWARE & PROTECTED SESSION BOUNDARY
+
+STATUS
+Approved current task.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+GOAL
+Wire the Phase 08A authentication foundation into Express through a small typed middleware boundary and one protected session endpoint, while leaving all existing V1 clinic routes unchanged and unauthenticated.
+
+SCOPE
+1. Verify the branch is clean and synchronized before editing. Do not perform Git write operations.
+2. Reuse the committed Phase 08A AuthenticationService and typed AuthenticationError model.
+3. Add typed authentication middleware that:
+   - reads the Authorization header;
+   - delegates to AuthenticationService;
+   - stores the verified AuthenticatedPrincipal in `res.locals.auth`;
+   - calls `next()` on success;
+   - forwards safe AuthenticationError instances on failure;
+   - sets `WWW-Authenticate: Bearer` for 401 responses;
+   - never logs or returns the bearer token.
+4. Add a small auth router factory with dependency injection for tests.
+5. Add `GET /api/auth/session` as the only protected route in this phase.
+6. Successful session response should expose only the minimum authenticated identity needed by the client: authenticated=true, user.id, and user.email. Do not expose provider internals or application roles.
+7. Mount the auth router in the current Express app without protecting or changing any existing V1 route behavior.
+8. Add focused tests proving:
+   - successful middleware attaches the principal to res.locals;
+   - missing/malformed/invalid credentials produce safe 401 behavior with WWW-Authenticate;
+   - provider/config failures retain their safe Phase 08A status behavior;
+   - GET /api/auth/session returns the expected minimal payload when authenticated;
+   - the protected handler is not executed on authentication failure;
+   - no token contents leak in errors/responses.
+9. Keep RBAC, branch authorization, patient ownership, audit, MFA, login UI, signup, password reset, and Patient route cutover out of scope.
+10. Update authentication architecture documentation and the migration map with the new Express boundary and the unchanged V1 runtime state.
+11. Run git diff --check, npm run typecheck, focused auth tests, PostgreSQL foundation tests, Batch A tests, V1 regression tests, full Node tests, and client production build.
+12. Leave all changes uncommitted.
+
+ARCHITECTURE
+Request -> Express authenticate middleware -> AuthenticationService -> AccessTokenVerifier -> Supabase Auth -> AuthenticatedPrincipal -> res.locals.auth -> protected handler.
+
+Authentication answers only identity. Authorization remains a separate later layer.
+
+OUT OF SCOPE
+- No clinic roles or permissions.
+- No branch checks.
+- No patient ownership/isolation checks.
+- No audit trail.
+- No existing V1 route protection.
+- No Patient route cutover.
+- No frontend auth workflow.
+- No database migrations.
+
+COMPLETION REPORT
+Report files changed, middleware/error-flow design, protected endpoint behavior, tests and validation results, unchanged V1 boundary, current limitations, Git status, and recommended next authentication task.

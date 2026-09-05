@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 08A establishes a backend-first authentication foundation for future protected V2 routes. It is intentionally not wired into the current V1 route surface yet.
+Phase 08A established the backend authentication foundation. Phase 08B now wires that foundation into Express through a typed authentication middleware and a single protected `GET /api/auth/session` boundary. Existing V1 clinic routes remain unchanged and unauthenticated.
 
 ## Provider Boundary
 
@@ -50,20 +50,29 @@ AUTH_REQUEST_TIMEOUT_MS=5000
 
 Do not place the service-role key in browser code or use it for normal bearer-token verification.
 
+## Express Boundary
+
+Phase 08B adds `createAuthenticateMiddleware()`. It reads the Authorization header, delegates verification to `AuthenticationService`, stores the verified principal in `res.locals.auth`, and forwards safe typed failures to the existing Express error pipeline. Authentication failures with status 401 also set `WWW-Authenticate: Bearer`.
+
+The only protected route introduced in this phase is:
+
+`GET /api/auth/session`
+
+A successful response exposes only `authenticated: true`, the verified user UUID, and the verified email when present. Provider internals, bearer tokens, clinic roles, permissions, and branch assignments are not returned.
+
 ## Current Runtime State
 
-No existing route is protected by this foundation yet. `server/src/app.js` and the current V1 route modules remain unchanged so the existing local application continues to work while the security layers are built incrementally.
+`server/src/app.js` mounts the new `/api/auth` router, but all pre-existing V1 clinic routes remain unchanged and unauthenticated. Phase 08B therefore proves the Express authentication pipeline without prematurely cutting over Patient, Treatment, Appointment, export, backup, or other legacy routes.
 
-This means the current V1 HTTP surface is still unauthenticated and must not be exposed publicly or used as a production cloud API.
+The remaining unauthenticated V1 HTTP surface must not be treated as a production-ready public API.
 
 ## Next Gates
 
-Before the Patient PostgreSQL domain or other V2 modules are exposed through protected HTTP routes, the project still needs:
+Before the Patient PostgreSQL domain or other sensitive V2 modules are exposed through protected HTTP routes, the project still needs:
 
-1. Express authentication middleware that uses this authentication service.
-2. A protected V2 route/controller test surface to verify 401/503 handling without cutting over V1 routes.
-3. Staff invitation and patient activation flows when explicitly approved.
-4. Authorization/RBAC, branch enforcement, and patient ownership checks.
-5. Append-only audit logging for sensitive authentication and Patient activity.
-6. MFA and reauthentication requirements for privileged roles.
-7. End-to-end tests and production configuration review.
+1. Authentication workflow decisions and implementation such as login/session handling, staff invitation, and patient activation when explicitly approved.
+2. Authorization/RBAC, branch enforcement, and patient ownership checks.
+3. Append-only audit logging for sensitive authentication and Patient activity.
+4. MFA and reauthentication requirements for privileged roles.
+5. Protected controller/route integration for selected V2 domains after authorization prerequisites exist.
+6. End-to-end tests and production configuration review.

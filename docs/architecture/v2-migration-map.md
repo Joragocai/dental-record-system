@@ -78,9 +78,12 @@ requires more than the present unit and service-level parity tests.
 | `server/src/auth/authConfig.ts` | KEEP | Phase 08A lazy server-only Supabase Auth configuration; importing auth modules does not require auth environment values until authentication is invoked. |
 | `server/src/auth/bearerToken.ts` | KEEP | Strict bearer-credential parser that distinguishes missing/malformed credentials without exposing token content. |
 | `server/src/auth/authVerifier.ts` | KEEP | Provider boundary plus Supabase authenticated-user verifier using built-in `fetch`; maps only minimal verified identity and does not treat provider JWT `role` as clinic RBAC. |
-| `server/src/auth/authService.ts` and `authErrors.ts` | KEEP | Internal authentication boundary and safe typed errors for future protected Express middleware/controllers. Not wired into V1 routes yet. |
-| `docs/architecture/authentication-foundation.md` | KEEP | Records Phase 08A security properties, configuration, current non-cutover state, and remaining authentication/authorization gates. |
-| Existing V1 routes in `server/src/routes/*.js` | RETIRE-LATER | They remain unauthenticated local-runtime paths until focused protected-route replacement/integration tasks are complete. |
+| `server/src/auth/authService.ts` and `authErrors.ts` | KEEP | Internal authentication boundary and safe typed errors used by the Phase 08B Express middleware. |
+| `server/src/auth/authMiddleware.ts` | KEEP | Phase 08B typed Express-facing authentication adapter; stores the verified principal in `res.locals.auth`, forwards safe failures, and sets the Bearer challenge for 401 responses. |
+| `server/src/auth/*.js` compatibility bridges | BRIDGE | Thin JS-to-TS re-exports preserve the current Node 24 JavaScript runtime while auth internals remain TypeScript. Retire only when the server runtime/import strategy no longer needs them. |
+| `server/src/routes/auth.js` | KEEP | Phase 08B protected auth router. Currently exposes only `GET /api/auth/session`; uses dependency injection for focused tests and does not perform authorization/RBAC. |
+| `docs/architecture/authentication-foundation.md` | KEEP | Records Phase 08A/08B security properties, Express integration, protected session boundary, and remaining authentication/authorization gates. |
+| Existing V1 clinic routes in `server/src/routes/*.js` | RETIRE-LATER | They remain unauthenticated local-runtime paths until focused protected-route replacement/integration tasks are complete; the new auth router is the intentional exception. |
 
 ## Patient Domain
 
