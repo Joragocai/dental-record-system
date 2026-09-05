@@ -1,0 +1,86 @@
+PHASE 08C — CLIENT AUTHENTICATION SESSION, LOGIN & RECOVERY FOUNDATION
+
+STATUS
+Approved current task.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+SEQUENCE
+08A backend authentication verifier foundation — complete.
+08B Express authentication middleware and protected `/api/auth/session` boundary — complete.
+08C adds the browser authentication/session layer only.
+
+GOAL
+Add a frontend Supabase Auth session, login, logout, password-recovery, and protected authentication-only UI foundation while preserving the current V1 clinic routes/pages and deferring staff-account provisioning, authorization/RBAC, audit, MFA, and Patient route cutover.
+
+APPROVED PRODUCT DECISIONS
+- Staff cannot self-register.
+- There is no public signup route/button.
+- A future Clinic Administrator workflow will initiate staff-account creation/provisioning after application-user/RBAC foundations exist.
+- Staff members set their own password through activation/recovery flows; administrators do not know their permanent password.
+- Real Supabase project/account setup may happen later; implementation must remain safe when browser Supabase configuration is absent.
+- No service-role key is introduced in this phase.
+
+SCOPE
+1. Verify clean synchronized branch before editing. Do not perform Git write operations.
+2. Add the official `@supabase/supabase-js` browser dependency in `client/package.json`. Package-lock installation/update may require a human `npm install` step if the DevSpace environment cannot perform package writes.
+3. Add lazy browser-only Supabase configuration using only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
+4. Use `sessionStorage` for browser session persistence for this initial staff-oriented foundation. Do not manually store raw tokens outside the Supabase client storage mechanism.
+5. Add a provider-independent browser-auth abstraction so React/context code does not depend directly on Supabase response objects.
+6. Add login, current-session restore, current-session logout, password-recovery request, password update, and auth-state subscription behavior.
+7. Add an authenticated V2 API helper that attaches the current access token only to explicitly protected V2 calls. Do not modify the legacy `client/src/lib/api.js` globally.
+8. Add an AuthProvider/AuthContext that:
+   - remains non-fatal when Supabase browser config is absent;
+   - restores Supabase session state;
+   - verifies an existing/login session through backend `GET /api/auth/session` before marking the browser identity authenticated;
+   - reacts to Supabase auth changes/refresh/recovery;
+   - clears local auth state on logout or invalid credentials;
+   - does not infer clinic role/permission/branch from provider metadata.
+9. Add frontend routes/pages:
+   - `/login`
+   - `/forgot-password`
+   - `/reset-password`
+   - `/auth/account` as the only authentication-only protected client route introduced in this phase.
+10. Do not protect the existing Dashboard, Patient, Treatment, Appointment, export, backup, attachment, settings, or print pages yet because their backing V1 APIs remain unauthenticated.
+11. Login must use managed Supabase Auth email/password. No custom password database/JWT implementation.
+12. Forgot-password UI must always show a generic result and must not reveal whether the email exists.
+13. Recovery must use the provider recovery session and allow a new password only during a recovery flow; after completion, clear the recovery marker and require normal login again.
+14. Update `.env.example` with placeholder-only browser variables. Never add a `VITE_` service-role secret.
+15. Add focused tests for pure client auth orchestration/config/API-token behavior where feasible without a real Supabase project. Mock provider behavior; no real credentials.
+16. Update auth architecture/migration documentation and explicitly record the next approved sequence:
+   - application-user identity/status foundation;
+   - RBAC/branch authorization;
+   - Clinic Administrator-managed staff provisioning;
+   - audit/MFA/privileged reauthentication;
+   - protected domain cutover later.
+
+OUT OF SCOPE
+- No self-registration/signup.
+- No staff invitation/account provisioning yet.
+- No Patient account activation/linking yet.
+- No Clinic Administrator role enforcement yet.
+- No application user/role/branch tables in this phase.
+- No RBAC/permission middleware.
+- No audit logging.
+- No MFA/reauthentication.
+- No service-role key.
+- No route cutover for existing V1 clinic APIs.
+- No PostgreSQL migrations.
+
+VALIDATION
+Run as far as dependency availability permits:
+- git diff --check
+- npm run typecheck
+- focused client authentication tests
+- server authentication tests
+- PostgreSQL foundation tests
+- Batch A Patient tests (safe live skips acceptable in DevSpace)
+- V1 regression tests
+- full Node tests
+- client production build
+
+If the new Supabase package is not present locally, stop before claiming commit-readiness and request only the package-install command required to update node_modules/package-lock. Leave all source changes uncommitted.

@@ -11,6 +11,11 @@ import PrintTreatmentPage from "./pages/PrintTreatmentPage";
 import SettingsPage from "./pages/SettingsPage";
 import TreatmentDetailPage from "./pages/TreatmentDetailPage";
 import TreatmentFormPage from "./pages/TreatmentFormPage";
+import LoginPage from "./pages/LoginPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import AuthAccountPage from "./pages/AuthAccountPage";
+import ProtectedAuthRoute from "./components/ProtectedAuthRoute";
 
 export default function App() {
   return (
@@ -31,6 +36,17 @@ export default function App() {
       <Route path="/print/treatments/:treatmentId" element={<PrintTreatmentPage />} />
       <Route path="/print/patients/:patientId/treatments" element={<PrintPatientHistoryPage />} />
       <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route
+        path="/auth/account"
+        element={
+          <ProtectedAuthRoute>
+            <AuthAccountPage />
+          </ProtectedAuthRoute>
+        }
+      />
     </Routes>
   );
 }

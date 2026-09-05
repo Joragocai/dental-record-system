@@ -82,7 +82,10 @@ requires more than the present unit and service-level parity tests.
 | `server/src/auth/authMiddleware.ts` | KEEP | Phase 08B typed Express-facing authentication adapter; stores the verified principal in `res.locals.auth`, forwards safe failures, and sets the Bearer challenge for 401 responses. |
 | `server/src/auth/*.js` compatibility bridges | BRIDGE | Thin JS-to-TS re-exports preserve the current Node 24 JavaScript runtime while auth internals remain TypeScript. Retire only when the server runtime/import strategy no longer needs them. |
 | `server/src/routes/auth.js` | KEEP | Phase 08B protected auth router. Currently exposes only `GET /api/auth/session`; uses dependency injection for focused tests and does not perform authorization/RBAC. |
-| `docs/architecture/authentication-foundation.md` | KEEP | Records Phase 08A/08B security properties, Express integration, protected session boundary, and remaining authentication/authorization gates. |
+| `client/src/auth/*` | KEEP | Phase 08C provider-independent browser auth contracts, lazy public Supabase configuration, managed Supabase session adapter, and bearer-authenticated V2 API helper. Uses session-scoped persistence and does not expose service-role credentials. |
+| `client/src/context/AuthContext.tsx` | KEEP | Phase 08C React auth/session orchestration. Restored or newly signed-in provider sessions are verified through the backend `/api/auth/session` boundary before the UI treats the identity as authenticated. |
+| `client/src/pages/{LoginPage,ForgotPasswordPage,ResetPasswordPage,AuthAccountPage}.tsx` and `ProtectedAuthRoute.tsx` | KEEP | Phase 08C authentication-only UI. No public signup exists and only `/auth/account` is protected; existing V1 clinic pages remain outside this auth gate until their APIs are replaced/protected. |
+| `docs/architecture/authentication-foundation.md` | KEEP | Records Phase 08A–08C server/client security properties, protected session boundaries, account-workflow decisions, and remaining authorization/provisioning gates. |
 | Existing V1 clinic routes in `server/src/routes/*.js` | RETIRE-LATER | They remain unauthenticated local-runtime paths until focused protected-route replacement/integration tasks are complete; the new auth router is the intentional exception. |
 
 ## Patient Domain
