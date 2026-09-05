@@ -1,0 +1,39 @@
+PHASE 07 FINAL — PATIENT DOMAIN REVIEW & CLOSURE
+
+STATUS
+Approved closure task.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+GOAL
+Perform a final focused review of the completed V2 Patient PostgreSQL/domain slice (07A read path, 07B write path, 07C hardening) and formally close the slice without performing HTTP route cutover or beginning security implementation.
+
+SCOPE
+1. Verify branch, sync state, and clean working tree. Do not perform Git write operations.
+2. Review README.md, AGENTS.md, ADR-0001, docs/architecture/v2-migration-map.md, docs/architecture/patient-cutover-readiness.md, Phase 07A/07B/07C task specifications, and the Patient repository/services/tests.
+3. Confirm the internal V2 Patient slice provides:
+   - PostgreSQL list/search/UUID lookup/readable-code lookup;
+   - PostgreSQL create/update;
+   - UUID internal identity and immutable readable patient code;
+   - transactional annual code allocation;
+   - branch UUID existence validation;
+   - plain DATE/null semantics;
+   - applicable V1 validation/business-rule parity;
+   - safe typed domain errors;
+   - concurrency coverage for patient-code allocation;
+   - an internal Patient domain facade for future protected controllers.
+4. Confirm the active V1 SQLite Patient route remains intentionally active.
+5. Confirm no applied migration 0001-0004 was modified.
+6. Do not implement authentication, authorization/RBAC, audit logging, route cutover, portal, private storage, Treatment/Appointment replacement, finance, or deployment.
+7. Record closure status in Patient cutover-readiness documentation and migration-map notes only if needed.
+8. Run git diff --check, npm run typecheck, PostgreSQL foundation tests, Batch A Patient tests available in the current environment, V1 regression tests, full Node tests, and client production build.
+9. Leave any closure-documentation changes uncommitted for human review.
+
+CLOSURE RULE
+The Patient domain is considered internally complete for this migration stage when all internal persistence/domain checks pass and the remaining blockers are explicitly external security/runtime gates: authentication, authorization/branch enforcement, audit logging, protected controller/route integration, migration verification, E2E testing, and clinic UAT.
+
+Do not retire the V1 Patient route or SQLite Patient service during this closure task.

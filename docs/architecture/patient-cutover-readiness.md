@@ -2,7 +2,7 @@
 
 ## Status
 
-The V2 Patient domain is persistence-ready but is not approved for HTTP route cutover yet.
+Phase 07 Patient domain work is internally complete for the current migration stage. The V2 Patient domain is persistence-ready and domain-hardened, but it is not approved for HTTP route cutover yet.
 
 Completed internal capabilities:
 
@@ -34,6 +34,10 @@ Before the PostgreSQL Patient domain replaces the V1 Patient route, the followin
 6. End-to-end tests must cover the affected clinic workflow using fictional data.
 7. Migration verification must confirm the PostgreSQL Patient data used for cutover matches the approved source state.
 8. Clinic user acceptance must confirm the Patient workflow before the SQLite route is retired.
+
+## Phase 07 Closure
+
+The internal Patient replacement slice is closed after Phases 07A, 07B, and 07C. Further Patient work should resume only when the required security/runtime prerequisites are implemented and the protected route-integration task is explicitly approved.
 
 ## Retirement Rule
 
