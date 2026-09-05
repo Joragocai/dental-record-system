@@ -1,0 +1,59 @@
+PHASE 08A — AUTHENTICATION FOUNDATION
+
+STATUS
+Approved current task.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+SEQUENCE NOTE
+This task follows the completed Patient Phase 07 sequence. The existing zero-byte legacy placeholders `07-Authentication.txt`, `08-Authorization-RBAC.txt`, and `09-Audit-Trail.txt` predate the current working sequence and must not be silently overwritten in this task.
+
+GOAL
+Establish a secure backend-first authentication foundation for future protected V2 routes using Supabase Auth bearer access tokens, while keeping the current V1 routes and runtime behavior unchanged until protected route integration is explicitly approved.
+
+SCOPE
+1. Verify branch, sync state, and clean working tree before editing. Do not perform Git write operations.
+2. Follow README.md, AGENTS.md, current-system-audit.md, v2-migration-map.md, and patient-cutover-readiness.md.
+3. Build new V2 authentication source in TypeScript.
+4. Add lazy server-only auth configuration for Supabase URL, publishable key, expected JWT audience, and request timeout. Missing auth configuration must not break the existing V1 app merely by importing modules.
+5. Add strict Authorization Bearer header parsing. Missing and malformed credentials must be distinguishable and must never echo the token.
+6. Add a provider-independent access-token verifier interface and a minimal authenticated-principal type. Do not treat Supabase/Postgres `role` as the clinic application role; RBAC is deferred.
+7. Add a Supabase verifier using the official authenticated user endpoint (`GET /auth/v1/user`) with the publishable key plus Bearer access token and built-in `fetch`. Do not implement JWT cryptography manually.
+8. Validate the verified provider response at runtime before trusting identity fields.
+9. Map invalid credentials, provider-unavailable failures, malformed provider responses, and configuration failures to safe typed authentication errors that do not expose SQL, URLs containing secrets, bearer tokens, provider response bodies, or stack details.
+10. Add a small internal authentication boundary that future Express middleware/controllers can call. Do not wire it into current V1 routes in this task.
+11. Update `.env.example` with placeholder-only auth variables needed by this foundation. Do not add or require the Supabase service-role key for access-token verification.
+12. Add focused tests for config parsing, bearer parsing, successful verified identity mapping, invalid tokens, audience mismatch, provider failure, malformed response, and safe-error behavior.
+13. Add an explicit auth test script without introducing new dependencies.
+14. Document architecture, security properties, current non-cutover state, and next blockers.
+15. Update the migration map only as needed for the new auth foundation.
+
+OUT OF SCOPE
+- No sign-in UI or frontend Supabase client.
+- No staff invitation or patient activation workflow.
+- No password reset or MFA implementation.
+- No RBAC, permissions, branch authorization, patient ownership checks, or role tables.
+- No audit trail implementation.
+- No route cutover and no protection of existing V1 routes yet.
+- No Supabase service-role key usage.
+- No custom JWT signing or manual JWT signature verification.
+- No Patient/Treatment/Appointment/storage/finance changes.
+- No PostgreSQL migrations.
+
+VALIDATION
+Run:
+- git diff --check
+- npm run typecheck
+- focused authentication tests
+- PostgreSQL foundation tests
+- Batch A Patient tests (safe live skip is acceptable when credentials are unavailable in DevSpace)
+- V1 regression tests
+- full Node tests
+- client production build
+
+COMPLETION
+Leave all changes uncommitted. Report files changed, verification design, security decisions, tests/results, current limitations, Git status, and the recommended next Authentication task.

@@ -71,6 +71,17 @@ requires more than the present unit and service-level parity tests.
 | Appointment API calls in `client/src/lib/api.js` | RETIRE-LATER | Likely to change during V2 API and auth transition. |
 | Appointment logic in `server/src/db/database.js` | RETIRE-LATER | Persistence path is tied to SQLite and should not be converted further just for parity. |
 
+## Authentication Foundation
+
+| Area | Classification | Notes |
+| --- | --- | --- |
+| `server/src/auth/authConfig.ts` | KEEP | Phase 08A lazy server-only Supabase Auth configuration; importing auth modules does not require auth environment values until authentication is invoked. |
+| `server/src/auth/bearerToken.ts` | KEEP | Strict bearer-credential parser that distinguishes missing/malformed credentials without exposing token content. |
+| `server/src/auth/authVerifier.ts` | KEEP | Provider boundary plus Supabase authenticated-user verifier using built-in `fetch`; maps only minimal verified identity and does not treat provider JWT `role` as clinic RBAC. |
+| `server/src/auth/authService.ts` and `authErrors.ts` | KEEP | Internal authentication boundary and safe typed errors for future protected Express middleware/controllers. Not wired into V1 routes yet. |
+| `docs/architecture/authentication-foundation.md` | KEEP | Records Phase 08A security properties, configuration, current non-cutover state, and remaining authentication/authorization gates. |
+| Existing V1 routes in `server/src/routes/*.js` | RETIRE-LATER | They remain unauthenticated local-runtime paths until focused protected-route replacement/integration tasks are complete. |
+
 ## Patient Domain
 
 | Area | Classification | Notes |
