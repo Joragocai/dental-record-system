@@ -462,6 +462,28 @@ export async function insertPatient(executor: PgQueryExecutor, patient: NewPatie
   return mapPatientRow(row);
 }
 
+const immutablePatientUpdateColumns = new Set(["id", "patient_code", "created_at"]);
+
+export async function updatePatient(executor: PgQueryExecutor, patient: NewPatientRecord): Promise<NewPatientRecord | null> {
+  const insertValues = buildPatientInsertValues(patient);
+  const mutableEntries = patientInsertColumns
+    .map((column, index) => ({ column, value: insertValues[index] }))
+    .filter(({ column }) => !immutablePatientUpdateColumns.has(column));
+  const assignments = mutableEntries.map(({ column }, index) => `${column} = $${index + 1}`).join(", ");
+  const values = mutableEntries.map(({ value }) => value);
+  const patientIdParameter = values.length + 1;
+
+  const result = await executor.query<PatientRow>(
+    `UPDATE patients
+     SET ${assignments}
+     WHERE id = $${patientIdParameter}
+     RETURNING *`,
+    [...values, patient.id]
+  );
+
+  return result.rows[0] ? mapPatientRow(result.rows[0]) : null;
+}
+
 const patientNameOrderSql =
   "ORDER BY last_name ASC, first_name ASC, middle_name ASC NULLS FIRST, patient_code ASC";
 

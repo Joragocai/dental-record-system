@@ -8,6 +8,8 @@ import { insertBranch } from "./branches.js";
 import { allocateAnnualPatientCode } from "./patientCodeAllocation.js";
 import { createPatientReadRepository } from "../../repositories/patientRepository.js";
 import { createPatientReadService } from "../../services/patientReadService.js";
+import { createPatientWriteService, PatientWriteValidationError } from "../../services/patientWriteService.js";
+import type { PatientWriteInput } from "../../services/patientWriteRules.js";
 import { buildFictionalLegacyPatientRow, fictionalBranch, fictionalBranchMappings } from "./patientFixtures.js";
 import { mapLegacyPatientToDraft, migrateLegacyPatient } from "./patientMigration.js";
 import { getPatientByCode } from "./patients.js";
@@ -46,6 +48,23 @@ async function resetKnownBatchATestTables(pool: ReturnType<typeof createPgPoolMa
 async function getCount(pool: ReturnType<typeof createPgPoolManager>, tableName: string): Promise<number> {
   const result = await pool.query<{ count: string | number }>(`SELECT COUNT(*)::int AS count FROM ${tableName}`);
   return Number(result.rows[0]?.count ?? 0);
+}
+
+function buildPhase07BWriteInput(overrides: Partial<PatientWriteInput> = {}): PatientWriteInput {
+  return {
+    branchId: fictionalBranch.id,
+    dateRegistered: "2026-08-17",
+    lastName: "Runtime",
+    firstName: "Pat",
+    birthday: "1992-03-14",
+    gender: "Female",
+    mobileNumber: "09170000001",
+    discountEligibility: "PWD",
+    disabilityType: "Mobility",
+    allergyPenicillin: "Yes",
+    condition_asthma: true,
+    ...overrides
+  };
 }
 
 test("Batch A PostgreSQL integration preserves fictional patient parity", async (t) => {
@@ -179,6 +198,81 @@ test("Phase 07A Patient read path preserves list, search, identity, branch, DATE
     assert.equal(byId.emailAddress, null);
     assert.equal(byCode.id, secondMigrated.patient.id);
     assert.equal(byCode.patientCode, secondLegacyPatient.patient_id);
+  } finally {
+    await pool.shutdown();
+  }
+});
+
+test("Phase 07B Patient write path creates, updates, validates branch, and rolls back code conflicts", async (t) => {
+  const readiness = getPgIntegrationReadiness(process.env);
+  if (!readiness.ready) {
+    t.skip(readiness.reason || "TEST_DATABASE_URL is not configured for safe PostgreSQL integration.");
+    return;
+  }
+
+  const pool = createPgPoolManager(buildTestDatabaseConfig());
+  await resetKnownBatchATestTables(pool);
+
+  try {
+    await runPendingMigrations(pool);
+    await insertBranch(pool, fictionalBranch);
+    const service = createPatientWriteService(pool);
+    const createdAt = new Date("2026-08-17T12:00:00.000Z");
+
+    const created = await service.createPatient(
+      buildPhase07BWriteInput({
+        insuranceEffectiveDate: null,
+        lastDentalVisit: null,
+        emailAddress: null
+      }),
+      createdAt
+    );
+
+    assert.equal(created.patientCode, "P-2026-0001");
+    assert.equal(created.branchId, fictionalBranch.id);
+    assert.equal(created.dateRegistered, "2026-08-17");
+    assert.equal(created.birthday, "1992-03-14");
+    assert.equal(created.insuranceEffectiveDate, null);
+    assert.equal(created.lastDentalVisit, null);
+    assert.equal(created.emailAddress, null);
+    assert.equal(created.age, 34);
+    assert.match(created.medicalAlertSummary || "", /Asthma/);
+    assert.match(created.medicalAlertSummary || "", /Patient classification: PWD/);
+
+    const updatedAt = new Date("2026-08-18T12:00:00.000Z");
+    const updated = await service.updatePatient(
+      created.id,
+      buildPhase07BWriteInput({ firstName: "Updated", mobileNumber: "09170000002" }),
+      updatedAt
+    );
+
+    assert.ok(updated);
+    assert.equal(updated.id, created.id);
+    assert.equal(updated.patientCode, created.patientCode);
+    assert.equal(updated.createdAt, created.createdAt);
+    assert.equal(updated.updatedAt, updatedAt.toISOString());
+    assert.equal(updated.firstName, "Updated");
+    assert.equal(updated.mobileNumber, "09170000002");
+
+    const missingBranchId = "33333333-3333-4333-8333-333333333333";
+    await assert.rejects(
+      service.createPatient(buildPhase07BWriteInput({ branchId: missingBranchId }), createdAt),
+      (error) => error instanceof PatientWriteValidationError && error.errors.includes("Branch does not exist.")
+    );
+    assert.equal(await getCount(pool, "patients"), 1);
+
+    await pool.query("DELETE FROM patient_code_counters WHERE calendar_year = $1", [2026]);
+    await assert.rejects(
+      service.createPatient(buildPhase07BWriteInput({ mobileNumber: "09170000003" }), createdAt),
+      /Patient code conflict: P-2026-0001 already exists/
+    );
+
+    const counterResult = await pool.query<{ count: string | number }>(
+      "SELECT COUNT(*)::int AS count FROM patient_code_counters WHERE calendar_year = $1",
+      [2026]
+    );
+    assert.equal(Number(counterResult.rows[0]?.count ?? 0), 0);
+    assert.equal(await getCount(pool, "patients"), 1);
   } finally {
     await pool.shutdown();
   }

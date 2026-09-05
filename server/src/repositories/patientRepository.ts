@@ -1,9 +1,13 @@
 import type { PgQueryExecutor } from "../postgres/pool.js";
+import { getBranchById } from "../postgres/batchA/branches.js";
+import { allocateAnnualPatientCode, type AllocatePatientCodeResult } from "../postgres/batchA/patientCodeAllocation.js";
 import {
   getPatientByCode,
   getPatientById,
+  insertPatient,
   listPatients,
   searchPatients,
+  updatePatient,
   type NewPatientRecord
 } from "../postgres/batchA/patients.js";
 
@@ -14,7 +18,16 @@ export interface PatientReadRepository {
   getByCode(patientCode: string): Promise<NewPatientRecord | null>;
 }
 
-export function createPatientReadRepository(executor: PgQueryExecutor): PatientReadRepository {
+export interface PatientWriteRepository {
+  branchExists(branchId: string): Promise<boolean>;
+  allocateCode(allocationDate: Date): Promise<AllocatePatientCodeResult>;
+  insert(patient: NewPatientRecord): Promise<NewPatientRecord>;
+  update(patient: NewPatientRecord): Promise<NewPatientRecord | null>;
+}
+
+export type PatientRepository = PatientReadRepository & PatientWriteRepository;
+
+export function createPatientRepository(executor: PgQueryExecutor): PatientRepository {
   return {
     list() {
       return listPatients(executor);
@@ -27,6 +40,22 @@ export function createPatientReadRepository(executor: PgQueryExecutor): PatientR
     },
     getByCode(patientCode: string) {
       return getPatientByCode(executor, patientCode);
+    },
+    async branchExists(branchId: string) {
+      return (await getBranchById(executor, branchId)) !== null;
+    },
+    allocateCode(allocationDate: Date) {
+      return allocateAnnualPatientCode(executor, allocationDate);
+    },
+    insert(patient: NewPatientRecord) {
+      return insertPatient(executor, patient);
+    },
+    update(patient: NewPatientRecord) {
+      return updatePatient(executor, patient);
     }
   };
+}
+
+export function createPatientReadRepository(executor: PgQueryExecutor): PatientReadRepository {
+  return createPatientRepository(executor);
 }

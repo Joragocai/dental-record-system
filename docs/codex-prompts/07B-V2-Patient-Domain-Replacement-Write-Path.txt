@@ -1,0 +1,51 @@
+PHASE 07B — V2 PATIENT DOMAIN REPLACEMENT: POSTGRESQL CREATE/UPDATE PATH
+
+STATUS
+Approved current task.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+GOAL
+Add the internal TypeScript + PostgreSQL Patient create/update runtime path while preserving the existing SQLite/V1 application and avoiding route cutover.
+
+SCOPE
+1. Verify branch, sync state, and clean working tree before editing. Do not perform Git write operations.
+2. Read README.md, AGENTS.md, ADR-0001, docs/architecture/v2-migration-map.md, Phase 07A task/docs, current V1 Patient service/validation logic, and Batch A PostgreSQL schema/code-allocation helpers.
+3. Extend the Phase 07A Patient repository/service boundary instead of creating a parallel unrelated architecture.
+4. Implement Patient create with:
+   - UUID internal identity;
+   - annual P-YYYY-0001 code allocation using the existing PostgreSQL counter;
+   - explicit valid branchId;
+   - Patient field/business-rule normalization;
+   - plain YYYY-MM-DD DATE semantics;
+   - one PostgreSQL transaction covering code allocation and Patient insert.
+5. Implement Patient update by stable V2 UUID.
+6. Patient code and UUID remain immutable during normal update.
+7. Validate branch existence and required Patient values before persistence.
+8. Preserve applicable V1 Patient rules: required names, date validity, future-date rejection, mobile/email validation, minor/guardian rule, PWD/disability behavior, dependent medical-detail rules, derived age, and derived medical-alert summary.
+9. Use a typed V2 write input/normalization boundary; do not blindly reuse the V1 request DTO where it conflicts with UUID/code separation.
+10. Use parameterized SQL only.
+11. Add focused tests for successful create, code allocation/year behavior, transaction rollback, conflict safety, update, identity/code immutability, branch validity/existence, DATE/NULL handling, and applicable V1 validation parity.
+12. Add safe fictional live PostgreSQL integration coverage using the existing test database safety guard.
+13. Do not cut over server/src/routes/patients.js or current client consumers.
+14. Do not change current SQLite Patient create/update behavior.
+15. Do not implement Authentication, RBAC, audit, portal, Treatment/Appointment replacement, private storage, finance, or deployment.
+16. Do not modify applied migrations 0001-0004.
+17. Update the migration map/task documentation only as needed.
+18. Run git diff --check, typecheck, relevant PostgreSQL tests, Patient write tests, V1 regression, full Node tests, and client build.
+19. Leave all changes uncommitted for human review.
+
+IMPLEMENTATION PLAN
+- Add a typed V2 Patient write input/normalization module that derives age and medical-alert summary and reports validation errors without HTTP coupling.
+- Extend the Patient PostgreSQL repository with branch existence, insert/update, and annual code allocation capabilities while preserving the Phase 07A read surface.
+- Add a Patient write service that owns the transaction boundary, UUID generation, immutable identifiers, create/update orchestration, and conflict-safe behavior.
+- Add unit and live PostgreSQL tests. Keep V1 route/service untouched.
+
+COMPLETION REPORT
+Report files changed, repository/service design, transaction behavior, validation/parity results, live PostgreSQL result or exact safe skip reason, typecheck/test/build results, V1 coexistence, known limitations, Git status, commit-readiness, and recommended Phase 07C task.
+
+Do not commit, push, merge, switch branches, or begin Phase 07C automatically.
