@@ -1,0 +1,90 @@
+PHASE 08F — EXPRESS AUTHORIZATION MIDDLEWARE & PROTECTED RBAC BOUNDARY
+
+STATUS
+Approved current task.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+SEQUENCE
+08A token verification — complete.
+08B Express authentication middleware — complete.
+08C client login/session/recovery — complete.
+08D application-user identity/status/roles/branches — complete.
+08E authorization/RBAC policy foundation — complete.
+08F wires 08D/08E into Express behind authentication, without cutting over clinic domain routes.
+
+GOAL
+Create a typed Express-facing access boundary that resolves the authenticated Supabase principal to an active ApplicationUserContext, resolves effective RBAC permissions, stores trusted access context in `res.locals`, and enforces global or branch-scoped permissions before handlers run. Add one minimal protected RBAC probe endpoint only.
+
+APPROVED RULES
+- Middleware order is authenticate -> application-user resolution -> authorization-context resolution -> permission enforcement -> handler.
+- Authentication principal remains in `res.locals.auth`.
+- ApplicationUserContext and AuthorizationContext are backend-only trusted values; never derive them from browser claims.
+- Missing/unlinked/pending/inactive application users are denied safely.
+- Authorization remains deny-by-default.
+- Branch-scoped permissions must use an explicit target branch UUID and the 08E branch policy.
+- Existing V1 clinic routes remain unchanged and unauthenticated in this phase.
+- No staff provisioning, service-role key, audit, MFA, patient ownership, or Patient route cutover in 08F.
+
+SCOPE
+1. Verify clean synchronized branch before editing; no Git write operations.
+2. Add a lazy server runtime access-composition factory that creates PostgreSQL pool/repositories/services only when the new RBAC boundary is invoked. Importing `app.js` must remain safe when DATABASE_URL is absent.
+3. Reuse Phase 08D/08E repositories/services; do not duplicate policy rules in routes.
+4. Add typed Express-facing middleware/adapters for:
+   - resolving active application user from `res.locals.auth.subject`;
+   - resolving AuthorizationContext from the application user;
+   - requiring a GLOBAL permission;
+   - requiring a BRANCH permission from a caller-supplied branch extractor.
+5. Store trusted values under clearly named `res.locals.applicationUser` and `res.locals.authorization`.
+6. Translate 08D and 08E domain failures to safe HTTP errors without exposing database/provider details. Use 403 for validly authenticated identities that are not approved/active/authorized; use safe 5xx for persistence/data failures. Authentication failures remain handled by 08B.
+7. Add only one protected RBAC probe endpoint under `/api/auth`:
+   - `GET /api/auth/access`
+   - requires a verified token, active application user, and GLOBAL `user.read` permission;
+   - successful response is minimal: `{ "authorized": true }` only;
+   - it must not expose roles, branch IDs, permission lists, access tokens, provider metadata, or database details.
+8. Keep existing `GET /api/auth/session` behavior unchanged.
+9. Preserve `createAuthRouter(authenticationService)` compatibility for existing tests while allowing access-boundary dependencies to be injected for new route tests.
+10. Add focused tests for:
+    - middleware composition order;
+    - authenticated active authorized request succeeds;
+    - unauthenticated request remains 401 with Bearer challenge;
+    - unlinked/pending/inactive app users become safe 403;
+    - denied permission becomes safe 403 and handler does not execute;
+    - persistence failures become safe 5xx without secret leakage;
+    - global permission middleware does not require branch input;
+    - branch middleware delegates target branch UUID to AuthorizationService and denies malformed/foreign branch safely;
+    - `GET /api/auth/session` stays unchanged;
+    - `GET /api/auth/access` returns only `{ authorized: true }`.
+11. Add JS-to-TS compatibility bridges only where required by the repository's current plain-Node runtime. Document them as BRIDGE, not permanent architecture.
+12. Update authentication/authorization architecture docs and migration map.
+13. No PostgreSQL migration is expected in 08F.
+
+OUT OF SCOPE
+- No domain route cutover.
+- No staff account creation/provisioning API or UI.
+- No Supabase Admin API/service-role key.
+- No role assignment mutations.
+- No Patient ownership.
+- No audit logging.
+- No MFA/reauthentication.
+- No temporary support access.
+- No frontend role-based menus.
+
+VALIDATION
+Run:
+- plain Node `app.js` import with no DATABASE_URL;
+- CRLF-aware diff check;
+- npm run typecheck;
+- auth tests including new route/middleware integration;
+- PostgreSQL foundation tests;
+- Phase 08D/08E access tests (live skips acceptable in DevSpace);
+- Batch A Patient tests;
+- V1 regression tests;
+- full Node tests;
+- client production build.
+
+Leave all changes uncommitted for human review.

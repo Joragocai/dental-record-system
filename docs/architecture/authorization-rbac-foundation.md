@@ -124,21 +124,25 @@ The authorization service denies when:
 
 An active application user with zero roles or zero permission grants remains a valid authenticated identity but receives no operational access.
 
-## Current Runtime Boundary
+## Express Authorization Boundary
 
-Phase 08E does not:
+Phase 08F adds a typed Express-facing composition layer:
 
-- add Express authorization middleware;
-- modify `GET /api/auth/session`;
-- expose roles/permissions/branches to the frontend;
-- protect the legacy Patient/Treatment/Appointment routes;
-- add user or role mutation APIs;
-- introduce a Supabase service-role key;
-- implement staff account provisioning;
-- implement patient ownership;
-- implement audit or MFA.
+```text
+authenticate
+  -> resolve active application user
+  -> resolve effective authorization context
+  -> require global or branch-scoped permission
+  -> handler
+```
 
-This avoids creating the appearance that the existing V1 HTTP surface is protected before the actual middleware and route cutover gates are complete.
+The trusted values are stored only on the server in `res.locals.applicationUser` and `res.locals.authorization`. They are never accepted from browser claims or Supabase role metadata.
+
+`GET /api/auth/access` is the only RBAC-protected probe added in this phase. It requires GLOBAL `user.read` and returns only `{ "authorized": true }`. `GET /api/auth/session` remains unchanged.
+
+The default access runtime is lazy: importing `server/src/app.js` does not require `DATABASE_URL`. PostgreSQL configuration and repositories are created only when the RBAC access boundary is actually invoked.
+
+Phase 08F still does not expose roles/permissions/branches to the frontend, protect legacy Patient/Treatment/Appointment routes, add user/role mutation APIs, introduce a Supabase service-role key, implement staff provisioning, implement patient ownership, or add audit/MFA.
 
 ## Staff Account Provisioning Dependency
 
@@ -159,10 +163,9 @@ No privileged provider provisioning credential is introduced in Phase 08E.
 
 Recommended next security work:
 
-1. Express authorization middleware that composes Authentication, ApplicationUserService, and AuthorizationService on a small protected test boundary.
-2. Application-user/role management workflows with Clinic Administrator approval and self-elevation prevention.
-3. Clinic Administrator-managed staff account provisioning after those authorization checks are live.
-4. Patient-account linking and OWN/patient isolation policy.
-5. Append-only audit logging.
-6. MFA and privileged reauthentication.
-7. Protected Patient domain route integration only after the required security gates are proven.
+1. Application-user/role management workflows with Clinic Administrator approval and self-elevation prevention.
+2. Clinic Administrator-managed staff account provisioning using the live `staff_account.create` authorization boundary.
+3. Patient-account linking and OWN/patient isolation policy.
+4. Append-only audit logging.
+5. MFA and privileged reauthentication.
+6. Protected Patient domain route integration only after the required security gates are proven.

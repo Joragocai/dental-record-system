@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 08A established the backend authentication foundation. Phase 08B now wires that foundation into Express through a typed authentication middleware and a single protected `GET /api/auth/session` boundary. Existing V1 clinic routes remain unchanged and unauthenticated.
+Phase 08A established the backend authentication foundation. Phase 08B wired it into Express through a typed authentication middleware and `GET /api/auth/session`. Phase 08C added client login/session/recovery, and Phase 08F now composes authentication with the Phase 08D/08E application-user and RBAC services on one minimal protected access boundary. Existing V1 clinic routes remain unchanged and unauthenticated.
 
 ## Provider Boundary
 
@@ -82,7 +82,9 @@ No Supabase service-role key is introduced in Phase 08C. Real Supabase project s
 
 ## Current Runtime State
 
-`server/src/app.js` mounts the protected `/api/auth` router and the client now has an authentication-only test surface, but all pre-existing V1 clinic routes remain unchanged and unauthenticated. Phases 08A–08C therefore establish identity verification, Express middleware, and browser session orchestration without prematurely cutting over Patient, Treatment, Appointment, export, backup, or other legacy routes.
+`server/src/app.js` mounts the protected `/api/auth` router. `GET /api/auth/session` remains the authentication-only identity check, while Phase 08F adds `GET /api/auth/access` as a minimal RBAC probe requiring an active linked application user and the GLOBAL `user.read` permission. The probe returns only `{ "authorized": true }` and does not expose roles, branch assignments, permission lists, provider metadata, or tokens.
+
+All pre-existing V1 clinic routes remain unchanged and unauthenticated. Phases 08A–08F therefore establish identity verification, browser sessions, application-user resolution, RBAC policy, and one protected Express composition boundary without prematurely cutting over Patient, Treatment, Appointment, export, backup, or other legacy routes.
 
 The remaining unauthenticated V1 HTTP surface must not be treated as a production-ready public API.
 
@@ -90,10 +92,9 @@ The remaining unauthenticated V1 HTTP surface must not be treated as a productio
 
 Before the Patient PostgreSQL domain or other sensitive V2 modules are exposed through protected HTTP routes, the project still needs:
 
-1. Application-user identity/status records that link verified provider identities to clinic users.
-2. Authorization/RBAC, branch enforcement, and patient ownership checks.
-3. Clinic Administrator-managed staff account provisioning after authorization exists.
-4. Append-only audit logging for sensitive authentication and Patient activity.
-5. MFA and reauthentication requirements for privileged roles.
-6. Protected controller/route integration for selected V2 domains after authorization prerequisites exist.
-7. End-to-end tests, real Supabase environment validation, and production configuration review.
+1. Clinic Administrator-managed staff account provisioning and role/branch assignment workflows using the proven authorization boundary.
+2. Patient-account linking and patient ownership checks.
+3. Append-only audit logging for sensitive authentication, authorization, account-management, and Patient activity.
+4. MFA and reauthentication requirements for privileged roles.
+5. Protected controller/route integration for selected V2 domains after the required audit/ownership safeguards exist.
+6. End-to-end tests, real Supabase environment validation, and production configuration review.

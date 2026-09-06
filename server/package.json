@@ -13,7 +13,7 @@
     "test:postgres:batch-c": "node --import tsx --test \"src/postgres/batchC/*.pgtest.ts\"",
     "test:postgres:access": "node --import tsx --test --test-concurrency=1 \"src/access/*.pgtest.ts\" \"src/postgres/access/*.pgtest.ts\"",
     "test:authorization": "node --import tsx --test \"src/access/authorization.pgtest.ts\" \"src/postgres/access/authorizationIntegration.pgtest.ts\"",
-    "test:auth": "node --import tsx --test \"src/auth/*.pgtest.ts\" \"src/routes/auth.test.js\"",
+    "test:auth": "node --import tsx --test \"src/auth/*.pgtest.ts\" \"src/access/accessMiddleware.pgtest.ts\" \"src/routes/auth.test.js\"",
     "start": "node src/index.js"
   },
   "dependencies": {
