@@ -78,18 +78,18 @@ The external 201 response remains unchanged and does not expose audit internals,
 
 ## Failure Events
 
-The schema supports `FAILURE`, but Phase 08H does not write a false failure/success record inside a transaction that is about to roll back. A future security-event path may record selected failed attempts outside the failed business transaction with carefully sanitized context.
+Phase 08I now uses the existing `FAILURE` outcome for selected staff-invitation failures. These failure events are written outside the failed provider/database operation using safe internal reason codes only. They never contain provider response bodies, email addresses, bearer tokens, connection strings, or Supabase secrets.
 
 ## Supabase Boundary
 
-Phase 08H does not require a Supabase account, service-role key, invitation flow, or Admin API call. Those remain deferred until the audit trail is established and live-validated.
+Phase 08I uses the audit service for `USER_INVITED` success/failure and `USER_ACTIVATED` success events. The provider invitation and PostgreSQL transaction cannot be one distributed transaction, so the backend attempts best-effort provider-user cleanup when local linkage/audit fails. A cleanup failure produces a reconciliation-required result rather than automatically linking a provider identity by matching email.
 
 ## Next Gates
 
-Recommended next work:
+Recommended next audit work:
 
-1. Manually create/configure the real Supabase project with the user controlling all secret entry.
-2. Add backend-only Supabase staff provisioning and activation using the existing authorization and audit boundaries.
-3. Link successful provider provisioning to the pending `app_users.auth_user_id` safely.
-4. Audit provisioning start/success/failure and account activation without recording secrets.
-5. Continue with staff lifecycle controls, patient ownership, MFA/reauthentication, and protected clinical route cutover.
+1. Audit login success/failure, logout, and password/recovery security events.
+2. Audit authorization denials and privileged role/lifecycle changes.
+3. Add Clinic Administrator audit viewing/export with viewing/export itself audited.
+4. Extend audit coverage to Patient/Treatment/Attachment/Finance replacement slices as those routes are protected.
+5. Add request IDs and structured application logging correlation before production.

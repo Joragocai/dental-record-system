@@ -35,6 +35,23 @@ export async function authenticatedV2Fetch(
   });
 }
 
+export async function activateBackendStaffAccount(options: AuthenticatedFetchOptions): Promise<void> {
+  const response = await authenticatedV2Fetch("/staff-accounts/activate", { method: "POST" }, options);
+  if (response.status === 401) {
+    throw new Error("Your invitation session is no longer valid. Please open a fresh invitation link.");
+  }
+  if (!response.ok) {
+    let message = "Unable to activate the staff account right now.";
+    try {
+      const payload = (await response.json()) as { message?: unknown };
+      if (typeof payload.message === "string" && payload.message.trim()) message = payload.message;
+    } catch {
+      // Keep the safe generic message.
+    }
+    throw new Error(message);
+  }
+}
+
 export async function verifyBackendSession(options: AuthenticatedFetchOptions): Promise<VerifiedBackendIdentity> {
   const response = await authenticatedV2Fetch("/auth/session", { method: "GET" }, options);
 

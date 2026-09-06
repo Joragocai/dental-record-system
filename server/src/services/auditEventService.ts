@@ -20,8 +20,27 @@ export interface StaffAccountCreatedAuditInput {
   branchIds: readonly string[];
 }
 
+export interface StaffProvisioningAuditInput {
+  actorUserId: string;
+  actorAuthUserId: string;
+  targetUserId: string;
+}
+
+export interface StaffProvisioningFailureAuditInput extends StaffProvisioningAuditInput {
+  reasonCode: string;
+}
+
+export interface StaffActivationAuditInput {
+  actorUserId: string;
+  actorAuthUserId: string;
+  targetUserId: string;
+}
+
 export interface AuditEventService {
   recordStaffAccountCreated(input: StaffAccountCreatedAuditInput): Promise<void>;
+  recordStaffUserInvited(input: StaffProvisioningAuditInput): Promise<void>;
+  recordStaffUserInviteFailed(input: StaffProvisioningFailureAuditInput): Promise<void>;
+  recordStaffUserActivated(input: StaffActivationAuditInput): Promise<void>;
 }
 
 export interface AuditEventServiceOptions {
@@ -61,6 +80,27 @@ export function createAuditEventService(
   const createId = options.createId ?? (() => crypto.randomUUID());
   const now = options.now ?? (() => new Date());
 
+  async function insertSimpleStaffEvent(input: StaffProvisioningAuditInput, action: string, outcome: "SUCCESS" | "FAILURE", metadata: Record<string, unknown> = {}): Promise<void> {
+    assertAuditMetadataSafe(metadata);
+    try {
+      await repository.insert({
+        id: requireUuid(createId()),
+        actorUserId: requireUuid(input.actorUserId),
+        actorAuthUserId: requireUuid(input.actorAuthUserId),
+        action,
+        targetType: "APP_USER",
+        targetId: requireUuid(input.targetUserId),
+        branchId: null,
+        outcome,
+        metadata,
+        occurredAt: now().toISOString()
+      });
+    } catch (error) {
+      if (error instanceof AuditEventError) throw error;
+      throw new AuditEventError();
+    }
+  }
+
   return {
     async recordStaffAccountCreated(input) {
       const metadata = {
@@ -87,6 +127,20 @@ export function createAuditEventService(
         if (error instanceof AuditEventError) throw error;
         throw new AuditEventError();
       }
+    },
+
+    async recordStaffUserInvited(input) {
+      await insertSimpleStaffEvent(input, "USER_INVITED", "SUCCESS", { status: "pending" });
+    },
+
+    async recordStaffUserInviteFailed(input) {
+      const reasonCode = input.reasonCode.trim().toUpperCase();
+      if (!/^[A-Z0-9_]{3,80}$/.test(reasonCode)) throw new AuditEventError();
+      await insertSimpleStaffEvent(input, "USER_INVITED", "FAILURE", { reasonCode });
+    },
+
+    async recordStaffUserActivated(input) {
+      await insertSimpleStaffEvent(input, "USER_ACTIVATED", "SUCCESS", { status: "active" });
     }
   };
 }

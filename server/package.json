@@ -14,6 +14,7 @@
     "test:postgres:access": "node --import tsx --test --test-concurrency=1 \"src/access/*.pgtest.ts\" \"src/postgres/access/*.pgtest.ts\"",
     "test:authorization": "node --import tsx --test \"src/access/authorization.pgtest.ts\" \"src/postgres/access/authorizationIntegration.pgtest.ts\"",
     "test:staff": "node --import tsx --test \"src/staff/*.pgtest.ts\" \"src/routes/staffAccounts.test.js\"",
+    "test:provisioning": "node --import tsx --test \"src/staff/staffProvisioning.pgtest.ts\" \"src/postgres/access/staffProvisioningIntegration.pgtest.ts\" \"src/routes/staffAccounts.test.js\"",
     "test:audit": "node --import tsx --test \"src/audit/*.pgtest.ts\" \"src/postgres/access/auditIntegration.pgtest.ts\"",
     "test:auth": "node --import tsx --test \"src/auth/*.pgtest.ts\" \"src/access/accessMiddleware.pgtest.ts\" \"src/routes/auth.test.js\" \"src/routes/staffAccounts.test.js\"",
     "start": "node src/index.js"

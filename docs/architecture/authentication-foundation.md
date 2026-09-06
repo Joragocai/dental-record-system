@@ -78,7 +78,7 @@ There is no public self-registration. Staff account creation is reserved for a l
 
 The password-recovery UI uses a generic completion message so it does not reveal whether an email address exists. Password replacement is allowed only during a provider recovery session; successful replacement ends the recovery state and returns the user to normal login.
 
-No Supabase service-role key is introduced in Phase 08C. Real Supabase project setup can be completed later; absent browser configuration leaves the auth UI non-fatal and clearly marked as not configured.
+No privileged Supabase key was introduced in Phase 08C. Phase 08I later adds a server-only `SUPABASE_SECRET_KEY` for controlled staff invitation/provisioning; it is never exposed to the browser. Absent browser configuration still leaves the auth UI non-fatal and clearly marked as not configured.
 
 ## Current Runtime State
 
@@ -92,9 +92,9 @@ The remaining unauthenticated V1 HTTP surface must not be treated as a productio
 
 Before the Patient PostgreSQL domain or other sensitive V2 modules are exposed through protected HTTP routes, the project still needs:
 
-1. Backend-only managed-auth provisioning/invitation for the Phase 08G pending staff records, followed by provider UUID linkage and staff-owned password activation.
-2. Patient-account linking and patient ownership checks.
-3. Extend the Phase 08H append-only audit foundation to provisioning, authentication/authorization security events, and later Patient activity.
-4. MFA and reauthentication requirements for privileged roles.
+1. Patient-account linking and patient ownership checks.
+2. Extend the append-only audit foundation to login failures, authorization failures, and later Patient activity.
+3. MFA and reauthentication requirements for privileged roles.
+4. Staff recovery/deactivation lifecycle and a Clinic Administrator account-management UI.
 5. Protected controller/route integration for selected V2 domains after the required audit/ownership safeguards exist.
-6. End-to-end tests, real Supabase environment validation, and production configuration review.
+6. End-to-end tests, real Supabase invitation validation, production email configuration review, and production configuration review.

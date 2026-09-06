@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { authenticatedV2Fetch, verifyBackendSession } from "./authApi.ts";
+import { activateBackendStaffAccount, authenticatedV2Fetch, verifyBackendSession } from "./authApi.ts";
 
 test("authenticatedV2Fetch attaches bearer token only to the explicit V2 request", async () => {
   let capturedUrl = "";
@@ -25,6 +25,25 @@ test("authenticatedV2Fetch attaches bearer token only to the explicit V2 request
   assert.equal(response.status, 200);
   assert.equal(capturedUrl, "http://127.0.0.1:3002/api/auth/session");
   assert.equal(capturedHeaders.get("authorization"), "Bearer fictional-access-token");
+});
+
+test("activateBackendStaffAccount posts only to the protected activation endpoint", async () => {
+  let capturedUrl = "";
+  let capturedMethod = "";
+  let capturedAuthorization = "";
+  await activateBackendStaffAccount({
+    accessToken: "fictional-invite-token",
+    apiBaseUrl: "http://127.0.0.1:3002/api",
+    fetchImpl: async (input, init) => {
+      capturedUrl = String(input);
+      capturedMethod = String(init?.method ?? "");
+      capturedAuthorization = new Headers(init?.headers).get("authorization") ?? "";
+      return new Response(JSON.stringify({ activated: true }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+  });
+  assert.equal(capturedUrl, "http://127.0.0.1:3002/api/staff-accounts/activate");
+  assert.equal(capturedMethod, "POST");
+  assert.equal(capturedAuthorization, "Bearer fictional-invite-token");
 });
 
 test("verifyBackendSession maps only the minimal verified backend identity", async () => {

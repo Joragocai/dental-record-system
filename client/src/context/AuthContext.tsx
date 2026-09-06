@@ -9,7 +9,7 @@ import {
   type ReactNode
 } from "react";
 import { readBrowserAuthenticationConfig } from "../auth/authConfig.js";
-import { verifyBackendSession } from "../auth/authApi.js";
+import { activateBackendStaffAccount, verifyBackendSession } from "../auth/authApi.js";
 import { createSupabaseBrowserAuthProvider } from "../auth/supabaseAuthProvider.js";
 import type {
   BrowserAuthEvent,
@@ -31,6 +31,7 @@ interface AuthContextValue {
   logout(): Promise<void>;
   requestPasswordRecovery(email: string): Promise<void>;
   updateRecoveredPassword(password: string): Promise<void>;
+  completeInvitedAccount(password: string): Promise<void>;
   clearError(): void;
 }
 
@@ -174,6 +175,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [configResult, getProvider]
   );
 
+  const completeInvitedAccount = useCallback(
+    async (password: string) => {
+      setError(null);
+      if (!configResult.config) throw new Error(configResult.reason ?? "Authentication is not configured.");
+      const provider = getProvider();
+      const currentSession = await provider.getSession();
+      if (!currentSession) throw new Error("Open the staff invitation link before activating this account.");
+
+      await provider.updatePassword(password);
+      const updatedSession = await provider.getSession();
+      if (!updatedSession) throw new Error("The invitation session ended before activation could finish.");
+
+      await activateBackendStaffAccount({
+        accessToken: updatedSession.accessToken,
+        apiBaseUrl: configResult.config.apiBaseUrl
+      });
+
+      await provider.signOut();
+      setProviderSession(null);
+      setVerifiedIdentity(null);
+      setRecoveringPassword(false);
+    },
+    [configResult, getProvider]
+  );
+
   const updateRecoveredPassword = useCallback(
     async (password: string) => {
       setError(null);
@@ -200,6 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     requestPasswordRecovery,
     updateRecoveredPassword,
+    completeInvitedAccount,
     clearError: () => setError(null)
   };
 

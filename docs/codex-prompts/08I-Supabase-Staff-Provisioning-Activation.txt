@@ -1,0 +1,106 @@
+PHASE 08I — SUPABASE STAFF PROVISIONING & ACTIVATION
+
+STATUS
+Approved current task after manual Supabase project setup by the user.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+SEQUENCE
+08A token verification — complete.
+08B Express authentication — complete.
+08C client login/session/recovery — complete.
+08D application user identity/status/roles/branches — complete.
+08E authorization/RBAC — complete.
+08F Express authorization boundary — complete.
+08G Clinic Administrator pending staff creation — complete.
+08H append-only account/security audit foundation — complete.
+08I adds backend-only Supabase invitation/provisioning and staff-owned activation/password setup.
+
+GOAL
+For an already-approved pending staff application record, let an authenticated Clinic Administrator trigger a backend-only Supabase Auth invitation. Link the returned provider UUID to the pending app_user without activating business access. Let the invited staff member accept the Supabase invite, choose their own password directly through Supabase Auth, then call an authenticated activation endpoint that marks the linked pending app_user active and records the activation audit event.
+
+APPROVED SECURITY DECISIONS
+- Public signup stays disabled.
+- The Clinic Administrator initiates provisioning through an already-protected backend route.
+- The Supabase secret key exists only on the Express backend and is never exposed through VITE variables, responses, logs, audit metadata, client bundles, or Git.
+- The Clinic Administrator never chooses or sees the staff member's permanent password.
+- Only already-approved pending PERSONNEL/DENTIST application users created by 08G can be invited through this routine workflow.
+- Provider/JWT role metadata is never used as clinic authorization.
+- Provider invitation success links auth_user_id but does not make the application account active.
+- Activation happens only after the invited authenticated user sets their own password in the browser and calls the activation endpoint.
+- Invite and activation are audited. Failure audits contain only safe internal reason codes.
+- No automatic reconciliation by email may link an unknown/pre-existing provider user. Provider conflicts require an explicit safe error/manual reconciliation instead of guessing ownership.
+
+SCOPE
+1. Verify a clean synchronized branch before edits. Do not perform Git history writes.
+2. Add a server-only provisioning config for SUPABASE_URL, SUPABASE_SECRET_KEY, request timeout, and STAFF_INVITE_REDIRECT_URL. Validate HTTPS for remote URLs and allow localhost only for local development. Configuration must remain lazy.
+3. Update `.env.example` with placeholders only for SUPABASE_SECRET_KEY and STAFF_INVITE_REDIRECT_URL. Never write real values.
+4. Add a provider adapter using built-in fetch against Supabase Auth Admin APIs:
+   - invite a user by email with redirect_to and minimal non-sensitive metadata;
+   - best-effort delete of a just-created provider user when DB linkage fails before commit.
+   Use the secret key only in server-side request headers. Never log it.
+5. Add a staff provisioning repository/service for:
+   - loading a pending target app_user and its roles/branches;
+   - enforcing routine roles PERSONNEL/DENTIST only and at least one branch;
+   - idempotently treating an already-linked pending account as already invited without resending;
+   - linking provider UUID to app_users.auth_user_id only when the target is still pending and currently unlinked;
+   - resolving a pending app_user by linked auth_user_id for self-activation;
+   - activating only that linked pending app_user.
+6. Invitation route:
+   POST /api/staff-accounts/:userId/invite
+   Middleware: authenticate -> resolve app user -> resolve authz -> require staff_account.create -> require role_assignment.approve -> handler.
+   Successful new invite: HTTP 202 with safe summary such as { id, status: "pending", invitation: "sent" }.
+   Already linked pending target: HTTP 200 with { id, status: "pending", invitation: "already_sent" } and no provider resend.
+7. Activation route:
+   POST /api/staff-accounts/activate
+   Requires authentication only, not the active-app-user middleware because the invited user is still pending.
+   Resolve by authenticated principal.subject, require linked pending app user, require provider email to match app email case-insensitively, then mark status active transactionally and audit USER_ACTIVATED.
+   Return only { activated: true }.
+8. Client activation page `/activate-account`:
+   - works only when Supabase has established an invite-authenticated browser session;
+   - asks the staff member to choose/confirm their own password using the existing Supabase browser provider;
+   - after successful Supabase `updateUser({password})`, refresh/get the current provider session and call POST /api/staff-accounts/activate with bearer token;
+   - on success sign out locally and navigate to login with an activation-complete message;
+   - minimum password length remains consistent with current recovery UI (8 characters) unless Supabase rejects a stronger project policy.
+9. Extend audit service with safe USER_INVITED, USER_INVITE_FAILED / reconciliation-required failure, and USER_ACTIVATED events using existing append-only audit_events. Do not store email, password, token, secret, or provider response bodies in audit metadata.
+10. External-provider side-effect safety:
+   - provider invite happens before DB linkage because the provider UUID is returned by Supabase;
+   - DB linkage + USER_INVITED audit must commit atomically;
+   - if DB linkage/audit fails after provider creation, attempt best-effort provider-user deletion;
+   - if cleanup fails, return a safe reconciliation-required error and record a safe failure audit when DB access still permits; do not auto-link by email.
+11. Do not add a PostgreSQL migration unless a genuine schema gap is discovered; existing auth_user_id + pending/active state is sufficient for initial invitation/activation state.
+12. Add focused unit/route tests with fictional identities and mocked provider fetch. Add safe PostgreSQL integration coverage for linkage, idempotency, activation, email match, and audit rows. Do not send real invitation email from automated tests.
+13. Keep all existing V1 routes unchanged and unauthenticated as before; do not cut over Patient/Treatment/Appointment in this phase.
+14. Update architecture docs and migration map.
+
+OUT OF SCOPE
+- No patient invitation/linking.
+- No staff-management frontend/admin Users page yet.
+- No real invitation email during automated tests.
+- No MFA implementation yet.
+- No service-role/secret key in browser code.
+- No provider user lookup-and-auto-link by email.
+- No general staff deactivation/recovery lifecycle yet.
+- No private storage.
+- No Patient/Treatment/Appointment route cutover.
+
+VALIDATION
+Run:
+- CRLF-aware diff check;
+- npm run typecheck;
+- focused provisioning/provider/activation tests;
+- npm run test:staff;
+- npm run test:audit;
+- npm run test:auth;
+- PostgreSQL foundation/access tests;
+- Patient Batch A;
+- V1 regression tests;
+- full Node tests;
+- client production build;
+- plain Node app import with no Supabase secret/database env to prove lazy configuration.
+
+For real Supabase verification, do not ask the user to paste secrets. If a controlled live invite is needed, provide an exact local-shell command/workflow and let the user supply the destination test email and environment variables privately.

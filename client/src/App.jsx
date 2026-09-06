@@ -15,6 +15,7 @@ import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AuthAccountPage from "./pages/AuthAccountPage";
+import ActivateAccountPage from "./pages/ActivateAccountPage";
 import ProtectedAuthRoute from "./components/ProtectedAuthRoute";
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/activate-account" element={<ActivateAccountPage />} />
       <Route
         path="/auth/account"
         element={

@@ -42,6 +42,11 @@ export default function LoginPage() {
           {auth.configurationMessage ?? "Authentication is not configured yet."}
         </div>
       ) : null}
+      {(location.state as { activationComplete?: boolean } | null)?.activationComplete ? (
+        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+          Your staff account is active. Sign in with the password you just created.
+        </div>
+      ) : null}
       {auth.error ? (
         <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{auth.error}</div>
       ) : null}

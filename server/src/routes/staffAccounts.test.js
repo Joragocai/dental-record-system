@@ -6,10 +6,10 @@ import { AuthenticationError } from "../auth/authErrors.ts";
 import { AuthorizationError } from "../services/authorizationErrors.ts";
 import { createStaffAccountsRouter } from "./staffAccounts.js";
 
-async function withServer({ authenticationService, accessBoundary, staffAccountRuntime }, callback) {
+async function withServer({ authenticationService, accessBoundary, staffAccountRuntime, staffProvisioningRuntime }, callback) {
   const app = express();
   app.use(express.json());
-  app.use("/api/staff-accounts", createStaffAccountsRouter(authenticationService, accessBoundary, staffAccountRuntime));
+  app.use("/api/staff-accounts", createStaffAccountsRouter(authenticationService, accessBoundary, staffAccountRuntime, staffProvisioningRuntime));
   app.use((error, _req, res, _next) => {
     if (error?.status) {
       res.status(error.status).json({ message: error.message });
@@ -125,6 +125,75 @@ test("POST /api/staff-accounts requires both staff creation and role approval pe
     "permission:role_assignment.approve"
   ]);
   assert.equal(createCalls, 0);
+});
+
+test("POST /api/staff-accounts/:userId/invite requires both provisioning permissions and returns a safe invitation result", async () => {
+  const calls = [];
+  let received = null;
+  const targetId = "33333333-3333-4333-8333-333333333333";
+
+  await withServer({
+    authenticationService: authService,
+    accessBoundary: buildAllowedAccessBoundary(calls),
+    staffAccountRuntime: { getService: () => ({ async createPendingStaffAccount() { throw new Error("not used"); } }) },
+    staffProvisioningRuntime: {
+      getService: () => ({
+        async invitePendingStaff(input) {
+          received = input;
+          return { id: targetId, status: "pending", invitation: "sent" };
+        },
+        async activateInvitedStaff() { throw new Error("not used"); }
+      })
+    }
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/staff-accounts/${targetId}/invite`, {
+      method: "POST",
+      headers: { Authorization: "Bearer token" }
+    });
+    assert.equal(response.status, 202);
+    assert.deepEqual(await response.json(), { id: targetId, status: "pending", invitation: "sent" });
+  });
+
+  assert.deepEqual(calls, [
+    "application-user",
+    "authorization",
+    "permission:staff_account.create",
+    "permission:role_assignment.approve"
+  ]);
+  assert.equal(received.targetUserId, targetId);
+});
+
+test("POST /api/staff-accounts/activate uses authenticated provider identity without active-user middleware", async () => {
+  const accessCalls = [];
+  let received = null;
+
+  await withServer({
+    authenticationService: authService,
+    accessBoundary: buildAllowedAccessBoundary(accessCalls),
+    staffAccountRuntime: { getService: () => ({ async createPendingStaffAccount() { throw new Error("not used"); } }) },
+    staffProvisioningRuntime: {
+      getService: () => ({
+        async invitePendingStaff() { throw new Error("not used"); },
+        async activateInvitedStaff(input) {
+          received = input;
+          return { activated: true };
+        }
+      })
+    }
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/staff-accounts/activate`, {
+      method: "POST",
+      headers: { Authorization: "Bearer token" }
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { activated: true });
+  });
+
+  assert.deepEqual(accessCalls, []);
+  assert.deepEqual(received, {
+    authUserId: "22222222-2222-4222-8222-222222222222",
+    email: "admin@example.test"
+  });
 });
 
 test("POST /api/staff-accounts returns only the safe pending staff summary", async () => {

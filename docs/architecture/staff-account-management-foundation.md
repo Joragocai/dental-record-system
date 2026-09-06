@@ -96,26 +96,28 @@ Thin JavaScript-to-TypeScript bridge files temporarily preserve the current plai
 
 ## Current Limitations
 
-Phase 08G intentionally does not:
+The combined 08G–08I staff foundation still does not:
 
-- call the Supabase Admin API;
-- add a Supabase service-role key;
-- send invitation email;
-- link `auth_user_id`;
-- activate the account;
-- let the Clinic Administrator choose a password;
+- let the Clinic Administrator choose a staff password;
 - implement public signup;
-- implement general user editing or deactivation;
-- implement generalized audit viewing/reporting or failed-attempt event capture;
+- implement general user editing, deactivation, or recovery lifecycle;
 - implement MFA/privileged reauthentication;
-- implement a frontend Users/Staff page.
+- implement a frontend Users/Staff management page;
+- implement patient invitations or patient-account linking;
+- provide automated reconciliation for a provider account that conflicts with an approved pending staff record.
 
 ## Phase 08H Audit Integration
 
 Phase 08H now records successful staff-account creation using the trusted actor from `res.locals.applicationUser`, not from the request body. The event records the created application-user target plus safe normalized role/branch metadata. Audit UPDATE and DELETE operations are blocked by PostgreSQL.
 
+## Phase 08I Provisioning and Activation
+
+Phase 08I now performs backend-only Supabase invitation for an already-approved pending staff record, links the returned provider UUID to `app_users.auth_user_id`, and keeps the application account pending until the invited staff member establishes their own password and completes authenticated activation.
+
+The Supabase secret key is server-only. The browser uses only the publishable key. Invite and activation events are written to the append-only audit trail. Provider conflicts are not auto-linked by email.
+
+See `docs/architecture/staff-provisioning-activation.md` for the provider-side-effect and activation details.
+
 ## Next Gate
 
-The next staff-account phase should perform backend-only managed-auth provisioning for an already approved pending staff record. The user will manually create/configure the real Supabase project and enter all secrets locally. The backend must use the proven authorization and audit boundaries, keep privileged provider credentials server-only, create/send the managed invitation or activation flow, link the resulting provider UUID to `app_users.auth_user_id`, and preserve the rule that the staff member establishes their own password.
-
-Privileged reauthentication remains required before this workflow is considered production-ready for real clinic use.
+Before real clinic use, the account lifecycle still needs privileged MFA/reauthentication, staff deactivation/recovery controls, production email-delivery review, and a Clinic Administrator management interface. Patient account linking remains a separate security phase.

@@ -2816,7 +2816,7 @@ DATABASE_SSL=false
 
 SUPABASE_URL=
 SUPABASE_PUBLISHABLE_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_SECRET_KEY=
 SUPABASE_STORAGE_BUCKET=dental-private
 
 AUTH_JWT_ISSUER=
@@ -2843,7 +2843,7 @@ EMAIL_PROVIDER_API_KEY=
 Rules:
 
 - Never commit actual `.env` files.
-- Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser.
+- Never expose `SUPABASE_SECRET_KEY` (or a legacy Supabase `service_role` key) to the browser.
 - Use hosting-provider secret management.
 - Rotate exposed secrets immediately.
 - Maintain separate values for staging and production.
