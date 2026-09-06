@@ -1,0 +1,126 @@
+PHASE 08G — CLINIC ADMINISTRATOR STAFF ACCOUNT MANAGEMENT FOUNDATION
+
+STATUS
+Approved current task by user continuation after Phase 08F.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+SEQUENCE
+08A token verification — complete.
+08B Express authentication — complete.
+08C client login/session/recovery — complete.
+08D application user identity/status/roles/branches — complete.
+08E authorization/RBAC policy foundation — complete.
+08F Express authorization middleware/protected RBAC boundary — complete.
+08G adds an authorized Clinic Administrator workflow for creating pending operational staff application records only. Managed-auth technical provisioning remains deferred.
+
+GOAL
+Allow an authenticated, active, authorized Clinic Administrator to create a pending clinic staff application record with approved operational role(s) and branch assignment(s), transactionally in PostgreSQL, while preventing self-elevation and preventing creation of Patient, Clinic Administrator, or System Administrator roles through this routine staff workflow.
+
+APPROVED PRODUCT DECISIONS
+- Staff cannot self-register.
+- Clinic Administrator initiates staff account creation.
+- Staff permanent passwords are never selected or known by the Clinic Administrator.
+- Technical Supabase account creation/invitation remains a later backend-only provisioning step.
+- No Supabase service-role key is introduced in 08G.
+- Routine staff creation may assign only PERSONNEL and DENTIST roles.
+- Creating another CLINIC_ADMINISTRATOR, SYSTEM_ADMINISTRATOR, or PATIENT identity is a separate privileged workflow and is not allowed here.
+- Every created staff record starts with status `pending` and `auth_user_id = NULL`.
+- At least one operational role and one valid clinic branch are required.
+- Role and branch assignments are written in the same PostgreSQL transaction as the pending application user.
+- The caller must pass the already-proven RBAC boundary and have both `staff_account.create` and `role_assignment.approve`.
+
+SCOPE
+1. Verify a clean synchronized branch before editing. Do not perform Git write operations.
+2. Do not add or modify PostgreSQL schema migrations unless an actual schema gap is discovered. Reuse Phase 08D tables `app_users`, `roles`, `user_roles`, and `user_branches`.
+3. Add a typed staff-account write repository with parameterized PostgreSQL operations for:
+   - checking an existing email case-insensitively;
+   - validating requested role codes against existing seeded roles;
+   - validating requested branch UUIDs against existing branches;
+   - inserting a pending `app_users` row with nullable `auth_user_id`;
+   - inserting role assignments;
+   - inserting branch assignments.
+4. Add a transactional StaffAccountManagementService that:
+   - validates and normalizes display name and email;
+   - accepts only PERSONNEL and DENTIST role codes;
+   - rejects duplicate role or branch inputs;
+   - requires at least one role and branch;
+   - validates all branch IDs as UUIDs before DB mutation;
+   - generates an application user UUID;
+   - creates the user + role assignments + branch assignments atomically;
+   - returns only a safe pending-account summary;
+   - never returns/stores a password, provider token, refresh token, or service secret.
+5. Add safe typed staff-account errors and translate PostgreSQL/unknown persistence failures without leaking connection details. Duplicate email should produce a safe conflict response.
+6. Add a protected Express V2 route:
+   - `POST /api/staff-accounts`
+   - middleware order: authenticate -> resolve application user -> resolve authorization -> require `staff_account.create` -> require `role_assignment.approve` -> validate/create handler.
+7. Route request body shape:
+   {
+     "displayName": "Fictional Staff",
+     "email": "staff@example.test",
+     "roles": ["PERSONNEL"],
+     "branchIds": ["<uuid>"]
+   }
+8. Successful route response should be HTTP 201 and expose only:
+   - id
+   - email
+   - displayName
+   - status (`pending`)
+   - roles
+   - branchIds
+   It must not expose auth_user_id, provider internals, secrets, permission lists, or passwords.
+9. The default PostgreSQL/service runtime must remain lazy so importing `server/src/app.js` without DATABASE_URL still works.
+10. Do not change `GET /api/auth/session` or `GET /api/auth/access` response contracts.
+11. Add focused non-live tests covering:
+   - normalization and successful pending staff creation;
+   - only PERSONNEL/DENTIST accepted;
+   - PATIENT/CLINIC_ADMINISTRATOR/SYSTEM_ADMINISTRATOR rejected;
+   - empty roles/branches rejected;
+   - duplicate roles/branches rejected;
+   - malformed branch UUID rejected before transaction mutation;
+   - unknown role/branch rejected safely;
+   - duplicate email conflict sanitized;
+   - transaction rollback on assignment failure;
+   - no auth_user_id/password/token/service secret returned or stored;
+   - route requires authentication and both permissions;
+   - denied caller never invokes creation service;
+   - successful route returns only safe pending summary.
+12. Add safe live PostgreSQL integration coverage using fictional data to verify atomic pending account creation, role/branch assignments, duplicate-email protection, allowed-role restrictions at the service layer, and rollback behavior.
+13. Update server/root focused test scripts if useful, documentation, and V2 migration map.
+14. Preserve all V1 clinic routes and business behavior unchanged.
+
+OUT OF SCOPE
+- No Supabase Admin API call.
+- No service-role key.
+- No invitation email.
+- No account activation/auth_user_id linkage.
+- No password creation by Clinic Administrator.
+- No public signup.
+- No creation of Patient, Clinic Administrator, or System Administrator through this route.
+- No general user editing/deactivation endpoint yet.
+- No self-role editing.
+- No audit trail yet.
+- No MFA/reauthentication yet.
+- No patient ownership/linking.
+- No Patient/Treatment/Appointment route cutover.
+- No frontend staff-management UI yet.
+
+VALIDATION
+Run:
+- repository CRLF-aware diff check;
+- npm run typecheck;
+- focused staff-account tests;
+- authentication/08F route tests;
+- PostgreSQL foundation tests;
+- application-user/authorization access tests;
+- Patient Batch A;
+- V1 regression tests;
+- full Node tests;
+- client production build;
+- plain Node app import without DATABASE_URL.
+
+If live PostgreSQL staff-account integration skips in DevSpace because secret-bound DATABASE_URL/TEST_DATABASE_URL are unavailable, report the exact command for the user’s normal WSL shell and do not claim final commit readiness until that live test passes.

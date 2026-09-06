@@ -92,7 +92,7 @@ The remaining unauthenticated V1 HTTP surface must not be treated as a productio
 
 Before the Patient PostgreSQL domain or other sensitive V2 modules are exposed through protected HTTP routes, the project still needs:
 
-1. Clinic Administrator-managed staff account provisioning and role/branch assignment workflows using the proven authorization boundary.
+1. Backend-only managed-auth provisioning/invitation for the Phase 08G pending staff records, followed by provider UUID linkage and staff-owned password activation.
 2. Patient-account linking and patient ownership checks.
 3. Append-only audit logging for sensitive authentication, authorization, account-management, and Patient activity.
 4. MFA and reauthentication requirements for privileged roles.

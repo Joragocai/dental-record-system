@@ -9,6 +9,7 @@ import dashboardRouter from "./routes/dashboard.js";
 import appointmentsRouter from "./routes/appointments.js";
 import runtimeRouter from "./routes/runtime.js";
 import authRouter from "./routes/auth.js";
+import staffAccountsRouter from "./routes/staffAccounts.js";
 import runtimeConfig from "./config/runtimeConfig.js";
 import { ATTACHMENT_FILE_SIZE_ERROR_MESSAGE, deleteUploadedFileByAbsolutePath } from "./utils/attachmentUtils.js";
 
@@ -36,6 +37,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/runtime", runtimeRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/staff-accounts", staffAccountsRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/patients", patientsRouter);
 app.use("/api/treatments", treatmentsRouter);

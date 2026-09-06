@@ -17,6 +17,8 @@ function buildTestDatabaseConfig() {
 }
 
 const resetTables = [
+  "role_permissions",
+  "permissions",
   "user_branches",
   "user_roles",
   "app_users",

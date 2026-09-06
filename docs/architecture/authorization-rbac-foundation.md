@@ -161,10 +161,10 @@ No privileged provider provisioning credential is introduced in Phase 08E.
 
 ## Next Gates
 
-Recommended next security work:
+Phase 08G now uses this authorization boundary to create pending Personnel/Dentist application records with approved branch assignments. The next security work is:
 
-1. Application-user/role management workflows with Clinic Administrator approval and self-elevation prevention.
-2. Clinic Administrator-managed staff account provisioning using the live `staff_account.create` authorization boundary.
+1. Backend-only managed-auth provisioning/invitation for an already approved pending staff record; keep provider admin credentials server-only and let the staff member establish their own password.
+2. General user lifecycle/deactivation and separately controlled privileged-role workflows with self-elevation prevention.
 3. Patient-account linking and OWN/patient isolation policy.
 4. Append-only audit logging.
 5. MFA and privileged reauthentication.
