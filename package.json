@@ -27,6 +27,7 @@
     "test:postgres:access": "npm run test:postgres:access --workspace server",
     "test:authorization": "npm run test:authorization --workspace server",
     "test:staff": "npm run test:staff --workspace server",
+    "test:audit": "npm run test:audit --workspace server",
     "typecheck": "npm run typecheck:client && npm run typecheck:server",
     "typecheck:client": "tsc --project client/tsconfig.json",
     "typecheck:server": "tsc --project server/tsconfig.json",

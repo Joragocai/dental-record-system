@@ -1,0 +1,88 @@
+PHASE 08H — APPEND-ONLY SECURITY & ACCOUNT AUDIT FOUNDATION
+
+STATUS
+Approved current task after Phase 08G.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+GOAL
+Add a PostgreSQL append-only audit foundation for security-sensitive account-management actions, and atomically record successful staff-account creation performed through the existing authorized Clinic Administrator workflow. This phase intentionally precedes Supabase privileged provisioning.
+
+APPROVED SECURITY MODEL
+- Audit data is server-generated and append-only.
+- Routine application code may INSERT audit rows but must not UPDATE or DELETE them.
+- The database must enforce immutability with a trigger that rejects UPDATE and DELETE attempts.
+- Audit entries must not contain passwords, bearer tokens, refresh tokens, cookies, authorization headers, database connection strings, Supabase service-role keys, or other secrets.
+- Audit metadata is generated from trusted server-side values, never copied wholesale from request bodies.
+- Successful staff-account creation is recorded in the same PostgreSQL transaction as app_users/user_roles/user_branches writes.
+- If the transaction fails, neither the staff account nor a false success audit entry may remain.
+- Failure-event capture may be added later as a separate out-of-transaction security-event path; 08H must not invent a misleading success event for rolled-back work.
+- No Supabase project, service-role credential, or Admin API call is introduced in 08H.
+
+SCOPE
+1. Verify clean synchronized branch. Do not perform Git history writes.
+2. Add migration `0007_append_only_audit_foundation.sql`; never modify migrations 0001–0006.
+3. Add `audit_events` with at minimum:
+   - id UUID primary key
+   - actor_user_id UUID nullable or required as appropriate for current account actions
+   - actor_auth_user_id UUID nullable snapshot
+   - action nonblank text
+   - target_type nonblank text
+   - target_id UUID nullable
+   - branch_id UUID nullable
+   - outcome constrained to SUCCESS/FAILURE
+   - metadata JSONB NOT NULL default '{}'
+   - occurred_at TIMESTAMPTZ NOT NULL
+4. Preserve historical audit records. Do not cascade-delete audit rows. Prefer restrictive/nullable references only where they do not make later lifecycle management impossible.
+5. Add useful indexes for actor, target, action/time, and occurred_at.
+6. Add a database trigger/function that raises on UPDATE or DELETE of audit_events. Test this against live PostgreSQL.
+7. Add typed audit repository/service code with runtime validation and parameterized inserts.
+8. The audit service must validate event identifiers and recursively reject metadata keys associated with secrets (password, token, secret, authorization, cookie, service-role/service_role, connection/database URL). It should also reject obviously sensitive string values such as Bearer credentials or PostgreSQL connection URLs.
+9. Add a focused typed event helper for successful staff-account creation. Server-generated metadata should contain only safe fields needed for traceability, such as assigned role codes and branch UUIDs.
+10. Extend `StaffAccountManagementService.createPendingStaffAccount` so it receives trusted actor identity/context separately from the request payload. The route must derive actor data from `res.locals.applicationUser` / authorization context, never from `req.body`.
+11. Inside the existing staff-account transaction, after user/role/branch inserts and before commit, write one `STAFF_ACCOUNT_CREATED` SUCCESS audit row. Use target_type `APP_USER`, target_id = created staff app user UUID. For multi-branch creation, keep branch_id null and store sorted branchIds in safe metadata.
+12. The staff-account summary response must remain unchanged.
+13. `POST /api/staff-accounts` must remain protected by authentication + active app user + authorization + `staff_account.create` + `role_assignment.approve`.
+14. Add unit tests for audit validation, secret rejection, repository parameterization, staff transaction integration, trusted actor forwarding, and rollback if audit insertion fails.
+15. Add live PostgreSQL integration coverage for:
+   - migration/schema and indexes;
+   - immutable UPDATE/DELETE trigger behavior;
+   - atomic staff creation + audit success row;
+   - correct actor/target/action/outcome/safe metadata;
+   - absence of sensitive columns/metadata;
+   - rollback when audit insertion fails.
+16. Update all test-db reset lists so audit_events is dropped before app_users/branches/migration table.
+17. Update migration tests from 6 to 7 migrations.
+18. Update architecture docs and migration map.
+19. Add focused test scripts if useful.
+
+OUT OF SCOPE
+- No Supabase Admin API.
+- No service-role key.
+- No invitation/activation email.
+- No auth_user_id provisioning link.
+- No general audit viewer UI.
+- No audit export/reporting yet.
+- No generalized failure-event pipeline yet.
+- No MFA/reauthentication.
+- No Patient/Treatment/Appointment route cutover.
+
+VALIDATION
+Run:
+- CRLF-aware diff check;
+- npm run typecheck;
+- focused audit/staff tests;
+- auth/08F/08G route tests;
+- PostgreSQL foundation tests;
+- access integration tests;
+- Patient Batch A;
+- V1 regression tests;
+- full Node tests;
+- client production build;
+- plain Node app import without DATABASE_URL.
+
+If live PostgreSQL audit integration skips in DevSpace due absent secret-bound DB variables, provide the exact safe shell command for the user to run and do not claim final commit readiness until the live audit test passes.

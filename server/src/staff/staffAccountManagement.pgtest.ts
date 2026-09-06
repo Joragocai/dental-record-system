@@ -12,6 +12,10 @@ const branchA = "22222222-2222-4222-8222-222222222222";
 const branchB = "33333333-3333-4333-8333-333333333333";
 const personnelRoleId = "44444444-4444-4444-8444-444444444444";
 const dentistRoleId = "55555555-5555-4555-8555-555555555555";
+const actor = {
+  userId: "66666666-6666-4666-8666-666666666666",
+  authUserId: "77777777-7777-4777-8777-777777777777"
+};
 
 class FakePool implements PgPoolManager {
   transactionCalls = 0;
@@ -90,7 +94,7 @@ test("staff account service normalizes and creates a pending operational staff r
     email: "  STAFF@EXAMPLE.TEST ",
     roles: ["DENTIST", "PERSONNEL"],
     branchIds: [branchB, branchA]
-  });
+  }, actor);
 
   assert.deepEqual(created, {
     id: staffId,
@@ -120,7 +124,7 @@ test("staff account service accepts only Personnel and Dentist roles", async () 
     const pool = new FakePool();
     const service = createStaffAccountManagementService(pool, { createId: () => staffId, createRepository: () => buildRepository() });
     await assert.rejects(
-      service.createPendingStaffAccount({ displayName: "Blocked Role", email: `${role.toLowerCase()}@example.test`, roles: [role], branchIds: [branchA] }),
+      service.createPendingStaffAccount({ displayName: "Blocked Role", email: `${role.toLowerCase()}@example.test`, roles: [role], branchIds: [branchA] }, actor),
       (error) => assertStaffError(error, "STAFF_ACCOUNT_ROLE_INVALID")
     );
     assert.equal(pool.transactionCalls, 0);
@@ -140,7 +144,7 @@ test("staff account service rejects empty or duplicate roles and branches before
     const pool = new FakePool();
     const service = createStaffAccountManagementService(pool, { createId: () => staffId, createRepository: () => buildRepository() });
     await assert.rejects(
-      service.createPendingStaffAccount({ displayName: "Fictional Staff", email: "staff@example.test", roles: item.roles, branchIds: item.branchIds }),
+      service.createPendingStaffAccount({ displayName: "Fictional Staff", email: "staff@example.test", roles: item.roles, branchIds: item.branchIds }, actor),
       (error) => assertStaffError(error, item.code)
     );
     assert.equal(pool.transactionCalls, 0);
@@ -158,7 +162,7 @@ test("staff account service rejects unknown role/branch and duplicate email safe
     const pool = new FakePool();
     const service = createStaffAccountManagementService(pool, { createId: () => staffId, createRepository: () => scenario.repository });
     await assert.rejects(
-      service.createPendingStaffAccount({ displayName: "Fictional Staff", email: "staff@example.test", roles: ["PERSONNEL"], branchIds: [branchA] }),
+      service.createPendingStaffAccount({ displayName: "Fictional Staff", email: "staff@example.test", roles: ["PERSONNEL"], branchIds: [branchA] }, actor),
       (error) => assertStaffError(error, scenario.code)
     );
     assert.equal(pool.rolledBack, 1);
@@ -171,10 +175,37 @@ test("staff account service sanitizes assignment failure and transaction rolls b
   const service = createStaffAccountManagementService(pool, { createId: () => staffId, createRepository: () => repository });
 
   await assert.rejects(
-    service.createPendingStaffAccount({ displayName: "Fictional Staff", email: "staff@example.test", roles: ["PERSONNEL"], branchIds: [branchA] }),
+    service.createPendingStaffAccount({ displayName: "Fictional Staff", email: "staff@example.test", roles: ["PERSONNEL"], branchIds: [branchA] }, actor),
     (error) => {
       assert.equal(assertStaffError(error, "STAFF_ACCOUNT_PERSISTENCE_ERROR"), true);
       assert.doesNotMatch((error as Error).message, /secret database detail/i);
+      return true;
+    }
+  );
+  assert.equal(pool.rolledBack, 1);
+});
+
+test("staff account service rolls back the staff transaction when audit insertion fails", async () => {
+  const pool = new FakePool();
+  const repository = buildRepository();
+  const service = createStaffAccountManagementService(pool, {
+    createId: () => staffId,
+    createRepository: () => repository,
+    createAuditRepository: () => ({
+      async insert() {
+        throw new Error("audit driver secret detail");
+      }
+    })
+  });
+
+  await assert.rejects(
+    service.createPendingStaffAccount(
+      { displayName: "Fictional Staff", email: "audit-failure@example.test", roles: ["PERSONNEL"], branchIds: [branchA] },
+      actor
+    ),
+    (error) => {
+      assert.equal(assertStaffError(error, "STAFF_ACCOUNT_PERSISTENCE_ERROR"), true);
+      assert.doesNotMatch((error as Error).message, /audit driver secret detail/i);
       return true;
     }
   );

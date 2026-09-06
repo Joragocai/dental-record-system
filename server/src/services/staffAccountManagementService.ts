@@ -4,6 +4,8 @@ import {
   createStaffAccountRepository,
   type StaffAccountRepository
 } from "../repositories/staffAccountRepository.js";
+import { createAuditEventRepository, type AuditEventRepository } from "../repositories/auditEventRepository.js";
+import { createAuditEventService } from "./auditEventService.js";
 import type { ApplicationRoleCode } from "../repositories/applicationUserRepository.js";
 import { StaffAccountError, toStaffAccountPersistenceError } from "./staffAccountErrors.js";
 
@@ -27,13 +29,24 @@ export interface PendingStaffAccountSummary {
   branchIds: string[];
 }
 
+export interface StaffAccountActor {
+  userId: string;
+  authUserId: string;
+}
+
 export interface StaffAccountManagementService {
-  createPendingStaffAccount(input: CreatePendingStaffAccountInput): Promise<PendingStaffAccountSummary>;
+  createPendingStaffAccount(
+    input: CreatePendingStaffAccountInput,
+    actor: StaffAccountActor
+  ): Promise<PendingStaffAccountSummary>;
 }
 
 export interface StaffAccountServiceOptions {
   createRepository?: (executor: PgQueryExecutor) => StaffAccountRepository;
+  createAuditRepository?: (executor: PgQueryExecutor) => AuditEventRepository;
   createId?: () => string;
+  createAuditId?: () => string;
+  now?: () => Date;
 }
 
 function normalizeDisplayName(value: unknown): string {
@@ -92,10 +105,11 @@ export function createStaffAccountManagementService(
   options: StaffAccountServiceOptions = {}
 ): StaffAccountManagementService {
   const createRepository = options.createRepository ?? createStaffAccountRepository;
+  const createAuditRepository = options.createAuditRepository ?? createAuditEventRepository;
   const createId = options.createId ?? (() => crypto.randomUUID());
 
   return {
-    async createPendingStaffAccount(input) {
+    async createPendingStaffAccount(input, actor) {
       const displayName = normalizeDisplayName(input.displayName);
       const email = normalizeEmail(input.email);
       const roles = normalizeRoles(input.roles);
@@ -132,6 +146,18 @@ export function createStaffAccountManagementService(
           await repository.insertPendingUser({ id, email, displayName, status: "pending" });
           await repository.insertRoleAssignments(id, roleIds);
           await repository.insertBranchAssignments(id, branchIds);
+
+          const auditService = createAuditEventService(createAuditRepository(executor), {
+            createId: options.createAuditId,
+            now: options.now
+          });
+          await auditService.recordStaffAccountCreated({
+            actorUserId: actor.userId,
+            actorAuthUserId: actor.authUserId,
+            targetUserId: id,
+            roles,
+            branchIds
+          });
 
           return {
             id,

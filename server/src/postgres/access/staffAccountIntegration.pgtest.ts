@@ -16,6 +16,7 @@ function buildTestDatabaseConfig() {
 }
 
 const resetTables = [
+  "audit_events",
   "role_permissions",
   "permissions",
   "user_branches",
@@ -59,6 +60,10 @@ test("Phase 08G PostgreSQL staff account foundation creates pending operational 
   const branchB = "33333333-3333-4333-8333-333333333333";
   const staffId = "44444444-4444-4444-8444-444444444444";
   const invalidStaffId = "55555555-5555-4555-8555-555555555555";
+  const actor = {
+    userId: "66666666-6666-4666-8666-666666666666",
+    authUserId: "77777777-7777-4777-8777-777777777777"
+  };
 
   try {
     await runPendingMigrations(pool);
@@ -70,12 +75,18 @@ test("Phase 08G PostgreSQL staff account foundation creates pending operational 
     );
 
     const service = createStaffAccountManagementService(pool, { createId: () => staffId });
+    await pool.query(
+      `INSERT INTO app_users (id, auth_user_id, email, display_name, status, created_at, updated_at)
+       VALUES ($1, $2, 'clinic.admin@example.test', 'Fictional Clinic Admin', 'active', NOW(), NOW())`,
+      [actor.userId, actor.authUserId]
+    );
+
     const created = await service.createPendingStaffAccount({
       displayName: "Fictional Dentist",
       email: "Dentist.Staff@Example.Test",
       roles: ["DENTIST", "PERSONNEL"],
       branchIds: [branchB, branchA]
-    });
+    }, actor);
 
     assert.deepEqual(created, {
       id: staffId,
@@ -134,7 +145,7 @@ test("Phase 08G PostgreSQL staff account foundation creates pending operational 
         email: "DENTIST.STAFF@example.test",
         roles: ["PERSONNEL"],
         branchIds: [branchA]
-      }),
+      }, actor),
       (error) => assertStaffError(error, "STAFF_ACCOUNT_EMAIL_CONFLICT")
     );
 
@@ -144,8 +155,8 @@ test("Phase 08G PostgreSQL staff account foundation creates pending operational 
         displayName: "Invalid Branch",
         email: "invalid.branch@example.test",
         roles: ["PERSONNEL"],
-        branchIds: ["77777777-7777-4777-8777-777777777777"]
-      }),
+        branchIds: ["88888888-8888-4888-8888-888888888888"]
+      }, actor),
       (error) => assertStaffError(error, "STAFF_ACCOUNT_BRANCH_INVALID")
     );
 

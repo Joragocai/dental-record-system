@@ -20,7 +20,11 @@ export function createStaffAccountsRouter(
     accessBoundary.requirePermission("role_assignment.approve"),
     async (req, res, next) => {
       try {
-        const created = await staffAccountRuntime.getService().createPendingStaffAccount(req.body ?? {});
+        const applicationUser = res.locals.applicationUser;
+        const created = await staffAccountRuntime.getService().createPendingStaffAccount(req.body ?? {}, {
+          userId: applicationUser.userId,
+          authUserId: applicationUser.authUserId
+        });
         res.status(201).json(created);
       } catch (error) {
         next(error);

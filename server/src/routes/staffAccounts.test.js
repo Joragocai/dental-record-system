@@ -33,7 +33,12 @@ function buildAllowedAccessBoundary(calls) {
   return {
     async resolveApplicationUser(_req, res, next) {
       calls.push("application-user");
-      res.locals.applicationUser = { userId: "1", roles: ["CLINIC_ADMINISTRATOR"], branchIds: [] };
+      res.locals.applicationUser = {
+        userId: "11111111-1111-4111-8111-111111111111",
+        authUserId: "22222222-2222-4222-8222-222222222222",
+        roles: ["CLINIC_ADMINISTRATOR"],
+        branchIds: []
+      };
       next();
     },
     async resolveAuthorization(_req, res, next) {
@@ -133,14 +138,16 @@ test("POST /api/staff-accounts returns only the safe pending staff summary", asy
     branchIds: ["33333333-3333-4333-8333-333333333333"]
   };
   let receivedBody = null;
+  let receivedActor = null;
 
   await withServer({
     authenticationService: authService,
     accessBoundary: buildAllowedAccessBoundary(calls),
     staffAccountRuntime: {
       getService: () => ({
-        async createPendingStaffAccount(input) {
+        async createPendingStaffAccount(input, actor) {
           receivedBody = input;
+          receivedActor = actor;
           return created;
         }
       })
@@ -161,6 +168,10 @@ test("POST /api/staff-accounts returns only the safe pending staff summary", asy
     const responseBody = await response.json();
     assert.deepEqual(responseBody, created);
     assert.deepEqual(receivedBody, body);
+    assert.deepEqual(receivedActor, {
+      userId: "11111111-1111-4111-8111-111111111111",
+      authUserId: "22222222-2222-4222-8222-222222222222"
+    });
     assert.equal("authUserId" in responseBody, false);
     assert.equal("password" in responseBody, false);
     assert.equal("token" in responseBody, false);

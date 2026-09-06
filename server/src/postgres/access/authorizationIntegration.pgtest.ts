@@ -19,6 +19,7 @@ function buildTestDatabaseConfig() {
 }
 
 const resetTables = [
+  "audit_events",
   "role_permissions",
   "permissions",
   "user_branches",

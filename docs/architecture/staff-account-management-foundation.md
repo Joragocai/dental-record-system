@@ -66,9 +66,10 @@ The service creates the following in one PostgreSQL transaction:
 
 1. pending `app_users` row;
 2. `user_roles` assignments;
-3. `user_branches` assignments.
+3. `user_branches` assignments;
+4. Phase 08H `STAFF_ACCOUNT_CREATED` append-only audit event.
 
-If role or branch validation fails, or any assignment insert fails, the transaction is rolled back. The existing case-insensitive unique email index protects against concurrent duplicate account creation.
+If role or branch validation fails, any assignment insert fails, or the audit insert cannot be recorded safely, the transaction is rolled back. The existing case-insensitive unique email index protects against concurrent duplicate account creation.
 
 ## Response Contract
 
@@ -105,12 +106,16 @@ Phase 08G intentionally does not:
 - let the Clinic Administrator choose a password;
 - implement public signup;
 - implement general user editing or deactivation;
-- implement audit logging;
+- implement generalized audit viewing/reporting or failed-attempt event capture;
 - implement MFA/privileged reauthentication;
 - implement a frontend Users/Staff page.
 
+## Phase 08H Audit Integration
+
+Phase 08H now records successful staff-account creation using the trusted actor from `res.locals.applicationUser`, not from the request body. The event records the created application-user target plus safe normalized role/branch metadata. Audit UPDATE and DELETE operations are blocked by PostgreSQL.
+
 ## Next Gate
 
-The next staff-account phase should perform backend-only managed-auth provisioning for an already approved pending staff record. That phase must use the proven authorization boundary, keep privileged provider credentials server-only, create/send the managed invitation or activation flow, link the resulting provider UUID to `app_users.auth_user_id`, and preserve the rule that the staff member establishes their own password.
+The next staff-account phase should perform backend-only managed-auth provisioning for an already approved pending staff record. The user will manually create/configure the real Supabase project and enter all secrets locally. The backend must use the proven authorization and audit boundaries, keep privileged provider credentials server-only, create/send the managed invitation or activation flow, link the resulting provider UUID to `app_users.auth_user_id`, and preserve the rule that the staff member establishes their own password.
 
-Audit logging and privileged reauthentication remain required before this workflow is considered production-ready for real clinic use.
+Privileged reauthentication remains required before this workflow is considered production-ready for real clinic use.

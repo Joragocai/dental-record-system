@@ -94,7 +94,7 @@ Before the Patient PostgreSQL domain or other sensitive V2 modules are exposed t
 
 1. Backend-only managed-auth provisioning/invitation for the Phase 08G pending staff records, followed by provider UUID linkage and staff-owned password activation.
 2. Patient-account linking and patient ownership checks.
-3. Append-only audit logging for sensitive authentication, authorization, account-management, and Patient activity.
+3. Extend the Phase 08H append-only audit foundation to provisioning, authentication/authorization security events, and later Patient activity.
 4. MFA and reauthentication requirements for privileged roles.
 5. Protected controller/route integration for selected V2 domains after the required audit/ownership safeguards exist.
 6. End-to-end tests, real Supabase environment validation, and production configuration review.
