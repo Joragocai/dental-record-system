@@ -4,9 +4,9 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "nodemon src/index.js",
-    "db:migrate": "tsx src/postgres/cli/migrate.ts",
-    "db:migrate:status": "tsx src/postgres/cli/migrateStatus.ts",
+    "dev": "nodemon --exec \"node --env-file=.env\" src/index.js",
+    "db:migrate": "node --env-file=.env --import tsx src/postgres/cli/migrate.ts",
+    "db:migrate:status": "node --env-file=.env --import tsx src/postgres/cli/migrateStatus.ts",
     "test:postgres:foundation": "node --import tsx --test \"src/postgres/*.pgtest.ts\" \"src/postgres/cli/*.pgtest.ts\"",
     "test:postgres:batch-a": "node --import tsx --test \"src/postgres/batchA/*.pgtest.ts\"",
     "test:postgres:batch-b": "node --import tsx --test \"src/postgres/batchB/*.pgtest.ts\"",
@@ -15,9 +15,13 @@
     "test:authorization": "node --import tsx --test \"src/access/authorization.pgtest.ts\" \"src/postgres/access/authorizationIntegration.pgtest.ts\"",
     "test:staff": "node --import tsx --test \"src/staff/*.pgtest.ts\" \"src/routes/staffAccounts.test.js\"",
     "test:provisioning": "node --import tsx --test \"src/staff/staffProvisioning.pgtest.ts\" \"src/postgres/access/staffProvisioningIntegration.pgtest.ts\" \"src/routes/staffAccounts.test.js\"",
+    "test:bootstrap": "node --import tsx --test \"src/bootstrap/*.pgtest.ts\" \"src/postgres/access/initialOwnerBootstrapIntegration.pgtest.ts\"",
+    "bootstrap:owner": "node --env-file=.env --import tsx src/bootstrap/initialOwnerBootstrapCli.ts",
+    "bootstrap:owner:resend": "node --env-file=.env --import tsx src/bootstrap/initialOwnerInvitationResendCli.ts",
+    "bootstrap:owner:status": "node --env-file=.env --import tsx src/bootstrap/initialOwnerStatusCli.ts",
     "test:audit": "node --import tsx --test \"src/audit/*.pgtest.ts\" \"src/postgres/access/auditIntegration.pgtest.ts\"",
     "test:auth": "node --import tsx --test \"src/auth/*.pgtest.ts\" \"src/access/accessMiddleware.pgtest.ts\" \"src/routes/auth.test.js\" \"src/routes/staffAccounts.test.js\"",
-    "start": "node src/index.js"
+    "start": "node --env-file=.env src/index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

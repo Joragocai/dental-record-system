@@ -676,6 +676,13 @@ unavailable or the maintenance agreement ends.
 
 Staff accounts must not use unrestricted public self-registration.
 
+A new environment may use the one-time server-side `npm run bootstrap:owner`
+command to create the first owner as one pending application user with exactly
+`Dentist` and `Clinic Administrator` roles. The bootstrap must refuse to run
+once any Clinic Administrator role assignment exists, must not expose a public
+HTTP bootstrap route, and must still require the owner to accept the managed
+authentication invitation and choose their own password before activation.
+
 ### 7.2 Patient Account Workflow
 
 1. Personnel creates or verifies the clinic patient record.
@@ -2959,6 +2966,8 @@ npm run db:seed:demo
 
 ## 23. Implementation Roadmap
 
+This section is the high-level product roadmap. The exact implementation task IDs and subphases used during development are tracked in Section 27 and must match the task files under `docs/codex-prompts/`. When a new task phase or subphase is approved and added under `docs/codex-prompts/`, update Section 27 in the same documentation change so the README and task registry remain aligned.
+
 ### Phase 1: Requirements and Safety Baseline
 
 - Confirm the five-role model, the owner-dentist dual-role assignment, and the System Administrator restrictions.
@@ -3308,6 +3317,7 @@ Codex must follow these rules when changing the project:
 40. Do not use `any`, `@ts-ignore`, unsafe type assertions, or disabled compiler checks as broad substitutes for fixing type errors.
 41. TypeScript types do not replace runtime validation at API, environment, database, storage, or other trust boundaries.
 42. Run `npm run typecheck`, relevant tests, and the relevant production build before declaring a TypeScript migration task complete.
+43. Keep the task-phase registry in Section 27 synchronized with `docs/codex-prompts/`. When a phase/subphase task file is added, renamed, superseded, or retired, update the README in the same change. Empty placeholder prompt files are planning markers only and are not approved implementation specifications until their scope is written and approved.
 
 ### 26.1 Codex Task Completion Format
 
@@ -3328,39 +3338,60 @@ Next Recommended Task
 
 ---
 
-## 27. Recommended Initial Codex Task Sequence
+## 27. Codex Task Phase Registry
 
-Use this order to reduce risk:
+This is the task-level execution sequence for the V2 migration. It is the README counterpart of `docs/codex-prompts/` and must stay synchronized with that folder.
 
-1. Inspect repository and document current schema and routes.
-2. Finish the V1 regression-test safety net for preserved business behavior.
-3. Add lint, TypeScript configuration, type-checking, and automated test scripts.
-4. Reuse stable shared TypeScript foundations and migrate only low-risk modules
-   that clearly support the next approved V2 step.
-5. Record the selective-replacement strategy and classify current areas as
-   keep, adapt, replace, bridge, or retire-later.
-6. Add PostgreSQL connection and migration framework.
-7. Implement the first V2 persistence foundations without requiring all
-   remaining V1 routes, services, and pages to convert first.
-8. Replace capabilities in focused vertical domain slices with parity checks
-   and explicit retirement gates.
-9. Implement authentication integration.
-10. Implement the five roles, owner-dentist dual assignment, permission matrix, and authorization middleware.
-11. Implement Clinic Administrator approvals, System Administrator restrictions, self-elevation prevention, and temporary support access.
-12. Implement patient account linking and patient isolation tests.
-13. Implement audit service and audit table.
-14. Implement private object storage.
-15. Implement secure attachment upload and camera UI.
-16. Implement appointment request and conflict-safe scheduling.
-17. Implement invoices, payments, and receivables.
-18. Implement expenses and daily closing.
-19. Implement role-specific dashboards and responsive navigation.
-20. Implement staging deployment.
-21. Complete security and recovery tests.
+### Completed / Current Task Phases
 
-Do not combine PostgreSQL, authentication, storage, finance, and broad
-extension-only TypeScript migration in one Codex task. Keep each step
-reviewable and protected by the regression-test baseline.
+| Task ID | Task | Current Status |
+| --- | --- | --- |
+| 01 | V1 Regression Safety Net | Completed. Critical V1 business behavior is protected by regression tests. |
+| 02 | Legacy Cleanup | Earlier cleanup completed. A separate fresh-V2 mock/runtime-data cleanup follow-up has been approved in principle but has not yet been assigned a new implementation phase. |
+| 03 | TypeScript Foundation | Completed. Incremental TypeScript toolchain and type-check workflow established. |
+| 04 | TypeScript Migration Batches 1–5 | Completed for the approved migration batches; JavaScript/TypeScript coexistence remains intentional where V1 bridges are still needed. |
+| 05 | PostgreSQL Foundation / V2 Selective-Replacement Transition | Completed. PostgreSQL migration tooling and selective-replacement architecture are established. |
+| 06 | Core PostgreSQL Data Model / Migration-Parity Batches | Completed for Patient, Treatment, and Appointment persistence foundations. The current V2 database is treated as a fresh database; old mock SQLite records do not need to be migrated. |
+| 07A | V2 Patient Domain Replacement — Read Path | Completed internally. |
+| 07B | V2 Patient Domain Replacement — Write Path | Completed internally. |
+| 07C | V2 Patient Domain Hardening / Cutover Readiness | Completed. Protected HTTP route cutover remains deferred until the required security/integration gates are satisfied. |
+| 07 Final | Patient Domain Review / Closure | Completed for the internal PostgreSQL Patient domain foundation. |
+| 08A | Authentication Foundation | Completed. |
+| 08B | Express Authentication Middleware / Protected Session Boundary | Completed. |
+| 08C | Client Authentication, Session, Login, and Recovery | Completed. |
+| 08D | Application User Identity, Status, Roles, and Branch Foundation | Completed. |
+| 08E | Authorization / RBAC Foundation | Completed. |
+| 08F | Express Authorization Middleware / Protected RBAC Boundary | Completed. |
+| 08G | Clinic Administrator Staff Account Management Foundation | Completed. |
+| 08H | Append-Only Security and Account Audit Foundation | Completed. |
+| 08I | Supabase Staff Provisioning and Activation | Completed and committed. |
+| 08J | Initial Owner / Dentist Bootstrap | Completed. Real Supabase invitation/recovery activation, password login, PostgreSQL activation state, exact owner roles, LILAC branch assignment, audit events, linked Supabase identity, and one-time bootstrap-disable condition were validated in the development environment. |
+
+The older empty umbrella markers `07-Authentication.txt` and `08-Authorization-RBAC.txt` are retained only as historical planning placeholders. The implemented work is represented by the detailed 07A–07C and 08A–08J task specifications above.
+
+### Planned Task Phases
+
+The following files currently exist as empty planning placeholders under `docs/codex-prompts/`. They define the intended sequence only; their detailed scope must be written, reviewed against the current codebase, and approved before implementation.
+
+| Task ID | Planned Task |
+| --- | --- |
+| 09 | Audit Trail — remaining audit coverage beyond the existing 08H foundation |
+| 10 | Private Storage |
+| 11 | Early Staging |
+| 12 | Appointment Redesign |
+| 13 | Notifications |
+| 14 | Patient Portal |
+| 15 | Finance / Collectibles |
+| 16 | Role Dashboard |
+| 17 | Responsive UI / Accessibility |
+| 18 | Backup / Recovery |
+| 19 | Integration / End-to-End / Security Testing |
+| 20 | User Acceptance Testing |
+| 21 | Production Readiness |
+
+Before starting any planned phase, compare its intended scope with completed subphases so already-built foundations are not duplicated. For example, Phase 09 must build on the existing 08H append-only audit foundation rather than recreate it.
+
+Do not combine PostgreSQL, authentication, storage, finance, or broad TypeScript migration into one task. Keep each approved phase reviewable and protected by the regression-test baseline.
 
 ---
 

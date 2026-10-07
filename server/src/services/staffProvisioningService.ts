@@ -14,6 +14,7 @@ import {
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const allowedRoutineRoles = new Set(["PERSONNEL", "DENTIST"]);
+const initialOwnerRoles = ["CLINIC_ADMINISTRATOR", "DENTIST"] as const;
 
 export interface InvitePendingStaffInput {
   targetUserId: string;
@@ -48,12 +49,29 @@ function normalizeUuid(value: string): string {
   return normalized;
 }
 
-function assertEligiblePendingTarget(target: StaffProvisioningTarget): void {
+function assertPendingWithBranches(target: StaffProvisioningTarget): void {
   if (target.status !== "pending") throw new StaffProvisioningError("STAFF_PROVISIONING_TARGET_NOT_PENDING");
   if (target.roles.length === 0 || target.branchIds.length === 0) {
     throw new StaffProvisioningError("STAFF_PROVISIONING_TARGET_INVALID");
   }
+}
+
+function assertEligibleRoutineInviteTarget(target: StaffProvisioningTarget): void {
+  assertPendingWithBranches(target);
   if (target.roles.some((role) => !allowedRoutineRoles.has(role))) {
+    throw new StaffProvisioningError("STAFF_PROVISIONING_TARGET_INVALID");
+  }
+}
+
+function assertEligibleActivationTarget(target: StaffProvisioningTarget): void {
+  assertPendingWithBranches(target);
+  const sortedRoles = [...target.roles].sort();
+  const sortedInitialOwnerRoles = [...initialOwnerRoles].sort();
+  const isRoutine = sortedRoles.every((role) => allowedRoutineRoles.has(role));
+  const isInitialOwner =
+    sortedRoles.length === sortedInitialOwnerRoles.length &&
+    sortedRoles.every((role, index) => role === sortedInitialOwnerRoles[index]);
+  if (!isRoutine && !isInitialOwner) {
     throw new StaffProvisioningError("STAFF_PROVISIONING_TARGET_INVALID");
   }
 }
@@ -92,7 +110,7 @@ export function createStaffProvisioningService(
         const found = await createRepository(pool).getById(targetUserId);
         if (!found) throw new StaffProvisioningError("STAFF_PROVISIONING_TARGET_NOT_FOUND");
         target = found;
-        assertEligiblePendingTarget(target);
+        assertEligibleRoutineInviteTarget(target);
       } catch (error) {
         throw toStaffProvisioningPersistenceError(error);
       }
@@ -155,7 +173,7 @@ export function createStaffProvisioningService(
         const found = await createRepository(pool).getByAuthUserId(authUserId);
         if (!found) throw new StaffProvisioningError("STAFF_PROVISIONING_TARGET_NOT_FOUND");
         target = found;
-        assertEligiblePendingTarget(target);
+        assertEligibleActivationTarget(target);
         if (target.email.toLowerCase() !== normalizedEmail) {
           throw new StaffProvisioningError("STAFF_PROVISIONING_EMAIL_MISMATCH");
         }

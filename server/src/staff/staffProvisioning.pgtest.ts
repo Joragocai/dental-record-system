@@ -177,6 +177,56 @@ test("cleanup failure returns reconciliation-required instead of guessing provid
   );
 });
 
+test("routine invite still rejects Clinic Administrator targets after bootstrap support is added", async () => {
+  const pool = new FakePool();
+  let invites = 0;
+  const provider: StaffProvisioningProvider = {
+    async inviteUserByEmail() { invites += 1; return { providerUserId }; },
+    async deleteUser() { return true; }
+  };
+  const service = createStaffProvisioningService(pool, provider, {
+    inviteRedirectUrl: "http://localhost:5173/activate-account",
+    createRepository: () => repository(target({ roles: ["CLINIC_ADMINISTRATOR", "DENTIST"] }))
+  });
+
+  await assert.rejects(
+    service.invitePendingStaff({ targetUserId, actorUserId, actorAuthUserId }),
+    (error) => assertProvisioningError(error, "STAFF_PROVISIONING_TARGET_INVALID")
+  );
+  assert.equal(invites, 0);
+});
+
+test("self-activation accepts only the exact initial owner dual-role combination", async () => {
+  const pool = new FakePool();
+  const provider: StaffProvisioningProvider = {
+    async inviteUserByEmail() { throw new Error("not used"); },
+    async deleteUser() { return true; }
+  };
+  const owner = target({
+    authUserId: providerUserId,
+    email: "owner@example.test",
+    roles: ["CLINIC_ADMINISTRATOR", "DENTIST"]
+  });
+  const service = createStaffProvisioningService(pool, provider, {
+    inviteRedirectUrl: "http://localhost:5173/activate-account",
+    createRepository: () => repository(owner)
+  });
+
+  assert.deepEqual(
+    await service.activateInvitedStaff({ authUserId: providerUserId, email: "OWNER@example.test" }),
+    { activated: true }
+  );
+
+  const systemAdminService = createStaffProvisioningService(pool, provider, {
+    inviteRedirectUrl: "http://localhost:5173/activate-account",
+    createRepository: () => repository(target({ authUserId: providerUserId, roles: ["SYSTEM_ADMINISTRATOR"] }))
+  });
+  await assert.rejects(
+    systemAdminService.activateInvitedStaff({ authUserId: providerUserId, email: "staff@example.test" }),
+    (error) => assertProvisioningError(error, "STAFF_PROVISIONING_TARGET_INVALID")
+  );
+});
+
 test("activation requires matching email and records activation audit atomically", async () => {
   const pool = new FakePool();
   const linked = target({ authUserId: providerUserId });

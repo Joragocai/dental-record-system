@@ -66,7 +66,27 @@ export function createSupabaseBrowserAuthProvider(config: BrowserAuthenticationC
 
     async updatePassword(password) {
       const { error } = await client.auth.updateUser({ password });
-      if (error) throw new Error("Unable to update the password.");
+      if (!error) return;
+
+      switch (error.code) {
+        case "weak_password":
+          throw new Error(
+            "Supabase rejected this password as too weak. Use a new password with at least 12 characters and include uppercase, lowercase, a number, and a symbol."
+          );
+        case "same_password":
+          throw new Error("Choose a password different from the one already used for this account.");
+        case "reauthentication_needed":
+          throw new Error("Supabase requires a fresh authentication step before this password can be changed.");
+        case "session_expired":
+        case "session_not_found":
+        case "flow_state_expired":
+        case "flow_state_not_found":
+          throw new Error("This activation session has expired. Request a fresh activation email and try again.");
+        default:
+          throw new Error(
+            `Supabase rejected the password update (code: ${error.code ?? "unknown"}). Please report this code so the activation flow can be corrected.`
+          );
+      }
     },
 
     onAuthStateChange(callback) {

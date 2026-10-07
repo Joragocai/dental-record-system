@@ -1,0 +1,99 @@
+PHASE 08J — INITIAL OWNER / DENTIST BOOTSTRAP
+
+STATUS
+Approved by the user after Phase 08I passed live PostgreSQL validation.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+GOAL
+Solve the first-administrator problem without creating a public bootstrap endpoint or weakening normal Clinic Administrator approval. Add a one-time, trusted server-side CLI command that provisions the clinic's initial owner as one application user with separate DENTIST and CLINIC_ADMINISTRATOR role assignments, one approved branch, a Supabase invitation, linked auth_user_id, pending status until self-activation, and append-only audit evidence.
+
+SECURITY DECISIONS
+- Bootstrap is a local/server-only CLI command. Do not add an HTTP bootstrap route.
+- It is allowed only while no application user has the CLINIC_ADMINISTRATOR role, regardless of that user's lifecycle status.
+- The first owner receives exactly DENTIST + CLINIC_ADMINISTRATOR. Do not grant SYSTEM_ADMINISTRATOR, PERSONNEL, or PATIENT.
+- The owner uses one account with two roles; never create duplicate owner accounts.
+- The owner chooses their own password through the existing Supabase invite activation flow.
+- Public signup remains disabled.
+- The Supabase secret key remains server-only and must never be printed, logged, audited, returned, or written to Git/browser variables.
+- The bootstrap process is not an application user, so bootstrap audit events use null actor IDs plus explicit safe bootstrap metadata rather than inventing a user identity.
+- Bootstrap invitation success must not activate the application account. Status remains pending until the invited identity completes /activate-account and POST /api/staff-accounts/activate.
+- Routine 08I invitation rules remain restricted to pending PERSONNEL/DENTIST accounts. Do not let the normal Clinic Administrator invite route create or provision Clinic Administrator accounts.
+- Self-activation may additionally accept only the exact bootstrap role set DENTIST + CLINIC_ADMINISTRATOR. It must continue rejecting PATIENT, SYSTEM_ADMINISTRATOR, and any other privileged/mixed role combination.
+- No auto-linking by email to an unknown pre-existing Supabase user.
+
+IMPLEMENTATION SCOPE
+1. Verify the branch is clean and synchronized. Do not commit/push/rebase/reset.
+2. Add a dedicated bootstrap repository/service/CLI under server/src/bootstrap/.
+3. The CLI should:
+   - use the existing PostgreSQL foundation config and mutation guard;
+   - use the existing lazy/server-only Supabase provisioning config and provider adapter;
+   - list available branches using only branch id/code/name;
+   - prompt for owner display name, email, branch UUID, and an explicit confirmation phrase;
+   - never prompt for, print, or echo Supabase/database secrets;
+   - print only safe progress/result messages.
+4. Bootstrap service validation:
+   - normalize display name and email consistently with staff creation expectations;
+   - require one valid existing branch UUID;
+   - generate a UUID for the application user before the provider invite so the provider can receive application_user_id metadata;
+   - reject if any Clinic Administrator role assignment already exists;
+   - reject if the email already belongs to an app_user.
+5. External-provider ordering:
+   - preflight database eligibility first;
+   - call Supabase invite before the final DB transaction because the returned provider UUID is needed;
+   - in the final DB transaction acquire a PostgreSQL advisory transaction lock dedicated to initial-owner bootstrap, then re-check the Clinic Administrator/email/branch/role invariants;
+   - create the pending app_user, assign DENTIST + CLINIC_ADMINISTRATOR, assign the chosen branch, link auth_user_id, and write bootstrap + USER_INVITED audit events atomically;
+   - do not hold a database transaction open during the external Supabase network call.
+6. Reconciliation safety:
+   - if the final DB transaction fails after Supabase created the provider user, attempt best-effort deletion of that just-created provider user;
+   - if cleanup succeeds, return a safe database/bootstrap failure;
+   - if cleanup fails, return a specific reconciliation-required error and never guess/link by email;
+   - record safe bootstrap failure audit when DB access permits, without email/secrets/provider payloads.
+7. Audit:
+   - add INITIAL_OWNER_BOOTSTRAPPED SUCCESS with null actor IDs, target app_user id, branch id, roles [DENTIST, CLINIC_ADMINISTRATOR], status pending, source server_cli;
+   - add USER_INVITED SUCCESS for the same target using a bootstrap-safe actorless audit method;
+   - add INITIAL_OWNER_BOOTSTRAPPED FAILURE (or equivalent explicit bootstrap failure event) with only a bounded reasonCode and safe metadata when possible;
+   - keep audit append-only protections unchanged.
+8. Activation compatibility:
+   - split routine invite eligibility from self-activation eligibility in StaffProvisioningService;
+   - routine invitation remains PERSONNEL/DENTIST only;
+   - activation accepts routine role sets or exactly DENTIST + CLINIC_ADMINISTRATOR for the initial owner;
+   - activation still requires linked auth_user_id, pending status, and case-insensitive provider email match.
+9. Add scripts:
+   - server: bootstrap:owner -> tsx src/bootstrap/initialOwnerBootstrapCli.ts
+   - root: bootstrap:owner -> npm run bootstrap:owner --workspace server
+10. No PostgreSQL migration unless implementation proves the existing app_users/user_roles/user_branches/roles/audit_events schema cannot support the workflow. Existing schema is expected to be sufficient.
+11. Add focused non-live tests and a safe PostgreSQL integration test using fictional identities and a mocked provider. Automated tests must never send a real Supabase email.
+12. Update README and architecture documentation/migration map to record the one-time bootstrap boundary and its permanent-disable condition.
+
+OUT OF SCOPE
+- No public HTTP bootstrap endpoint.
+- No System Administrator bootstrap.
+- No general privileged-role assignment UI/API.
+- No owner password chosen by developer/administrator.
+- No patient accounts.
+- No MFA implementation yet.
+- No resend/recovery lifecycle beyond current Supabase/password recovery foundations.
+- No private storage, clinical route cutover, or deployment changes.
+
+VALIDATION
+- npm run typecheck
+- npm run test:bootstrap
+- npm run test:provisioning
+- npm run test:staff
+- npm run test:audit
+- npm run test:auth
+- npm run test:postgres:foundation
+- npm run test:postgres:access (live integration may skip in DevSpace if DATABASE_URL is unavailable)
+- npm run test:postgres:batch-a
+- V1 regression/full Node tests
+- npm run build --workspace client
+- plain Node app import without DATABASE_URL/SUPABASE_SECRET_KEY to prove runtime remains lazy
+- git -c core.whitespace=cr-at-eol diff --check
+
+COMPLETION
+Report summary, files changed, migration decision, security impact, tests, commands/results, manual bootstrap steps, known limitations, and the next recommended gate. Do not perform Git history writes.

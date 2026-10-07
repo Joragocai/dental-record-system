@@ -101,6 +101,8 @@ The activation response is only:
 
 The client signs out locally after activation and asks the staff member to sign in normally using the password they just created.
 
+Phase 08J reuses this self-activation boundary for the initial owner. Routine invitation remains limited to `PERSONNEL` / `DENTIST`, while self-activation additionally accepts only the exact bootstrap role pair `DENTIST` + `CLINIC_ADMINISTRATOR`. Other privileged or mixed role combinations remain denied.
+
 ## Audit Events
 
 Phase 08I records:
@@ -113,7 +115,7 @@ Audit metadata never includes email addresses, passwords, bearer tokens, provide
 
 ## Current Limits
 
-Phase 08I does not yet provide:
+Phases 08I–08J do not yet provide:
 
 - a Clinic Administrator Users/Staff management UI;
 - patient invitations or patient-account linking;

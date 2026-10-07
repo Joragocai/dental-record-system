@@ -36,11 +36,21 @@ export interface StaffActivationAuditInput {
   targetUserId: string;
 }
 
+export interface InitialOwnerBootstrapAuditInput {
+  targetUserId: string;
+  branchId: string | null;
+  reasonCode?: string;
+}
+
 export interface AuditEventService {
   recordStaffAccountCreated(input: StaffAccountCreatedAuditInput): Promise<void>;
   recordStaffUserInvited(input: StaffProvisioningAuditInput): Promise<void>;
   recordStaffUserInviteFailed(input: StaffProvisioningFailureAuditInput): Promise<void>;
   recordStaffUserActivated(input: StaffActivationAuditInput): Promise<void>;
+  recordInitialOwnerBootstrapped(input: InitialOwnerBootstrapAuditInput): Promise<void>;
+  recordInitialOwnerBootstrapFailed(input: InitialOwnerBootstrapAuditInput & { reasonCode: string }): Promise<void>;
+  recordInitialOwnerInvited(input: InitialOwnerBootstrapAuditInput): Promise<void>;
+  recordInitialOwnerActivationRecoverySent(input: InitialOwnerBootstrapAuditInput): Promise<void>;
 }
 
 export interface AuditEventServiceOptions {
@@ -101,6 +111,32 @@ export function createAuditEventService(
     }
   }
 
+  async function insertBootstrapEvent(
+    input: InitialOwnerBootstrapAuditInput,
+    action: string,
+    outcome: "SUCCESS" | "FAILURE",
+    metadata: Record<string, unknown>
+  ): Promise<void> {
+    assertAuditMetadataSafe(metadata);
+    try {
+      await repository.insert({
+        id: requireUuid(createId()),
+        actorUserId: null,
+        actorAuthUserId: null,
+        action,
+        targetType: "APP_USER",
+        targetId: requireUuid(input.targetUserId),
+        branchId: input.branchId ? requireUuid(input.branchId) : null,
+        outcome,
+        metadata,
+        occurredAt: now().toISOString()
+      });
+    } catch (error) {
+      if (error instanceof AuditEventError) throw error;
+      throw new AuditEventError();
+    }
+  }
+
   return {
     async recordStaffAccountCreated(input) {
       const metadata = {
@@ -141,6 +177,37 @@ export function createAuditEventService(
 
     async recordStaffUserActivated(input) {
       await insertSimpleStaffEvent(input, "USER_ACTIVATED", "SUCCESS", { status: "active" });
+    },
+
+    async recordInitialOwnerBootstrapped(input) {
+      await insertBootstrapEvent(input, "INITIAL_OWNER_BOOTSTRAPPED", "SUCCESS", {
+        roles: ["CLINIC_ADMINISTRATOR", "DENTIST"],
+        status: "pending",
+        source: "server_cli"
+      });
+    },
+
+    async recordInitialOwnerBootstrapFailed(input) {
+      const reasonCode = input.reasonCode.trim().toUpperCase();
+      if (!/^[A-Z0-9_]{3,80}$/.test(reasonCode)) throw new AuditEventError();
+      await insertBootstrapEvent(input, "INITIAL_OWNER_BOOTSTRAPPED", "FAILURE", {
+        reasonCode,
+        source: "server_cli"
+      });
+    },
+
+    async recordInitialOwnerInvited(input) {
+      await insertBootstrapEvent(input, "USER_INVITED", "SUCCESS", {
+        status: "pending",
+        source: "server_cli"
+      });
+    },
+
+    async recordInitialOwnerActivationRecoverySent(input) {
+      await insertBootstrapEvent(input, "USER_ACTIVATION_RECOVERY_SENT", "SUCCESS", {
+        status: "pending",
+        source: "server_cli"
+      });
     }
   };
 }

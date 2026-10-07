@@ -9,6 +9,7 @@ export interface StaffInviteProviderResult {
 
 export interface StaffProvisioningProvider {
   inviteUserByEmail(email: string, redirectTo: string, applicationUserId: string): Promise<StaffInviteProviderResult>;
+  sendPasswordRecovery?(email: string, redirectTo: string): Promise<void>;
   deleteUser(providerUserId: string): Promise<boolean>;
 }
 
@@ -79,6 +80,30 @@ export function createSupabaseStaffProvisioningProvider(
         }
 
         return { providerUserId: providerUserId.toLowerCase() };
+      } finally {
+        clearTimeout(timeout);
+      }
+    },
+
+    async sendPasswordRecovery(email, redirectTo) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), config.requestTimeoutMs);
+      try {
+        let response: Response;
+        try {
+          const url = new URL(`${config.supabaseUrl}/auth/v1/recover`);
+          url.searchParams.set("redirect_to", redirectTo);
+          response = await fetchImpl(url, {
+            method: "POST",
+            headers: providerHeaders(config.secretKey),
+            body: JSON.stringify({ email }),
+            signal: controller.signal
+          });
+        } catch {
+          throw new StaffProvisioningError("STAFF_PROVISIONING_PROVIDER_UNAVAILABLE");
+        }
+
+        if (!response.ok) throw classifyProviderFailure(response.status);
       } finally {
         clearTimeout(timeout);
       }
