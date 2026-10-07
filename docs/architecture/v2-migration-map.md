@@ -133,7 +133,9 @@ requires more than the present unit and service-level parity tests.
 | Area | Classification | Notes |
 | --- | --- | --- |
 | `server/src/postgres/migrations/0003_treatment_core.sql` | KEEP | Batch B Treatment foundation migration; extend only through later ordered migrations. |
-| `server/src/postgres/batchB/*.ts` | KEEP | Dedicated PostgreSQL Treatment foundation and fictional parity helpers; no runtime cutover yet. |
+| `server/src/postgres/migrations/0008_treatment_branch_context.sql` | KEEP | Phase 08K extension adding explicit treatment service-branch identity. Existing development/mock rows are backfilled from the patient's registration/origin branch only as a migration fallback; future V2 treatment writes must supply the actual service branch. |
+| `server/src/postgres/batchB/*.ts` | KEEP | Dedicated PostgreSQL Treatment foundation and fictional parity helpers; Phase 08K adds branchId while preserving the legacy migration fallback. No runtime cutover yet. |
+| `docs/architecture/clinic-branch-operating-model.md` | KEEP | Phase 08K approved single-clinic, multi-branch model covering clinic-wide patients, flexible user branch memberships, Clinic Administrator global administrative scope, and transaction-level branch identity. |
 | Treatment JSX pages and components | RETIRE-LATER | Leave active until a V2 treatment slice is ready. |
 | `server/src/routes/treatments.js` | RETIRE-LATER | Route replacement should align with V2 persistence and auth. |
 | `server/src/services/treatmentService.js` | REPLACE | Strongly coupled to current V1 persistence workflow. |

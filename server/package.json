@@ -16,6 +16,7 @@
     "test:staff": "node --import tsx --test \"src/staff/*.pgtest.ts\" \"src/routes/staffAccounts.test.js\"",
     "test:provisioning": "node --import tsx --test \"src/staff/staffProvisioning.pgtest.ts\" \"src/postgres/access/staffProvisioningIntegration.pgtest.ts\" \"src/routes/staffAccounts.test.js\"",
     "test:bootstrap": "node --import tsx --test \"src/bootstrap/*.pgtest.ts\" \"src/postgres/access/initialOwnerBootstrapIntegration.pgtest.ts\"",
+    "bootstrap:branch": "node --env-file=.env --import tsx src/bootstrap/initialBranchBootstrapCli.ts",
     "bootstrap:owner": "node --env-file=.env --import tsx src/bootstrap/initialOwnerBootstrapCli.ts",
     "bootstrap:owner:resend": "node --env-file=.env --import tsx src/bootstrap/initialOwnerInvitationResendCli.ts",
     "bootstrap:owner:status": "node --env-file=.env --import tsx src/bootstrap/initialOwnerStatusCli.ts",

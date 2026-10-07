@@ -1484,11 +1484,18 @@ Rules:
 
 ### 13.8 Branches
 
-Create a real `branches` table instead of relying on free-text branch names.
+The current product represents one clinic organization that may operate one or multiple branches. Do not add a separate clinic/tenant table unless a later approved requirement introduces true multi-clinic tenancy.
 
-Add `branch_id` to:
+Create a real `branches` table instead of relying on free-text branch names. Branches use a UUID relationship key plus a unique short code and human-readable name. New branches must be addable as new branch records without redesigning patient, user, or transaction identity.
 
-- Users
+Dentist and Personnel users may be associated with one or multiple branches through the many-to-many `user_branches` relationship. This represents allowed/associated work locations, not a permanent home-branch lock. Actual schedules may place staff together or separately and remain a later scheduling concern.
+
+Clinic Administrator administrative/business authority is clinic-wide and should use GLOBAL permissions where appropriate. The Clinic Administrator role alone does not imply clinical access; the owner-dentist receives clinical access through the separate Dentist role.
+
+Patients belong to the clinic as a whole and must not be duplicated simply because they visit another branch. The current `patients.branch_id` field is retained as registration/origin branch context and must not be interpreted as exclusive patient ownership.
+
+Branch-specific transactions record where the activity actually occurred. Add or preserve `branch_id` on:
+
 - Appointments
 - Treatments
 - Invoices
@@ -1496,6 +1503,8 @@ Add `branch_id` to:
 - Expenses
 - Daily closings
 - Audit events where applicable
+
+Future authenticated operational writes must use the actual transaction/service branch rather than automatically inheriting the patient's registration branch.
 
 Suggested branch fields:
 
@@ -3366,8 +3375,9 @@ This is the task-level execution sequence for the V2 migration. It is the README
 | 08H | Append-Only Security and Account Audit Foundation | Completed. |
 | 08I | Supabase Staff Provisioning and Activation | Completed and committed. |
 | 08J | Initial Owner / Dentist Bootstrap | Completed. Real Supabase invitation/recovery activation, password login, PostgreSQL activation state, exact owner roles, LILAC branch assignment, audit events, linked Supabase identity, and one-time bootstrap-disable condition were validated in the development environment. |
+| 08K | Clinic / Branch Operating Model Foundation | Completed. Flexible user branch memberships, clinic-wide patient identity semantics, explicit treatment branch context, initial branch bootstrap, and migration 0008 were validated against the development Supabase PostgreSQL database. |
 
-The older empty umbrella markers `07-Authentication.txt` and `08-Authorization-RBAC.txt` are retained only as historical planning placeholders. The implemented work is represented by the detailed 07A–07C and 08A–08J task specifications above.
+The older empty umbrella markers `07-Authentication.txt` and `08-Authorization-RBAC.txt` are retained only as historical planning placeholders. The implemented work is represented by the detailed 07A–07C and 08A–08K task specifications above.
 
 ### Planned Task Phases
 

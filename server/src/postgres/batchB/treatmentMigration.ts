@@ -182,10 +182,10 @@ function resolveNextAppointmentDate(legacyTreatment: LegacyTreatmentRow): string
   return nextAppointmentDate;
 }
 
-async function resolveMappedPatientId(
+async function resolveMappedPatientContext(
   executor: PgQueryExecutor,
   legacyPatientCode: string
-): Promise<string> {
+): Promise<{ patientId: string; branchId: string }> {
   const states = await listLegacyPatientMigrationStatesByCode(executor, "sqlite-v1", legacyPatientCode);
 
   if (states.length === 0) {
@@ -198,7 +198,10 @@ async function resolveMappedPatientId(
     );
   }
 
-  return states[0].patient.id;
+  return {
+    patientId: states[0].patient.id,
+    branchId: states[0].patient.branchId
+  };
 }
 
 export async function mapLegacyTreatmentToDraft(
@@ -208,7 +211,7 @@ export async function mapLegacyTreatmentToDraft(
 ): Promise<MappedTreatmentDraft> {
   const treatmentCode = normalizeRequiredString(legacyTreatment.treatment_id, "Legacy treatment treatment_id");
   const patientCode = normalizeRequiredString(legacyTreatment.patient_id, "Legacy treatment patient_id");
-  const patientId = await resolveMappedPatientId(executor, patientCode);
+  const { patientId, branchId } = await resolveMappedPatientContext(executor, patientCode);
   const treatmentDate = assertIsoDate(legacyTreatment.treatment_date, "Legacy treatment treatment_date");
   const nextAppointmentDate = resolveNextAppointmentDate(legacyTreatment);
   const nextAppointmentTime = normalizeOptionalString(legacyTreatment.next_appointment_time);
@@ -239,6 +242,7 @@ export async function mapLegacyTreatmentToDraft(
       id: treatmentId,
       treatmentCode,
       patientId,
+      branchId,
       treatmentDate,
       toothNumbers: normalizeOptionalString(legacyTreatment.tooth_numbers),
       nextAppointmentDate,
@@ -320,7 +324,7 @@ export async function migrateLegacyTreatment(
   return runner.withTransaction(async (executor) => {
     const treatmentCode = normalizeRequiredString(legacyTreatment.treatment_id, "Legacy treatment treatment_id");
     const patientCode = normalizeRequiredString(legacyTreatment.patient_id, "Legacy treatment patient_id");
-    await resolveMappedPatientId(executor, patientCode);
+    await resolveMappedPatientContext(executor, patientCode);
 
     const existingStates = await listLegacyTreatmentMigrationStates(
       executor,

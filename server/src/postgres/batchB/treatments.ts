@@ -6,6 +6,7 @@ export interface NewTreatmentRecord {
   id: string;
   treatmentCode: string;
   patientId: string;
+  branchId: string;
   treatmentDate: string;
   toothNumbers: string | null;
   nextAppointmentDate: string | null;
@@ -44,6 +45,7 @@ interface TreatmentRow extends QueryResultRow {
   id: string;
   treatment_code: string;
   patient_id: string;
+  branch_id: string;
   treatment_date: PgDateOnlyValue;
   tooth_numbers: string | null;
   next_appointment_date: PgDateOnlyValue | null;
@@ -73,6 +75,7 @@ export const treatmentInsertColumns = [
   "id",
   "treatment_code",
   "patient_id",
+  "branch_id",
   "treatment_date",
   "tooth_numbers",
   "next_appointment_date",
@@ -113,6 +116,7 @@ export function mapTreatmentRow(row: TreatmentRow): NewTreatmentRecord {
     id: String(row.id),
     treatmentCode: String(row.treatment_code),
     patientId: String(row.patient_id),
+    branchId: String(row.branch_id),
     treatmentDate: normalizePgDateOnly(row.treatment_date, "Treatment treatment_date"),
     toothNumbers: row.tooth_numbers === null ? null : String(row.tooth_numbers),
     nextAppointmentDate: normalizeNullablePgDateOnly(
@@ -150,6 +154,7 @@ function buildTreatmentInsertValues(treatment: NewTreatmentRecord): readonly unk
     treatment.id,
     treatment.treatmentCode,
     treatment.patientId,
+    treatment.branchId,
     treatment.treatmentDate,
     treatment.toothNumbers,
     treatment.nextAppointmentDate,

@@ -104,13 +104,15 @@ Explicit future safeguards can still restrict high-risk actions even when a role
 
 ## Branch Enforcement
 
-Roles never bypass branch assignment automatically.
+Operational BRANCH-scoped permissions do not bypass branch assignment automatically.
 
 For a BRANCH-scoped permission, the requested resource/operation branch UUID must be present in the `ApplicationUserContext.branchIds` list established from `user_branches`.
 
 A matching permission with the wrong branch is denied.
 
-GLOBAL permissions do not require a branch assignment.
+GLOBAL permissions do not require a branch assignment. This is the intended model for Clinic Administrator clinic-wide administrative/business authority. The Clinic Administrator role still does not gain clinical permissions by implication; an owner-dentist receives clinical permissions through the separate Dentist role, and those clinical permissions remain branch-scoped to the Dentist user's allowed branches.
+
+`user_branches` represents flexible allowed/associated operating locations, not a permanent employee home-branch lock. Scheduling may place users together or separately at different branches and is handled independently of this membership table.
 
 ## Deny by Default
 

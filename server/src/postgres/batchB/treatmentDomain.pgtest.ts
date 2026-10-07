@@ -152,6 +152,7 @@ function toTreatmentInsertValues(treatment: NewTreatmentRecord): readonly unknow
     treatment.id,
     treatment.treatmentCode,
     treatment.patientId,
+    treatment.branchId,
     treatment.treatmentDate,
     treatment.toothNumbers,
     treatment.nextAppointmentDate,
@@ -426,6 +427,7 @@ test("mapLegacyTreatmentToDraft preserves V1 treatment parity and patient UUID l
   assert.equal(mapped.treatment.id, "55555555-5555-4555-8555-555555555555");
   assert.equal(mapped.treatment.treatmentCode, legacyTreatment.treatment_id);
   assert.equal(mapped.treatment.patientId, patient.id);
+  assert.equal(mapped.treatment.branchId, patient.branchId);
   assert.equal(mapped.treatment.nextAppointmentDate, legacyTreatment.next_appointment_date);
   assert.equal(mapped.treatment.nextAppointmentTime, legacyTreatment.next_appointment_time);
   assert.equal(mapped.treatment.discountType, "PWD");

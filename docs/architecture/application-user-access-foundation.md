@@ -61,6 +61,10 @@ Many-to-many application-user role assignments. The composite primary key preven
 
 Many-to-many application-user branch assignments using the existing normalized `branches` table. The composite primary key prevents duplicate branch assignment.
 
+A Dentist or Personnel user may be assigned to multiple branches. These rows represent allowed/associated operating locations and must not be interpreted as a permanent home-branch lock. Actual schedules and transaction locations are separate concerns.
+
+Clinic Administrator administrative/business authority is clinic-wide through GLOBAL permissions where appropriate; the administrator does not need a branch assignment merely to exercise a clinic-wide administrative permission.
+
 Phase 08D stores branch assignments but does not yet enforce them against records or routes.
 
 ## Repository and Service Boundaries

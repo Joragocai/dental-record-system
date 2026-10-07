@@ -27,6 +27,8 @@ This slice does not cut over active V1 services, routes, UI, or SQLite writes.
 V1 stores branch as free-text `branch_location`. Batch A does not invent a real
 production branch list or silently normalize legacy values.
 
+In the approved V2 operating model, the resulting `patients.branch_id` is registration/origin branch context only. It does not make the patient owned by that branch. The patient remains clinic-wide and may later receive appointments or treatment at another branch without creating a duplicate patient record.
+
 Migration/parity behavior requires:
 
 - an explicit `branch_location -> branch_id` mapping supplied by the migration

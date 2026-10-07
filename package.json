@@ -29,6 +29,7 @@
     "test:staff": "npm run test:staff --workspace server",
     "test:provisioning": "npm run test:provisioning --workspace server",
     "test:bootstrap": "npm run test:bootstrap --workspace server",
+    "bootstrap:branch": "npm run bootstrap:branch --workspace server",
     "bootstrap:owner": "npm run bootstrap:owner --workspace server",
     "bootstrap:owner:resend": "npm run bootstrap:owner:resend --workspace server",
     "bootstrap:owner:status": "npm run bootstrap:owner:status --workspace server",

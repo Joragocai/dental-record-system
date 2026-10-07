@@ -93,7 +93,7 @@ class FakeMigrationRunner implements PgMigrationRunner {
 test("listMigrationFiles returns ordered SQL migrations with checksums", async () => {
   const migrations = await listMigrationFiles();
 
-  assert.equal(migrations.length, 7);
+  assert.equal(migrations.length, 8);
   assert.equal(migrations[0]?.name, "0001_v2_foundation_probe.sql");
   assert.equal(migrations[1]?.name, "0002_branch_patient_core.sql");
   assert.equal(migrations[2]?.name, "0003_treatment_core.sql");
@@ -101,6 +101,7 @@ test("listMigrationFiles returns ordered SQL migrations with checksums", async (
   assert.equal(migrations[4]?.name, "0005_application_user_access_foundation.sql");
   assert.equal(migrations[5]?.name, "0006_authorization_rbac_foundation.sql");
   assert.equal(migrations[6]?.name, "0007_append_only_audit_foundation.sql");
+  assert.equal(migrations[7]?.name, "0008_treatment_branch_context.sql");
   assert.equal(migrations[0]?.checksum.length, 64);
   assert.equal(migrations[1]?.checksum.length, 64);
   assert.equal(migrations[2]?.checksum.length, 64);
@@ -108,6 +109,13 @@ test("listMigrationFiles returns ordered SQL migrations with checksums", async (
   assert.equal(migrations[4]?.checksum.length, 64);
   assert.equal(migrations[5]?.checksum.length, 64);
   assert.equal(migrations[6]?.checksum.length, 64);
+  assert.equal(migrations[7]?.checksum.length, 64);
+
+  const treatmentBranchMigration = migrations[7]?.sql ?? "";
+  assert.match(treatmentBranchMigration, /ADD COLUMN IF NOT EXISTS branch_id UUID/);
+  assert.match(treatmentBranchMigration, /SET branch_id = p\.branch_id/);
+  assert.match(treatmentBranchMigration, /ALTER COLUMN branch_id SET NOT NULL/);
+  assert.match(treatmentBranchMigration, /REFERENCES branches\(id\) ON DELETE RESTRICT/);
 });
 
 test("compareMigrationState reports pending, applied, and orphaned migrations", () => {
@@ -155,7 +163,8 @@ test("runPendingMigrationsFromList records applied migrations and skips reruns",
     "0004_appointment_core.sql",
     "0005_application_user_access_foundation.sql",
     "0006_authorization_rbac_foundation.sql",
-    "0007_append_only_audit_foundation.sql"
+    "0007_append_only_audit_foundation.sql",
+    "0008_treatment_branch_context.sql"
   ]);
   assert.deepEqual(runner.listAppliedMigrationNames(), [
     "0001_v2_foundation_probe.sql",
@@ -164,7 +173,8 @@ test("runPendingMigrationsFromList records applied migrations and skips reruns",
     "0004_appointment_core.sql",
     "0005_application_user_access_foundation.sql",
     "0006_authorization_rbac_foundation.sql",
-    "0007_append_only_audit_foundation.sql"
+    "0007_append_only_audit_foundation.sql",
+    "0008_treatment_branch_context.sql"
   ]);
 
   const secondRun = await runPendingMigrationsFromList(runner, migrations, migrationTableName);
@@ -176,7 +186,8 @@ test("runPendingMigrationsFromList records applied migrations and skips reruns",
     "0004_appointment_core.sql",
     "0005_application_user_access_foundation.sql",
     "0006_authorization_rbac_foundation.sql",
-    "0007_append_only_audit_foundation.sql"
+    "0007_append_only_audit_foundation.sql",
+    "0008_treatment_branch_context.sql"
   ]);
 });
 
@@ -214,7 +225,7 @@ test("getMigrationStatus remains read-only when the migration table is absent", 
 
   const statuses = await getMigrationStatus(runner);
 
-  assert.equal(statuses.length, 7);
+  assert.equal(statuses.length, 8);
   assert.equal(statuses[0]?.applied, false);
   assert.equal(statuses[1]?.applied, false);
   assert.equal(statuses[2]?.applied, false);
@@ -222,6 +233,7 @@ test("getMigrationStatus remains read-only when the migration table is absent", 
   assert.equal(statuses[4]?.applied, false);
   assert.equal(statuses[5]?.applied, false);
   assert.equal(statuses[6]?.applied, false);
+  assert.equal(statuses[7]?.applied, false);
   assert.equal(
     runner.executedSql.some((statement) => statement.startsWith(`CREATE TABLE IF NOT EXISTS ${migrationTableName}`)),
     false

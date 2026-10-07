@@ -1,0 +1,72 @@
+PHASE 08K — CLINIC / BRANCH OPERATING MODEL FOUNDATION
+
+STATUS
+Completed current design foundation.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+SEQUENCE
+08J initial owner / dentist bootstrap is completed and committed.
+08K is the focused branch-model foundation that follows 08J.
+
+GOAL
+Align the V2 data model and architecture with the approved single-clinic, multi-branch operating model without introducing unnecessary scheduling or branch-management complexity.
+
+APPROVED PRODUCT DECISIONS
+- The system represents one clinic organization that may have one or many branches.
+- Future branches must be addable without redesigning the schema.
+- Branches use UUID identity internally plus a unique branch code and human-readable branch name.
+- Clinic Administrator authority is clinic-wide for administrative/business responsibilities and is not limited to one branch assignment.
+- Dentist and Personnel users may be associated with multiple branches and may work together or separately depending on schedule.
+- user_branches represents allowed/associated branch membership; it is not a permanent employee home-branch lock.
+- Actual branch of service is stored on branch-specific operational transactions.
+- Patients belong to the clinic as a whole. A patient does not need a duplicate patient record when visiting another branch.
+- patients.branch_id is retained for compatibility as the registration/origin branch context and must not be interpreted as patient ownership.
+- Appointments already store branch_id.
+- Treatments must store branch_id for the branch where care occurred.
+- Legacy/mock treatment migration may deterministically use the migrated patient's registration/origin branch as a historical migration fallback only; future V2 treatment creation must supply the actual service branch explicitly.
+- Existing free-text dentists data remains a legacy parity field for now. Authenticated dentist/user linkage for treatment creation is deferred to the protected Treatment vertical slice.
+- Do not add a clinics table for the current single-clinic product.
+- Keep the design intentionally simple; do not build staff calendars, shift scheduling, branch CRUD UI, or automatic branch assignment in this phase.
+
+SCOPE
+1. Add a new ordered PostgreSQL migration only; never edit already-applied migrations 0001–0007.
+2. Add NOT NULL treatments.branch_id referencing branches(id), safely backfilling existing development/mock treatment rows from their patient's current branch_id before enforcing NOT NULL.
+3. Add a useful treatment branch/date index.
+4. Update the Batch B PostgreSQL treatment record and migration/parity helpers to carry branchId.
+5. Preserve V1 behavior and legacy migration parity; migration-time treatment branch is inherited from the mapped patient's legacy registration branch only as a deterministic historical snapshot.
+6. Add focused tests proving branchId is preserved through treatment mapping, persistence, and migration.
+7. Update migration-runner tests for migration 0008.
+8. Document the approved branch semantics, including clinic-wide patients, flexible user_branches membership, Clinic Administrator clinic-wide administrative authority, transaction branch identity, and deferred scheduling complexity.
+9. Update README branch requirements and the Codex Task Phase Registry so docs/codex-prompts and README stay synchronized.
+10. Update the V2 migration map and relevant authorization documentation.
+11. Preserve the completed Phase 08J files and behavior.
+
+OUT OF SCOPE
+- No clinics table.
+- No branch CRUD API or frontend.
+- No staff shift/calendar scheduling.
+- No automatic assignment of users to newly created branches.
+- No Patient/Treatment/Appointment protected route cutover.
+- No change to patient visible code generation.
+- No duplicate patient records per branch.
+- No dentist_user_id / performed_by_user_id treatment linkage in this phase.
+- No finance implementation.
+- No deployment changes.
+- No Git commit, push, merge, rebase, or reset.
+
+VALIDATION
+Run:
+- git diff --check
+- npm run typecheck
+- PostgreSQL migration tests
+- Batch B Treatment domain and integration tests
+- relevant Patient / Appointment / authorization tests
+- full Node tests where practical
+- client production build if repository-level validation requires it
+
+If live PostgreSQL tests skip because DATABASE_URL/TEST_DATABASE_URL is unavailable, report the exact manual command for the user's secret-enabled shell. Leave all changes uncommitted.
