@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCachedReadinessChecker } from "./hostedReadiness.js";
+import { classifyReadinessFailure, createCachedReadinessChecker } from "./hostedReadiness.js";
 
 test("readiness coalesces concurrent public requests into one database probe", async () => {
   let attempts = 0;
@@ -84,6 +84,14 @@ test("false readiness is cached briefly without masking recovery indefinitely", 
   time = 1_005;
   assert.equal(await check(), true);
   assert.equal(attempts, 2);
+});
+
+test("readiness diagnostics classify failures without exposing raw details", () => {
+  assert.equal(classifyReadinessFailure({ code: "28P01", message: "private details" }), "database-authentication");
+  assert.equal(classifyReadinessFailure({ code: "ETIMEDOUT", message: "private host" }), "database-network");
+  assert.equal(classifyReadinessFailure(new Error("self-signed certificate in certificate chain")), "database-tls");
+  assert.equal(classifyReadinessFailure(new Error("DATABASE_SSL_CA_FILE cannot be read. Check the configured certificate path.")), "ca-file");
+  assert.equal(classifyReadinessFailure(new Error("other provider failure")), "database-readiness");
 });
 
 test("readiness rejects unsafe cache durations", () => {

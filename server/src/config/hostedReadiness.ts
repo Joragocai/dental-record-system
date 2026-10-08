@@ -64,19 +64,51 @@ function getReadinessPool(): PgPoolManager {
     const config = buildPgFoundationConfig();
     readinessPool = createPgPoolManager({
       ...config,
-      maxPoolSize: 1,
-      connectionTimeoutMs: Math.min(config.connectionTimeoutMs, 2_000),
-      statementTimeoutMs: Math.min(config.statementTimeoutMs, 2_000)
+      // Readiness is intentionally bounded to one shared database connection.
+      // Keep the configured connection/statement timeouts instead of forcing a
+      // 2-second cross-region limit that can reject a healthy hosted database.
+      maxPoolSize: 1
     });
   }
   return readinessPool;
 }
 
+export function classifyReadinessFailure(error: unknown): string {
+  const candidate = error as { code?: unknown; message?: unknown } | null;
+  const code = typeof candidate?.code === "string" ? candidate.code.toUpperCase() : "";
+  const message = typeof candidate?.message === "string" ? candidate.message.toLowerCase() : "";
+
+  if (code === "28P01") return "database-authentication";
+  if (code === "ENOENT" || message.includes("ca_file") || message.includes("certificate path")) {
+    return "ca-file";
+  }
+  if (
+    ["ECONNREFUSED", "ETIMEDOUT", "ENETUNREACH", "EAI_AGAIN", "ENOTFOUND"].includes(code)
+  ) {
+    return "database-network";
+  }
+  if (
+    message.includes("certificate") ||
+    message.includes("self-signed") ||
+    message.includes("tls") ||
+    message.includes("ssl")
+  ) {
+    return "database-tls";
+  }
+  return "database-readiness";
+}
+
 /** Read-only readiness: one shared, one-connection pool and checked migrations. */
 export const checkHostedReadiness = createCachedReadinessChecker(async () => {
-  const pool = getReadinessPool();
-  await pool.query("SELECT 1");
-  const migrations = await getMigrationStatus(pool);
-  return migrations.length > 0 &&
-    migrations.every((item) => item.applied && item.checksumMatches && !item.isOrphaned);
+  try {
+    const pool = getReadinessPool();
+    await pool.query("SELECT 1");
+    const migrations = await getMigrationStatus(pool);
+    return migrations.length > 0 &&
+      migrations.every((item) => item.applied && item.checksumMatches && !item.isOrphaned);
+  } catch (error) {
+    // Never log URLs, credentials, provider responses, or raw error messages.
+    console.error(`[readiness] probe failed category=${classifyReadinessFailure(error)}`);
+    return false;
+  }
 });

@@ -22,7 +22,7 @@ ALREADY IMPLEMENTED (REPOSITORY)
 - Hosted Express host/port configuration; hosted mode avoids SQLite initialization and automatic V1 backups; static legacy SQLite route imports are avoided.
 - Exact HTTPS CORS origin allowlist and safe denied-origin response.
 - Startup checks for explicit hosted environment, verified PostgreSQL TLS, service-only secrets, matching Supabase provider URLs, allowed staging invitation redirect, and no production development storage bucket.
-- Hosted /api/health process liveness and read-only PostgreSQL schema /api/ready readiness. The readiness checker reuses a one-connection PostgreSQL pool, coalesces concurrent requests and caches success for 15 seconds/failure for 5 seconds. Render uses /api/ready for health gating.
+- Hosted /api/health process liveness and read-only PostgreSQL schema /api/ready readiness. The readiness checker reuses a one-connection PostgreSQL pool, coalesces concurrent requests, caches success for 15 seconds/failure for 5 seconds, and preserves the configured PostgreSQL timeouts. Render uses /api/health for platform liveness; /api/ready remains a required post-deploy staging gate.
 - Only protected V2 auth, staff, audit, and attachment routes are mounted in hosted mode.
 - Browser production builds limit pages to login, account, invitation activation, and password recovery. Hosted browser API config requires an explicit HTTPS /api URL; staging Vite builds fail unless the explicit staging Supabase reference matches the project URL and the API targets the approved Render service. Authenticated UI copy no longer refers to nonexistent local screens or missing backend RBAC.
 - No local .env requirement for hosted launch: npm run start:hosted.

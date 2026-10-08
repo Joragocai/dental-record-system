@@ -28,7 +28,7 @@ test("Render staging blueprint remains manual, isolated, and secret-free", () =>
     "branch: refactor/v2-cloud-migration",
     "startCommand: npm run start:hosted",
     "buildCommand: npm ci",
-    "healthCheckPath: /api/ready",
+    "healthCheckPath: /api/health",
     "autoDeployTrigger: off",
     "name: dental-record-staging-api",
     "value: staging",

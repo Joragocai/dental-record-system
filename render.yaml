@@ -8,9 +8,10 @@ services:
     branch: refactor/v2-cloud-migration
     buildCommand: npm ci
     startCommand: npm run start:hosted
-    # Readiness must include database access and schema checksum verification.
-    # The API keeps /api/health as a lightweight process liveness endpoint.
-    healthCheckPath: /api/ready
+    # Render platform health should verify the process, not restart a healthy
+    # API because an external database has a temporary outage. Phase 11 still
+    # validates PostgreSQL/schema explicitly through /api/ready after deploy.
+    healthCheckPath: /api/health
     autoDeployTrigger: off
     envVars:
       - key: NODE_ENV
