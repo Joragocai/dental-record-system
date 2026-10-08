@@ -12,8 +12,6 @@ import { createAuthRouter } from "./routes/auth.js";
 import { createStaffAccountsRouter } from "./routes/staffAccounts.js";
 import { createAuditEventsRouter } from "./routes/auditEvents.js";
 import { createRequestIdMiddleware } from "./middleware/requestId.js";
-import runtimeConfig from "./config/runtimeConfig.js";
-import { ATTACHMENT_FILE_SIZE_ERROR_MESSAGE, deleteUploadedFileByAbsolutePath } from "./utils/attachmentUtils.js";
 
 const app = express();
 const allowedOrigins = new Set(["http://127.0.0.1:5173", "http://localhost:5173"]);
@@ -36,7 +34,6 @@ app.use(
   })
 );
 app.use(express.json({ limit: "10mb" }));
-app.use("/uploads", express.static(runtimeConfig.uploadRoot));
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
@@ -54,13 +51,7 @@ app.use("/api/attachments", attachmentsRouter);
 app.use("/api/export", exportRouter);
 app.use("/api/backup", backupRouter);
 
-app.use(async (error, req, res, _next) => {
-  if (error?.code === "LIMIT_FILE_SIZE" || error?.name === "MulterError" && error?.code === "LIMIT_FILE_SIZE") {
-    await deleteUploadedFileByAbsolutePath(req.file?.path);
-    res.status(400).json({ message: ATTACHMENT_FILE_SIZE_ERROR_MESSAGE });
-    return;
-  }
-
+app.use(async (error, _req, res, _next) => {
   if (error?.status) {
     res.status(error.status).json({ message: error.message });
     return;

@@ -50,8 +50,11 @@ Branch-scoped:
 - `patient.create`
 - `patient.demographics.update`
 - `treatment.read`
+- `attachment.read`
+- `attachment.create`
+- `attachment.download`
 
-Personnel does not receive `treatment.internal_notes.read` or `treatment.finalize`.
+Personnel does not receive `treatment.internal_notes.read`, `treatment.finalize`, `attachment.update`, or `attachment.delete`.
 
 ### Dentist
 
@@ -64,6 +67,11 @@ Branch-scoped:
 - `treatment.read`
 - `treatment.internal_notes.read`
 - `treatment.finalize`
+- `attachment.read`
+- `attachment.create`
+- `attachment.download`
+- `attachment.update`
+- `attachment.delete`
 
 ### Clinic Administrator
 
@@ -73,7 +81,7 @@ Global:
 - `staff_account.create`
 - `role_assignment.approve`
 
-The Clinic Administrator role does not receive routine patient or clinical access by itself. The clinic owner who is also the dentist receives clinical access because the same account separately holds the Dentist role.
+The Clinic Administrator role does not receive routine patient, treatment, or attachment access by itself. The clinic owner who is also the dentist receives clinical and attachment access because the same account separately holds the Dentist role.
 
 ### System Administrator
 
@@ -82,7 +90,7 @@ Global:
 - `user.read`
 - `role_definition.configure`
 
-The System Administrator receives no routine patient or treatment permission. Temporary support access remains a future separately controlled workflow.
+The System Administrator receives no routine patient, treatment, or attachment permission. Temporary support access remains a future separately controlled workflow.
 
 ## Effective Permission Union
 

@@ -149,9 +149,15 @@ requires more than the present unit and service-level parity tests.
 
 | Area | Classification | Notes |
 | --- | --- | --- |
-| `server/src/utils/attachmentUtils.js` | REPLACE | V2 private storage and metadata flow likely require a new foundation. |
-| `server/src/routes/attachments.js` and treatment attachment route logic | RETIRE-LATER | Keep until secure private-storage replacement is live. |
-| `server/src/services/attachmentService.js` | ADAPT | Some workflow logic may remain useful after storage changes. |
+| `server/src/postgres/migrations/0010_private_attachment_storage.sql` | KEEP | Phase 10 UUID attachment metadata, treatment/patient/branch consistency, lifecycle constraints, and BRANCH-scoped attachment permissions. Extend only through later ordered migrations. |
+| `server/src/attachments/*` | KEEP | Phase 10 server-only private-storage configuration, Supabase adapter, exact random object-key policy, file signature/SHA-256 validation, private bucket bootstrap, and guarded live-validation tooling. |
+| `server/src/repositories/attachmentRepository.ts` and `server/src/services/attachmentPrivateService.ts` | KEEP | Protected PostgreSQL attachment lifecycle, reconciliation-aware Storage coordination, UUID listing foundations, soft deletion, and centralized audit integration. |
+| `server/src/routes/attachments.js` | KEEP | Replaced in Phase 10 with authenticated, application-user/RBAC-protected V2 upload-intent/completion/detail/signed-download/update/delete routes. Legacy anonymous multipart behavior is retired. |
+| `client/src/lib/privateAttachments.ts` | KEEP | Authenticated signed-upload client boundary for V2 UUID patient/treatment and branch context. |
+| `client/src/components/AttachmentUploadForm.jsx` | ADAPT | Uses the V2 signed-upload flow when authenticated V2 UUID/branch context is available and fails closed on legacy-only screens. Broader parent-domain UI cutover remains later. |
+| Legacy attachment subroutes in `server/src/routes/{patients,treatments}.js` | RETIRED | Local/anonymous attachment listing and treatment multipart upload routes were removed from the active V2 branch. |
+| Unrestricted `/uploads` static serving in `server/src/app.js` | RETIRED | Removed in Phase 10. Private objects are accessed only through authorized signed-URL issuance. |
+| `server/src/utils/attachmentUtils.js`, `server/src/services/attachmentService.js`, and V1 local attachment/export/demo references | RETIRE-LATER | No longer part of the active V2 attachment API but retained for preserved V1/demo/export code until those legacy areas are separately retired. |
 
 ## Dashboard And Reporting
 

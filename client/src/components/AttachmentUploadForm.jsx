@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { uploadAttachment, uploadTreatmentAttachment } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
+import { uploadPrivateAttachment } from "../lib/privateAttachments";
 import {
   attachmentFileInputAccept,
   attachmentFileSizeErrorMessage,
@@ -13,6 +14,7 @@ import {
 export default function AttachmentUploadForm({
   patientId,
   treatmentId,
+  branchId,
   onUploaded,
   title = "Upload Attachment",
   uploadButtonLabel = "Upload Attachment",
@@ -25,13 +27,20 @@ export default function AttachmentUploadForm({
   const [uploadError, setUploadError] = useState("");
   const [selectedFileName, setSelectedFileName] = useState("");
   const fileInputRef = useRef(null);
+  const { providerSession } = useAuth();
 
   const datalistId = useMemo(
     () => `attachment-types-${treatmentId || patientId || "general"}`.replace(/[^a-zA-Z0-9-_]/g, "-"),
     [patientId, treatmentId]
   );
 
-  const uploadDisabled = treatmentOnly && !treatmentId;
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const hasV2Context =
+    Boolean(providerSession?.accessToken) &&
+    uuidPattern.test(String(patientId || "")) &&
+    uuidPattern.test(String(branchId || "")) &&
+    (!treatmentId || uuidPattern.test(String(treatmentId)));
+  const uploadDisabled = !hasV2Context || (treatmentOnly && !treatmentId);
 
   useEffect(() => {
     if (statusTone !== "success" || !status) return undefined;
@@ -125,18 +134,15 @@ export default function AttachmentUploadForm({
     setStatus("");
     setStatusTone("info");
 
-    const formData = new FormData();
-    formData.append("patient_id", patientId);
-    formData.append("attachment_type", trimmedAttachmentType);
-    formData.append("file", file);
-
     try {
-      if (treatmentOnly) {
-        await uploadTreatmentAttachment(treatmentId, formData);
-      } else {
-        if (treatmentId) formData.append("treatment_id", treatmentId);
-        await uploadAttachment(formData);
-      }
+      await uploadPrivateAttachment({
+        accessToken: providerSession.accessToken,
+        patientId,
+        treatmentId: treatmentId || null,
+        branchId,
+        category: trimmedAttachmentType,
+        file
+      });
     } catch (uploadError) {
       setUploadError(uploadError.response?.data?.message || "Unable to upload attachment.");
       setStatus("");
@@ -191,7 +197,13 @@ export default function AttachmentUploadForm({
             <button type="button" className="button-primary" disabled={uploadDisabled} onClick={handleUpload}>
               {uploadButtonLabel}
             </button>
-            {uploadDisabled && <p className="text-sm text-amber-700">Save the treatment first before uploading treatment attachments.</p>}
+            {uploadDisabled && (
+              <p className="text-sm text-amber-700">
+                {treatmentOnly && !treatmentId
+                  ? "Save the treatment first before uploading treatment attachments."
+                  : "Secure attachment upload requires the protected V2 patient/treatment record and branch context."}
+              </p>
+            )}
           </div>
         </div>
         <div className="max-w-3xl">

@@ -1,0 +1,426 @@
+PHASE 10 — PRIVATE STORAGE FOUNDATION
+
+STATUS
+Completed and live-validated for the approved Phase 10 scope. Migration 0010 is applied to the development Supabase PostgreSQL database, migrations 0001–0010 are confirmed APPLIED, and the private development Storage lifecycle passed with a fictional PDF.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+SEQUENCE
+Phase 09 is completed and committed.
+Authentication, active application-user resolution, RBAC, trusted request IDs, append-only audit events, and Clinic Administrator audit review are already established.
+Phase 10 must reuse those foundations rather than recreate them.
+
+CURRENT STATE / INSPECTION FINDINGS
+- V1 attachments are stored on local disk under uploads/patients and uploads/treatments.
+- V1 attachment metadata is stored in SQLite with integer IDs and local file paths.
+- V1 exposes /uploads through express.static and has unauthenticated local attachment upload/download/delete routes.
+- The V1 attachment UI currently supports file selection, categories, 20 MB limits, and the existing JPG/JPEG/PNG/WEBP/PDF/DOC/DOCX/TXT allowlist.
+- The V1 UI does not yet provide a dedicated camera capture/retake/crop workflow.
+- V2 PostgreSQL Patient and Treatment foundations already use UUID identities.
+- Treatments have explicit service branch context from migration 0008.
+- Phase 09 already provides trusted request correlation and centralized audit insertion.
+- The current V2 Patient/Treatment HTTP route cutover is intentionally deferred, so Phase 10 must not force a broad clinical-route cutover merely to replace storage.
+
+GOAL
+Replace the active V2-branch local attachment storage path with a secure private-attachment implementation backed by Supabase private Storage and PostgreSQL metadata, including protected upload-intent/completion, attachment detail, signed-download authorization, metadata update, controlled deletion, audit coverage, and retirement of the insecure local/public attachment path from the V2 branch.
+
+The stable V1 implementation is preserved separately under the `v1-local-stable` Git reference, so Phase 10 does not need to preserve the old local attachment runtime inside `refactor/v2-cloud-migration`.
+
+ARCHITECTURE DECISION
+Perform a focused attachment replacement on the V2 branch rather than carrying parallel local and private storage systems.
+
+- V2 attachment IDs are UUIDs.
+- New V2 storage objects use random server-generated object keys and never use the original filename as the storage key.
+- Replace the legacy `/api/attachments` implementation with the protected V2 attachment router.
+- Remove unrestricted `express.static("/uploads")` exposure from the V2 server.
+- Retire local-disk attachment upload/download/delete behavior from the V2 runtime.
+- Legacy SQLite attachment rows and local upload files are not migrated in Phase 10 because the V2 database is treated as a fresh development database.
+- Do not add a compatibility path that accepts legacy integer attachment IDs or public local file paths.
+- If the current legacy Patient/Treatment UI cannot provide V2 UUID context yet, do not weaken the V2 attachment API to accommodate legacy identifiers. The attachment UI on this branch may be adapted, disabled, or deferred until the protected parent-domain cutover, but the backend private-storage boundary remains authoritative.
+
+IMPLEMENTATION SCOPE
+
+1. PostgreSQL migration 0010 — private attachment metadata
+Create the V2 attachments table with at least:
+- id UUID primary key;
+- patient_id UUID NOT NULL;
+- treatment_id UUID NULL;
+- branch_id UUID NOT NULL;
+- category TEXT NOT NULL;
+- original_filename TEXT NOT NULL;
+- object_key TEXT NOT NULL UNIQUE;
+- mime_type TEXT NOT NULL;
+- size_bytes BIGINT NOT NULL;
+- checksum_sha256 TEXT NULL until validated completion;
+- uploaded_by UUID NOT NULL REFERENCES app_users(id) ON DELETE RESTRICT;
+- created_at TIMESTAMPTZ NOT NULL;
+- uploaded_at TIMESTAMPTZ NULL;
+- updated_at TIMESTAMPTZ NOT NULL;
+- is_patient_visible BOOLEAN NOT NULL DEFAULT FALSE;
+- description TEXT NULL;
+- status TEXT NOT NULL.
+
+Initial status values:
+- pending
+- uploaded
+- failed
+- deleting
+- deleted
+
+Database rules:
+- patient_id references patients(id) with ON DELETE RESTRICT.
+- treatment_id is optional.
+- When treatment_id is present, PostgreSQL must enforce that the treatment belongs to the same patient and branch.
+- Add the required ordered unique constraint/index on treatments in migration 0010 so a composite attachment foreign key can enforce treatment_id + patient_id + branch_id consistency.
+- Patient-level attachments may use any branch the user is authorized to work in; patients.branch_id remains registration/origin context and must not be treated as patient ownership.
+- Validate nonblank category/original filename/object key/MIME.
+- size_bytes must be > 0 and <= 20 MB for the initial V2 limit.
+- checksum_sha256, when present, must have valid SHA-256 hexadecimal form.
+- is_patient_visible remains FALSE by default; patient-portal publication is not enabled by Phase 10.
+- Do not modify migrations 0001–0009.
+
+2. Attachment RBAC permissions in migration 0010
+Add BRANCH permissions:
+- attachment.read
+- attachment.create
+- attachment.download
+- attachment.update
+- attachment.delete
+
+Conservative initial grants:
+- PERSONNEL: attachment.read, attachment.create, attachment.download
+- DENTIST: attachment.read, attachment.create, attachment.download, attachment.update, attachment.delete
+- CLINIC_ADMINISTRATOR: no attachment/clinical access by this role alone
+- SYSTEM_ADMINISTRATOR: no routine attachment access
+- PATIENT: no direct attachment access in Phase 10; patient-visible OWN access belongs to the later Patient Portal phase
+
+The current owner-dentist receives attachment access through the separate DENTIST role, not through CLINIC_ADMINISTRATOR.
+
+3. Server-only private-storage configuration
+Add typed server-only configuration for:
+- SUPABASE_URL (reuse existing validated server URL)
+- SUPABASE_SECRET_KEY (reuse server-only secret)
+- SUPABASE_ATTACHMENT_BUCKET
+- ATTACHMENT_STORAGE_REQUEST_TIMEOUT_MS
+- ATTACHMENT_DOWNLOAD_URL_TTL_SECONDS
+
+Provider constraint:
+- Supabase signed upload URLs currently use the provider-defined validity period (approximately two hours); do not expose an application upload-TTL setting that cannot actually be enforced.
+
+Rules:
+- bucket name must be validated;
+- application-controlled signed download TTL must be bounded and short-lived;
+- service-role/server secret must never be returned to or bundled into the client;
+- update .env.example with placeholders only;
+- production/staging bucket values remain environment-specific.
+
+4. Supabase private-storage adapter
+Create a TypeScript storage adapter behind a provider-independent interface.
+
+Required capabilities:
+- verify the configured bucket exists and is PRIVATE;
+- create/issue an upload authorization scoped to one exact random object key;
+- inspect/read an uploaded object for completion validation;
+- generate a short-lived signed download URL for one exact object;
+- delete one exact object;
+- return safe provider-independent errors.
+
+Object-key rules:
+- random server-generated values only;
+- no patient names, email addresses, treatment descriptions, original filenames, or other PHI in object keys;
+- original filename is metadata only;
+- reject path traversal and ambiguous object keys.
+
+Do not add a public bucket or broad public read policy.
+
+5. Private bucket bootstrap/verification
+Provide a controlled server-side mechanism to create or verify the development attachment bucket as private.
+
+Preferred shape:
+- explicit CLI/maintenance command, not a public HTTP route;
+- refuse or fail safely if the bucket is public or incompatible;
+- never print the Supabase secret;
+- live development bucket creation/verification occurs only after Phase 10 implementation review and user approval.
+
+6. Attachment validation
+Create a typed runtime validation boundary for:
+- patient UUID;
+- optional treatment UUID;
+- branch UUID;
+- category;
+- original filename;
+- MIME type;
+- declared size;
+- description;
+- supported file extension.
+
+Preserve the initial V1 allowlist:
+- jpg/jpeg
+- png
+- webp
+- pdf
+- doc
+- docx
+- txt
+
+Do not trust filename extension or browser MIME alone.
+
+Completion validation must inspect the stored object:
+- confirm object exists at the exact expected key;
+- confirm actual byte size;
+- verify file signature/content against the approved type;
+- compute SHA-256 server-side;
+- reject mismatched extension/MIME/signature;
+- best-effort delete invalid objects and mark metadata failed safely.
+
+Initial signature rules should cover:
+- JPEG
+- PNG
+- WEBP
+- PDF
+- legacy DOC/OLE
+- DOCX ZIP/OOXML container signature
+- TXT using a conservative text-content validation because plain text has no magic number
+
+Malware scanning may remain deferred to production-hardening if no approved scanner exists, but document the gap clearly.
+
+7. Upload-intent flow
+Implement:
+POST /api/attachments/upload-intent
+
+Middleware/order:
+- request ID already assigned globally;
+- authenticate;
+- resolve active application user;
+- resolve RBAC;
+- validate body;
+- require attachment.create for the selected branch;
+- verify patient exists;
+- if treatmentId is supplied, verify treatment belongs to patient and branch;
+- create a pending attachment metadata row with a random object key;
+- issue a short-lived upload authorization for that exact object key.
+
+Response may include only safe values needed for direct upload:
+- attachmentId;
+- provider upload URL/token material intended for the one upload only;
+- expiration;
+- safe required headers when applicable.
+
+Never return the Supabase server secret, database connection details, or unrestricted storage credentials.
+
+8. Completion flow
+Implement:
+POST /api/attachments/complete
+
+Requirements:
+- authenticate and resolve active application user;
+- require attachment.create for the attachment branch;
+- only the expected pending attachment may be completed;
+- inspect the exact storage object;
+- perform size/signature/MIME/checksum validation;
+- mark status uploaded and set uploaded_at/checksum only after validation succeeds;
+- write ATTACHMENT_UPLOADED with trusted actor, attachment UUID, patient/treatment IDs as minimal metadata, branch, and request ID;
+- invalid completion must not create a successful audit event.
+
+Storage/database are not one transaction. Handle provider/database mismatch explicitly and return a reconciliation-safe state rather than pretending distributed atomicity.
+
+9. Protected attachment read/detail
+Implement:
+GET /api/attachments/:attachmentId
+
+Requirements:
+- UUID V2 attachment identity only;
+- authenticate;
+- active application user;
+- RBAC;
+- require attachment.read for the attachment branch;
+- return metadata only, never provider secret/internal credentials;
+- do not expose storage service-role data;
+- write ATTACHMENT_VIEWED with request correlation.
+
+10. Signed download authorization
+Implement:
+GET /api/attachments/:attachmentId/download-url
+
+Requirements:
+- authenticate;
+- active application user;
+- require attachment.download for the attachment branch;
+- only status=uploaded may be downloaded;
+- return a short-lived signed URL for one exact private object;
+- set a safe suggested filename/content disposition where supported.
+
+Audit truthfulness rule:
+- issuing a signed URL proves authorization/issuance, not that the browser actually fetched the object.
+- record a truthful event such as ATTACHMENT_DOWNLOAD_URL_ISSUED with request ID.
+- do not falsely claim ATTACHMENT_DOWNLOADED unless a later backend/provider event can verify the actual download.
+- document this distinction against the broader README audit requirement.
+
+11. Metadata update
+Implement:
+PATCH /api/attachments/:attachmentId
+
+Phase 10 editable fields only:
+- category;
+- description.
+
+Require attachment.update for the attachment branch.
+
+Do not allow object_key, patient_id, treatment_id, branch_id, uploaded_by, checksum, size, MIME, or is_patient_visible to be rewritten through this endpoint.
+
+Patient-visible publication is deferred to the Patient Portal/publishing phase.
+
+12. Controlled delete
+Implement:
+DELETE /api/attachments/:attachmentId
+
+Requirements:
+- require attachment.delete for the attachment branch;
+- do not physically delete the metadata history;
+- transition through deleting -> deleted;
+- remove the private storage object;
+- store deletion timestamp/actor fields if added by migration;
+- append ATTACHMENT_DELETED;
+- repeated delete should be safe/idempotent where practical;
+- if storage deletion and PostgreSQL finalization disagree, preserve a recoverable/reconciliation state.
+
+13. Listing integration
+Repository/service methods must support:
+- list by patient UUID;
+- list by treatment UUID;
+- uploaded/non-deleted filtering.
+
+The final documented endpoints are:
+- GET /api/patients/:patientId/attachments
+- GET /api/treatments/:treatmentId/attachments
+
+If the protected Patient/Treatment route cutover is still not complete, do not create insecure legacy compatibility routes. Either:
+- expose these listing operations only through a protected attachment-owned route shape for Phase 10; or
+- defer the parent-domain endpoint wiring while keeping the repository/service methods complete and tested.
+
+Do not accept legacy SQLite integer IDs or human-readable codes as substitutes for V2 UUID ownership checks unless a separately approved compatibility boundary is designed.
+
+14. Audit integration
+Add safe centralized events:
+- ATTACHMENT_UPLOADED
+- ATTACHMENT_VIEWED
+- ATTACHMENT_DOWNLOAD_URL_ISSUED
+- ATTACHMENT_METADATA_UPDATED
+- ATTACHMENT_DELETED
+
+Use Phase 09 request IDs.
+
+Metadata must not include:
+- signed URLs;
+- upload tokens;
+- Supabase secrets;
+- original file contents;
+- full patient medical data;
+- raw provider error payloads.
+
+15. V2 attachment cutover / legacy retirement
+Because the stable V1 version is preserved separately, Phase 10 must retire the insecure attachment runtime from `refactor/v2-cloud-migration`.
+
+Required V2-branch cleanup:
+- remove unrestricted `app.use("/uploads", express.static(...))`;
+- replace the legacy anonymous `server/src/routes/attachments.js` behavior with the protected V2 attachment router;
+- remove local-disk upload handling from the active V2 attachment path;
+- stop returning local `file_path` values or direct public upload URLs;
+- remove or retire client helpers that construct `/uploads/...` URLs for the active V2 attachment workflow;
+- update or retire attachment client calls that POST multipart data to the legacy anonymous routes;
+- keep reusable validation/category UI logic only where it still fits the V2 flow;
+- do not migrate or delete the separately preserved V1 Git reference.
+
+Local `uploads/` files may remain ignored development artifacts on disk, but they must no longer be part of the active V2 attachment serving path.
+
+16. Tests
+Add focused tests for:
+- migration 0010 ordering/checksum;
+- attachment FK and treatment/patient/branch consistency;
+- size/status/checksum constraints;
+- exact role grants;
+- Clinic Administrator role alone denied;
+- System Administrator denied;
+- Patient denied;
+- Personnel/Dentist grants as scoped;
+- storage config validation;
+- bucket privacy verification;
+- random object-key generation;
+- no PHI/original filename in object key;
+- upload intent authorization and exact-key scoping;
+- invalid extension/MIME/signature rejection;
+- all supported signature rules;
+- >20 MB rejection;
+- completion SHA-256 verification;
+- completion cleanup/reconciliation behavior;
+- signed URL TTL bounds;
+- metadata immutable-field rejection;
+- soft deletion/idempotency;
+- audit event request correlation;
+- signed URL/token/secret exclusion from audit metadata;
+- protected route authentication/authorization;
+- cross-branch denial;
+- treatment/patient mismatch denial;
+- active V2 server no longer exposes unrestricted `/uploads`;
+- legacy anonymous attachment upload/download/delete behavior is no longer reachable on the V2 branch;
+- reusable attachment validation behavior remains covered where retained.
+
+17. Live development validation
+After implementation review and before Phase 10 completion:
+- apply migration 0010 to the development Supabase PostgreSQL database;
+- verify migrations 0001–0010 APPLIED;
+- create/verify only a private development attachment bucket;
+- upload a fictional non-sensitive test file through the V2 flow;
+- verify PostgreSQL metadata and SHA-256;
+- verify unauthorized role/branch access fails;
+- verify a signed download URL expires/is bounded;
+- delete the fictional test object through the V2 flow;
+- verify audit events and no secret leakage.
+
+Never use real patient documents for testing.
+
+18. Documentation
+Update:
+- README Phase 8/private attachment status as appropriate;
+- README Section 27 registry;
+- docs/architecture/v2-migration-map.md;
+- create docs/architecture/private-storage-foundation.md;
+- .env.example;
+- docs/codex-prompts/10-Private-Storage.txt.
+
+EXPLICITLY DEFERRED / OUT OF SCOPE
+- No Patient Portal attachment visibility yet.
+- No is_patient_visible publishing workflow yet.
+- No broad Patient/Treatment HTTP route cutover beyond the minimum protected ownership lookup needed by attachments.
+- No migration of legacy local attachment files into Supabase Storage because the V2 development database is fresh.
+- No production bucket migration.
+- No automated legacy-file migration script unless separately approved.
+- No full camera UX, crop, rotate, or retake interface in this storage-foundation task.
+- No EXIF image transformation pipeline unless separately approved after dependency/security review.
+- No malware scanner integration unless an approved provider/tool is selected.
+- No attachment backup/restore implementation; define the storage backup dependency for Phase 18 Backup / Recovery.
+- No Phase 11 Early Staging work.
+- No commit, push, merge, rebase, or reset until validation is complete and the user authorizes finalization.
+
+VALIDATION GATES
+Run at minimum:
+- git diff --check
+- npm run typecheck
+- new Phase 10 storage/attachment tests
+- npm run test:audit
+- npm run test:authorization
+- npm run test:postgres:access
+- npm run test:postgres:foundation
+- relevant retained attachment validation tests
+- npm run build
+- npm run db:migrate:status
+- verify the V2 app no longer exposes unrestricted `/uploads`;
+- verify legacy anonymous attachment routes are retired/replaced;
+- live development Supabase Storage/PostgreSQL validation using fictional files only
+
+COMPLETION RULE
+Phase 10 is complete only when the active V2 branch uses the protected private-storage attachment boundary, the old unrestricted local attachment serving path is retired from the V2 runtime, and live development validation succeeds with fictional files only.

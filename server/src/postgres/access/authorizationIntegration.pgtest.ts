@@ -20,6 +20,7 @@ function buildTestDatabaseConfig() {
 
 const resetTables = [
   "audit_events",
+  "attachments",
   "role_permissions",
   "permissions",
   "user_branches",
@@ -70,7 +71,7 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
     const permissions = await pool.query<{ code: string; scope: string }>(
       "SELECT code, scope FROM permissions ORDER BY code ASC"
     );
-    assert.equal(permissions.rows.length, 13);
+    assert.equal(permissions.rows.length, 18);
     assert.equal(permissions.rows.find((row) => row.code === "patient.read")?.scope, "BRANCH");
     assert.equal(permissions.rows.find((row) => row.code === "staff_account.create")?.scope, "GLOBAL");
 
@@ -84,6 +85,18 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
 
     const grantsFor = (role: string) => roleMapping.rows.filter((row) => row.role_code === role).map((row) => row.permission_code);
     assert.deepEqual(grantsFor("PATIENT"), []);
+    assert.deepEqual(grantsFor("PERSONNEL").filter((code) => code.startsWith("attachment.")), [
+      "attachment.create",
+      "attachment.download",
+      "attachment.read"
+    ]);
+    assert.deepEqual(grantsFor("DENTIST").filter((code) => code.startsWith("attachment.")), [
+      "attachment.create",
+      "attachment.delete",
+      "attachment.download",
+      "attachment.read",
+      "attachment.update"
+    ]);
     assert.deepEqual(grantsFor("CLINIC_ADMINISTRATOR"), [
       "audit.export",
       "audit.read",
@@ -130,6 +143,7 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
     authorizationService.requirePermission(ownerContext, "audit.read");
     authorizationService.requirePermission(ownerContext, "audit.export");
     authorizationService.requireBranchPermission(ownerContext, "treatment.finalize", branchA);
+    authorizationService.requireBranchPermission(ownerContext, "attachment.delete", branchA);
     assert.throws(() => authorizationService.requireBranchPermission(ownerContext, "patient.read", branchB), (error) =>
       isAuthorizationError(error, "AUTHORIZATION_DENIED")
     );
@@ -140,6 +154,9 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
       isAuthorizationError(error, "AUTHORIZATION_DENIED")
     );
     assert.throws(() => authorizationService.requireBranchPermission(sysContext, "patient.read", branchA), (error) =>
+      isAuthorizationError(error, "AUTHORIZATION_DENIED")
+    );
+    assert.throws(() => authorizationService.requireBranchPermission(sysContext, "attachment.read", branchA), (error) =>
       isAuthorizationError(error, "AUTHORIZATION_DENIED")
     );
 

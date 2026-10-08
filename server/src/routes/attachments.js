@@ -1,103 +1,179 @@
-import fs from "node:fs";
 import express from "express";
-import { createAttachment, deleteAttachmentById, getAttachmentById, getAttachmentsByTreatmentId } from "../services/attachmentService.js";
-import { getPatientByPatientId } from "../services/patientService.js";
-import { getTreatmentByTreatmentId } from "../services/treatmentService.js";
+import { createAuthenticateMiddleware } from "../auth/authMiddleware.js";
+import { createAccessBoundary } from "../access/accessMiddleware.js";
+import { createAttachmentRuntime } from "../attachments/attachmentRuntime.js";
 import {
-  attachmentUpload,
-  buildAttachmentPath,
-  deleteAttachmentFileIfPresent,
-  deleteUploadedFileByAbsolutePath,
-  normalizeAttachmentType,
-  resolveAttachmentAbsolutePath
-} from "../utils/attachmentUtils.js";
-const router = express.Router();
+  requireAttachmentUuid,
+  validateAttachmentIntentInput
+} from "../attachments/attachmentValidation.js";
 
-router.post("/", attachmentUpload.single("file"), async (req, res, next) => {
-  try {
-    if (!req.file) {
-      res.status(400).json({ message: "File upload is required." });
-      return;
+function actorFromResponse(res) {
+  const applicationUser = res.locals.applicationUser;
+  const requestId = res.locals.requestId;
+  if (!applicationUser?.userId || !applicationUser?.authUserId || !requestId) {
+    const error = new Error("Attachment access context is unavailable.");
+    error.status = 500;
+    throw error;
+  }
+  return {
+    userId: applicationUser.userId,
+    authUserId: applicationUser.authUserId,
+    requestId
+  };
+}
+
+function loadAttachmentAccess(runtime, getId) {
+  return async (req, res, next) => {
+    try {
+      const attachmentId = requireAttachmentUuid(getId(req));
+      const context = await runtime.getService().getAccessContext(attachmentId);
+      req.attachmentAccess = context;
+      next();
+    } catch (error) {
+      next(error);
     }
+  };
+}
 
-    if (!req.body.patient_id || !getPatientByPatientId(req.body.patient_id)) {
-      await deleteUploadedFileByAbsolutePath(req.file.path);
-      res.status(400).json({ message: "A valid patient ID is required." });
-      return;
+export function createAttachmentsRouter(
+  authenticationService,
+  accessBoundary = createAccessBoundary(),
+  attachmentRuntime = createAttachmentRuntime()
+) {
+  const router = express.Router();
+  const authenticate = createAuthenticateMiddleware(authenticationService);
+
+  router.post(
+    "/upload-intent",
+    authenticate,
+    accessBoundary.resolveApplicationUser,
+    accessBoundary.resolveAuthorization,
+    (req, _res, next) => {
+      try {
+        req.attachmentIntent = validateAttachmentIntentInput(req.body ?? {});
+        next();
+      } catch (error) {
+        next(error);
+      }
+    },
+    accessBoundary.requireBranchPermission("attachment.create", (req) => req.attachmentIntent.branchId),
+    async (req, res, next) => {
+      try {
+        const result = await attachmentRuntime.getService().createUploadIntent(
+          req.attachmentIntent,
+          actorFromResponse(res)
+        );
+        res.status(201).json(result);
+      } catch (error) {
+        next(error);
+      }
     }
+  );
 
-    if (req.body.treatment_id && !getTreatmentByTreatmentId(req.body.treatment_id)) {
-      await deleteUploadedFileByAbsolutePath(req.file.path);
-      res.status(400).json({ message: "Treatment ID is not valid." });
-      return;
+  router.post(
+    "/complete",
+    authenticate,
+    accessBoundary.resolveApplicationUser,
+    accessBoundary.resolveAuthorization,
+    (req, _res, next) => {
+      try {
+        req.attachmentId = requireAttachmentUuid(req.body?.attachmentId);
+        next();
+      } catch (error) {
+        next(error);
+      }
+    },
+    loadAttachmentAccess(attachmentRuntime, (req) => req.attachmentId),
+    accessBoundary.requireBranchPermission("attachment.create", (req) => req.attachmentAccess.branchId),
+    async (req, res, next) => {
+      try {
+        const result = await attachmentRuntime.getService().complete(req.attachmentId, actorFromResponse(res));
+        res.json(result);
+      } catch (error) {
+        next(error);
+      }
     }
+  );
 
-    const attachmentTypeResult = normalizeAttachmentType(req.body.attachment_type);
-    if (attachmentTypeResult.error) {
-      await deleteUploadedFileByAbsolutePath(req.file.path);
-      res.status(400).json({ message: attachmentTypeResult.error });
-      return;
+  router.get(
+    "/:attachmentId/download-url",
+    authenticate,
+    accessBoundary.resolveApplicationUser,
+    accessBoundary.resolveAuthorization,
+    loadAttachmentAccess(attachmentRuntime, (req) => req.params.attachmentId),
+    accessBoundary.requireBranchPermission("attachment.download", (req) => req.attachmentAccess.branchId),
+    async (req, res, next) => {
+      try {
+        const result = await attachmentRuntime.getService().createDownloadUrl(
+          req.params.attachmentId,
+          actorFromResponse(res)
+        );
+        res.json(result);
+      } catch (error) {
+        next(error);
+      }
     }
+  );
 
-    const relativePath = buildAttachmentPath(req.file.filename, req.body.treatment_id);
+  router.get(
+    "/:attachmentId",
+    authenticate,
+    accessBoundary.resolveApplicationUser,
+    accessBoundary.resolveAuthorization,
+    loadAttachmentAccess(attachmentRuntime, (req) => req.params.attachmentId),
+    accessBoundary.requireBranchPermission("attachment.read", (req) => req.attachmentAccess.branchId),
+    async (req, res, next) => {
+      try {
+        const result = await attachmentRuntime.getService().view(req.params.attachmentId, actorFromResponse(res));
+        res.json(result);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
 
-    const attachment = createAttachment({
-      patient_id: req.body.patient_id,
-      treatment_id: req.body.treatment_id || null,
-      attachment_type: attachmentTypeResult.value,
-      original_filename: req.file.originalname,
-      stored_filename: req.file.filename,
-      file_path: relativePath,
-      mime_type: req.file.mimetype,
-      file_size: req.file.size,
-      uploaded_at: new Date().toISOString()
-    });
+  router.patch(
+    "/:attachmentId",
+    authenticate,
+    accessBoundary.resolveApplicationUser,
+    accessBoundary.resolveAuthorization,
+    loadAttachmentAccess(attachmentRuntime, (req) => req.params.attachmentId),
+    accessBoundary.requireBranchPermission("attachment.update", (req) => req.attachmentAccess.branchId),
+    async (req, res, next) => {
+      try {
+        const result = await attachmentRuntime.getService().updateMetadata(
+          req.params.attachmentId,
+          req.body ?? {},
+          actorFromResponse(res)
+        );
+        res.json(result);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
 
-    res.status(201).json({ message: "Attachment uploaded.", attachment, file_path: relativePath });
-  } catch (error) {
-    next(error);
-  }
-});
+  router.delete(
+    "/:attachmentId",
+    authenticate,
+    accessBoundary.resolveApplicationUser,
+    accessBoundary.resolveAuthorization,
+    loadAttachmentAccess(attachmentRuntime, (req) => req.params.attachmentId),
+    accessBoundary.requireBranchPermission("attachment.delete", (req) => req.attachmentAccess.branchId),
+    async (req, res, next) => {
+      try {
+        const result = await attachmentRuntime.getService().deleteAttachment(
+          req.params.attachmentId,
+          actorFromResponse(res)
+        );
+        res.json(result);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
 
-router.get("/treatments/:treatmentId", (req, res) => {
-  res.json(getAttachmentsByTreatmentId(req.params.treatmentId));
-});
+  return router;
+}
 
-router.get("/:id/download", (req, res) => {
-  const attachment = getAttachmentById(req.params.id);
-  if (!attachment) {
-    res.status(404).json({ message: "Attachment not found." });
-    return;
-  }
-
-  const absolutePath = resolveAttachmentAbsolutePath(attachment.file_path);
-  if (!absolutePath) {
-    res.status(400).json({ message: "Attachment file path is not valid." });
-    return;
-  }
-
-  if (!fs.existsSync(absolutePath)) {
-    res.status(404).json({ message: "Attachment file is missing." });
-    return;
-  }
-
-  res.download(absolutePath, attachment.original_filename);
-});
-
-router.delete("/:id", async (req, res, next) => {
-  const attachment = getAttachmentById(req.params.id);
-  if (!attachment) {
-    res.status(404).json({ message: "Attachment not found." });
-    return;
-  }
-
-  try {
-    await deleteAttachmentFileIfPresent(attachment.file_path);
-    deleteAttachmentById(req.params.id);
-    res.json({ message: "Attachment deleted successfully." });
-  } catch (error) {
-    next(error);
-  }
-});
-
-export default router;
+export default createAttachmentsRouter();

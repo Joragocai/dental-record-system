@@ -1,9 +1,7 @@
 import express from "express";
-import { createAttachment, getAttachmentsByTreatmentId } from "../services/attachmentService.js";
 import { getPatientByPatientId } from "../services/patientService.js";
 import { getNextTreatmentId } from "../services/idService.js";
 import { createTreatment, getTreatmentByTreatmentId, listTreatments, updateTreatment } from "../services/treatmentService.js";
-import { attachmentUpload, buildAttachmentPath, deleteUploadedFileByAbsolutePath, normalizeAttachmentType } from "../utils/attachmentUtils.js";
 import { validateTreatmentPayload } from "../utils/validation.js";
 
 const router = express.Router();
@@ -23,58 +21,6 @@ router.get("/:treatmentId", (req, res) => {
     return;
   }
   res.json(treatment);
-});
-
-router.get("/:treatmentId/attachments", (req, res) => {
-  res.json(getAttachmentsByTreatmentId(req.params.treatmentId));
-});
-
-router.post("/:treatmentId/attachments", attachmentUpload.single("file"), async (req, res, next) => {
-  try {
-    const treatment = getTreatmentByTreatmentId(req.params.treatmentId);
-    if (!treatment) {
-      await deleteUploadedFileByAbsolutePath(req.file?.path);
-      res.status(404).json({ message: "Treatment not found." });
-      return;
-    }
-
-    const patient = getPatientByPatientId(treatment.patient_id);
-    if (!patient) {
-      await deleteUploadedFileByAbsolutePath(req.file?.path);
-      res.status(400).json({ message: "Valid patient selection is required." });
-      return;
-    }
-
-    if (!req.file) {
-      res.status(400).json({ message: "File upload is required." });
-      return;
-    }
-
-    const attachmentTypeResult = normalizeAttachmentType(req.body.attachment_type);
-    if (attachmentTypeResult.error) {
-      await deleteUploadedFileByAbsolutePath(req.file.path);
-      res.status(400).json({ message: attachmentTypeResult.error });
-      return;
-    }
-
-    const relativePath = buildAttachmentPath(req.file.filename, req.params.treatmentId);
-
-    const attachment = createAttachment({
-      patient_id: treatment.patient_id,
-      treatment_id: req.params.treatmentId,
-      attachment_type: attachmentTypeResult.value,
-      original_filename: req.file.originalname,
-      stored_filename: req.file.filename,
-      file_path: relativePath,
-      mime_type: req.file.mimetype,
-      file_size: req.file.size,
-      uploaded_at: new Date().toISOString()
-    });
-
-    res.status(201).json({ message: "Attachment uploaded.", attachment, file_path: relativePath });
-  } catch (error) {
-    next(error);
-  }
 });
 
 router.post("/", (req, res) => {

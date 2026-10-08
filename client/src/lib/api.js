@@ -79,14 +79,12 @@ export async function getTreatmentsByPatient(patientId) {
   return data;
 }
 
-export async function getPatientAttachments(patientId) {
-  const { data } = await api.get(`/patients/${patientId}/attachments`);
-  return data;
+export async function getPatientAttachments(_patientId) {
+  throw new Error("Secure V2 attachment listing is not available from the legacy patient route.");
 }
 
-export async function getTreatmentAttachments(treatmentId) {
-  const { data } = await api.get(`/treatments/${treatmentId}/attachments`);
-  return data;
+export async function getTreatmentAttachments(_treatmentId) {
+  throw new Error("Secure V2 attachment listing is not available from the legacy treatment route.");
 }
 
 export async function getPatientAppointments(patientId) {
@@ -114,27 +112,16 @@ export async function updateAppointmentStatus(appointmentId, status) {
   return data;
 }
 
-export async function uploadAttachment(formData) {
-  const { data } = await api.post("/attachments", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data"
-    }
-  });
-  return data;
+export async function uploadAttachment(_formData) {
+  throw new Error("Legacy local attachment upload is retired on the V2 branch.");
 }
 
-export async function uploadTreatmentAttachment(treatmentId, formData) {
-  const { data } = await api.post(`/treatments/${treatmentId}/attachments`, formData, {
-    headers: {
-      "Content-Type": "multipart/form-data"
-    }
-  });
-  return data;
+export async function uploadTreatmentAttachment(_treatmentId, _formData) {
+  throw new Error("Legacy local treatment attachment upload is retired on the V2 branch.");
 }
 
-export async function deleteAttachment(attachmentId) {
-  const { data } = await api.delete(`/attachments/${attachmentId}`);
-  return data;
+export async function deleteAttachment(_attachmentId) {
+  throw new Error("Secure V2 attachment deletion requires an authenticated V2 record context.");
 }
 
 export async function createBackup() {
@@ -160,12 +147,12 @@ export function getExportUrl(path) {
   return `http://127.0.0.1:3002${path}`;
 }
 
-export function getUploadUrl(filePath) {
-  return `http://127.0.0.1:3002${filePath}`;
+export function getUploadUrl(_filePath) {
+  return "";
 }
 
-export function getAttachmentDownloadUrl(attachmentId) {
-  return `http://127.0.0.1:3002/api/attachments/${attachmentId}/download`;
+export function getAttachmentDownloadUrl(_attachmentId) {
+  return "";
 }
 
 export default api;

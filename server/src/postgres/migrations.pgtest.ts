@@ -93,7 +93,7 @@ class FakeMigrationRunner implements PgMigrationRunner {
 test("listMigrationFiles returns ordered SQL migrations with checksums", async () => {
   const migrations = await listMigrationFiles();
 
-  assert.equal(migrations.length, 9);
+  assert.equal(migrations.length, 10);
   assert.equal(migrations[0]?.name, "0001_v2_foundation_probe.sql");
   assert.equal(migrations[1]?.name, "0002_branch_patient_core.sql");
   assert.equal(migrations[2]?.name, "0003_treatment_core.sql");
@@ -103,6 +103,7 @@ test("listMigrationFiles returns ordered SQL migrations with checksums", async (
   assert.equal(migrations[6]?.name, "0007_append_only_audit_foundation.sql");
   assert.equal(migrations[7]?.name, "0008_treatment_branch_context.sql");
   assert.equal(migrations[8]?.name, "0009_audit_review_request_correlation.sql");
+  assert.equal(migrations[9]?.name, "0010_private_attachment_storage.sql");
   for (const migration of migrations) assert.equal(migration.checksum.length, 64);
 
   const treatmentBranchMigration = migrations[7]?.sql ?? "";
@@ -116,6 +117,14 @@ test("listMigrationFiles returns ordered SQL migrations with checksums", async (
   assert.match(auditReviewMigration, /'audit\.read'/);
   assert.match(auditReviewMigration, /'audit\.export'/);
   assert.match(auditReviewMigration, /CLINIC_ADMINISTRATOR/);
+
+  const attachmentMigration = migrations[9]?.sql ?? "";
+  assert.match(attachmentMigration, /CREATE TABLE IF NOT EXISTS attachments/);
+  assert.match(attachmentMigration, /treatments_id_patient_branch_unique/);
+  assert.match(attachmentMigration, /attachment\.create/);
+  assert.match(attachmentMigration, /attachment\.delete/);
+  assert.match(attachmentMigration, /r\.code = 'PERSONNEL'/);
+  assert.match(attachmentMigration, /r\.code = 'DENTIST'/);
 });
 
 test("compareMigrationState reports pending, applied, and orphaned migrations", () => {
@@ -199,7 +208,7 @@ test("getMigrationStatus remains read-only when the migration table is absent", 
 
   const statuses = await getMigrationStatus(runner);
 
-  assert.equal(statuses.length, 9);
+  assert.equal(statuses.length, 10);
   for (const status of statuses) assert.equal(status.applied, false);
   assert.equal(
     runner.executedSql.some((statement) => statement.startsWith(`CREATE TABLE IF NOT EXISTS ${migrationTableName}`)),

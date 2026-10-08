@@ -3,7 +3,6 @@ import { getNextPatientId } from "../services/idService.js";
 import { createPatient, getPatientByPatientId, listPatients, searchPatients, updatePatient } from "../services/patientService.js";
 import { createAppointment, listAppointmentsByPatientId } from "../services/appointmentService.js";
 import { getTreatmentsByPatientId } from "../services/treatmentService.js";
-import { getAttachmentsByPatientId } from "../services/attachmentService.js";
 import { toIsoDateString } from "../utils/dateUtils.js";
 import { validateAppointmentPayload, validatePatientPayload } from "../utils/validation.js";
 
@@ -63,10 +62,6 @@ router.put("/:patientId", (req, res) => {
 
 router.get("/:patientId/treatments", (req, res) => {
   res.json(getTreatmentsByPatientId(req.params.patientId));
-});
-
-router.get("/:patientId/attachments", (req, res) => {
-  res.json(getAttachmentsByPatientId(req.params.patientId));
 });
 
 router.get("/:patientId/appointments", (req, res) => {

@@ -64,6 +64,16 @@ export interface AuthorizationDeniedAuditInput {
   branchId?: string | null;
 }
 
+export interface AttachmentAuditInput {
+  actorUserId: string;
+  actorAuthUserId: string;
+  requestId: string;
+  attachmentId: string;
+  patientId: string;
+  treatmentId?: string | null;
+  branchId: string;
+}
+
 export interface AuditEventService {
   recordStaffAccountCreated(input: StaffAccountCreatedAuditInput): Promise<void>;
   recordStaffUserInvited(input: StaffProvisioningAuditInput): Promise<void>;
@@ -76,6 +86,11 @@ export interface AuditEventService {
   recordAuditLogViewed(input: AuditAccessAuditInput): Promise<void>;
   recordAuditLogExported(input: AuditAccessAuditInput): Promise<void>;
   recordAuthorizationDenied(input: AuthorizationDeniedAuditInput): Promise<void>;
+  recordAttachmentUploaded(input: AttachmentAuditInput): Promise<void>;
+  recordAttachmentViewed(input: AttachmentAuditInput): Promise<void>;
+  recordAttachmentDownloadUrlIssued(input: AttachmentAuditInput): Promise<void>;
+  recordAttachmentMetadataUpdated(input: AttachmentAuditInput): Promise<void>;
+  recordAttachmentDeleted(input: AttachmentAuditInput): Promise<void>;
 }
 
 export interface AuditEventServiceOptions {
@@ -336,6 +351,76 @@ export function createAuditEventService(
         metadata: {
           permission: input.permission
         }
+      });
+    },
+
+    async recordAttachmentUploaded(input) {
+      await insertHttpSecurityEvent({
+        actorUserId: input.actorUserId,
+        actorAuthUserId: input.actorAuthUserId,
+        requestId: input.requestId,
+        action: "ATTACHMENT_UPLOADED",
+        targetType: "ATTACHMENT",
+        targetId: input.attachmentId,
+        branchId: input.branchId,
+        outcome: "SUCCESS",
+        metadata: { patientId: input.patientId, treatmentId: input.treatmentId ?? null }
+      });
+    },
+
+    async recordAttachmentViewed(input) {
+      await insertHttpSecurityEvent({
+        actorUserId: input.actorUserId,
+        actorAuthUserId: input.actorAuthUserId,
+        requestId: input.requestId,
+        action: "ATTACHMENT_VIEWED",
+        targetType: "ATTACHMENT",
+        targetId: input.attachmentId,
+        branchId: input.branchId,
+        outcome: "SUCCESS",
+        metadata: { patientId: input.patientId, treatmentId: input.treatmentId ?? null }
+      });
+    },
+
+    async recordAttachmentDownloadUrlIssued(input) {
+      await insertHttpSecurityEvent({
+        actorUserId: input.actorUserId,
+        actorAuthUserId: input.actorAuthUserId,
+        requestId: input.requestId,
+        action: "ATTACHMENT_DOWNLOAD_URL_ISSUED",
+        targetType: "ATTACHMENT",
+        targetId: input.attachmentId,
+        branchId: input.branchId,
+        outcome: "SUCCESS",
+        metadata: { patientId: input.patientId, treatmentId: input.treatmentId ?? null }
+      });
+    },
+
+    async recordAttachmentMetadataUpdated(input) {
+      await insertHttpSecurityEvent({
+        actorUserId: input.actorUserId,
+        actorAuthUserId: input.actorAuthUserId,
+        requestId: input.requestId,
+        action: "ATTACHMENT_METADATA_UPDATED",
+        targetType: "ATTACHMENT",
+        targetId: input.attachmentId,
+        branchId: input.branchId,
+        outcome: "SUCCESS",
+        metadata: { patientId: input.patientId, treatmentId: input.treatmentId ?? null }
+      });
+    },
+
+    async recordAttachmentDeleted(input) {
+      await insertHttpSecurityEvent({
+        actorUserId: input.actorUserId,
+        actorAuthUserId: input.actorAuthUserId,
+        requestId: input.requestId,
+        action: "ATTACHMENT_DELETED",
+        targetType: "ATTACHMENT",
+        targetId: input.attachmentId,
+        branchId: input.branchId,
+        outcome: "SUCCESS",
+        metadata: { patientId: input.patientId, treatmentId: input.treatmentId ?? null }
       });
     }
   };

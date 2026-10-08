@@ -20,6 +20,9 @@ const branchB = "55555555-5555-4555-8555-555555555555";
 const grantsByRole: Record<ApplicationRoleCode, PermissionGrant[]> = {
   PATIENT: [],
   PERSONNEL: [
+    { code: "attachment.create", scope: "BRANCH" },
+    { code: "attachment.download", scope: "BRANCH" },
+    { code: "attachment.read", scope: "BRANCH" },
     { code: "patient.create", scope: "BRANCH" },
     { code: "patient.demographics.update", scope: "BRANCH" },
     { code: "patient.list", scope: "BRANCH" },
@@ -27,6 +30,11 @@ const grantsByRole: Record<ApplicationRoleCode, PermissionGrant[]> = {
     { code: "treatment.read", scope: "BRANCH" }
   ],
   DENTIST: [
+    { code: "attachment.create", scope: "BRANCH" },
+    { code: "attachment.delete", scope: "BRANCH" },
+    { code: "attachment.download", scope: "BRANCH" },
+    { code: "attachment.read", scope: "BRANCH" },
+    { code: "attachment.update", scope: "BRANCH" },
     { code: "patient.create", scope: "BRANCH" },
     { code: "patient.demographics.update", scope: "BRANCH" },
     { code: "patient.list", scope: "BRANCH" },
@@ -94,6 +102,15 @@ test("Personnel may read branch clinical records but cannot read internal notes 
 
   service.requireBranchPermission(context, "patient.read", branchA);
   service.requireBranchPermission(context, "treatment.read", branchA);
+  service.requireBranchPermission(context, "attachment.read", branchA);
+  service.requireBranchPermission(context, "attachment.create", branchA);
+  service.requireBranchPermission(context, "attachment.download", branchA);
+  assert.throws(() => service.requireBranchPermission(context, "attachment.update", branchA), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
+  assert.throws(() => service.requireBranchPermission(context, "attachment.delete", branchA), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
   assert.throws(() => service.requireBranchPermission(context, "treatment.internal_notes.read", branchA), (error) =>
     assertAuthorizationError(error, "AUTHORIZATION_DENIED")
   );
@@ -108,6 +125,9 @@ test("Clinic Administrator role alone has no patient or clinical permission", as
 
   service.requirePermission(context, "staff_account.create");
   assert.throws(() => service.requireBranchPermission(context, "patient.read", branchA), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
+  assert.throws(() => service.requireBranchPermission(context, "attachment.read", branchA), (error) =>
     assertAuthorizationError(error, "AUTHORIZATION_DENIED")
   );
 });
@@ -127,6 +147,9 @@ test("System Administrator remains technical and cannot read patient, clinical, 
     assertAuthorizationError(error, "AUTHORIZATION_DENIED")
   );
   assert.throws(() => service.requireBranchPermission(context, "treatment.read", branchA), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
+  assert.throws(() => service.requireBranchPermission(context, "attachment.read", branchA), (error) =>
     assertAuthorizationError(error, "AUTHORIZATION_DENIED")
   );
 });

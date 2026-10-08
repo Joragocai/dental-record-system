@@ -3060,14 +3060,16 @@ This section is the high-level product roadmap. The exact implementation task ID
 
 ### Phase 8: Private Attachments and Camera Capture
 
-- Create private storage bucket.
-- Add upload intent flow.
-- Add validation and safe filenames.
-- Add signed download URLs.
-- Add mobile camera option.
-- Add preview, retake, rotate, and crop where practical.
-- Add attachment access tests.
-- Add storage backup plan.
+Private attachment/storage foundation is completed through task Phase 10:
+
+- Private Supabase Storage bucket is configured and live-validated in development.
+- PostgreSQL UUID attachment metadata and branch-scoped RBAC are implemented.
+- Upload-intent/completion with random object keys, signature/content validation, and server-side SHA-256 are implemented.
+- Authorized short-lived signed download URLs are implemented.
+- The active V2 server no longer exposes unrestricted `/uploads` or anonymous local attachment routes.
+- Attachment lifecycle and access tests are implemented.
+- Camera capture, preview/retake/rotate/crop enhancements remain deferred to a later UI-focused task.
+- Attachment backup/restore remains a Phase 18 Backup / Recovery dependency.
 
 ### Phase 9: Appointment Redesign
 
@@ -3378,16 +3380,16 @@ This is the task-level execution sequence for the V2 migration. It is the README
 | 08J | Initial Owner / Dentist Bootstrap | Completed. Real Supabase invitation/recovery activation, password login, PostgreSQL activation state, exact owner roles, LILAC branch assignment, audit events, linked Supabase identity, and one-time bootstrap-disable condition were validated in the development environment. |
 | 08K | Clinic / Branch Operating Model Foundation | Completed. Flexible user branch memberships, clinic-wide patient identity semantics, explicit treatment branch context, initial branch bootstrap, and migration 0008 were validated against the development Supabase PostgreSQL database. |
 | 09 | Audit Trail Expansion / Review Foundation | Completed. Request correlation, Clinic Administrator-only audit review/export, audit-of-audit-access, selected authorization-denial coverage, CSV formula-injection protection, defensive metadata redaction, and migration 0009 are implemented and validated. Development Supabase confirms migrations 0001–0009 are applied. |
+| 10 | Private Storage Foundation | Completed for the approved backend/private-storage scope. Migration 0010, private Supabase Storage, attachment RBAC, UUID metadata, signed upload/completion, signature/SHA-256 validation, signed download authorization, metadata update, soft delete, request-correlated audit events, and retirement of unrestricted V2 `/uploads`/anonymous attachment routes are implemented. Development Supabase confirms migrations 0001–0010 are applied and the fictional live Storage lifecycle passed. Camera editing UX and parent-domain attachment listing cutover remain deferred. |
 
-The older empty umbrella markers `07-Authentication.txt` and `08-Authorization-RBAC.txt` are retained only as historical planning placeholders. The implemented work is represented by the detailed 07A–07C, 08A–08K, and 09 task specifications above.
+The older empty umbrella markers `07-Authentication.txt` and `08-Authorization-RBAC.txt` are retained only as historical planning placeholders. The implemented work is represented by the detailed 07A–07C, 08A–08K, 09, and 10 task specifications above.
 
 ### Planned Task Phases
 
-Phase 09 is complete for its approved scope under `docs/codex-prompts/09-Audit-Trail.txt`. The later phase files remain planning placeholders; their detailed scope must be written, reviewed against the current codebase, and approved before implementation.
+Phases 09 and 10 are complete for their approved scopes under `docs/codex-prompts/09-Audit-Trail.txt` and `docs/codex-prompts/10-Private-Storage.txt`. The later phase files remain planning placeholders; their detailed scope must be written, reviewed against the current codebase, and approved before implementation.
 
 | Task ID | Planned Task |
 | --- | --- |
-| 10 | Private Storage |
 | 11 | Early Staging |
 | 12 | Appointment Redesign |
 | 13 | Notifications |
@@ -3400,7 +3402,7 @@ Phase 09 is complete for its approved scope under `docs/codex-prompts/09-Audit-T
 | 20 | User Acceptance Testing |
 | 21 | Production Readiness |
 
-Before starting any planned phase, compare its intended scope with completed subphases so already-built foundations are not duplicated. Phase 10 must build on the existing authentication, authorization, request-correlation, and append-only audit foundations rather than recreate them.
+Before starting any planned phase, compare its intended scope with completed subphases so already-built foundations are not duplicated. Phase 11 must build on the completed authentication, authorization, audit, PostgreSQL, branch, and private-storage foundations rather than recreate them.
 
 Do not combine PostgreSQL, authentication, storage, finance, or broad TypeScript migration into one task. Keep each approved phase reviewable and protected by the regression-test baseline.
 
