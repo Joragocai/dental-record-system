@@ -10,6 +10,7 @@ import type { AuthorizationContext } from "../services/authorizationService.js";
 const authUserId = "22222222-2222-4222-8222-222222222222";
 const appUserId = "33333333-3333-4333-8333-333333333333";
 const branchA = "44444444-4444-4444-8444-444444444444";
+const requestId = "55555555-5555-4555-8555-555555555555";
 
 function buildApplicationUser(): ApplicationUserContext {
   return {
@@ -51,7 +52,11 @@ function createHarness(overrides: Partial<AccessRuntimeServices> = {}) {
     }
   };
   const boundary = createAccessBoundary({
-    getServices: () => ({ applicationUserService, authorizationService } as AccessRuntimeServices)
+    getServices: () => ({
+      applicationUserService,
+      authorizationService,
+      auditEventService: overrides.auditEventService
+    } as AccessRuntimeServices)
   });
   const res: AccessResponseLike = {
     locals: {
@@ -60,7 +65,8 @@ function createHarness(overrides: Partial<AccessRuntimeServices> = {}) {
         email: "fictional@example.test",
         audience: "authenticated",
         provider: "supabase" as const
-      }
+      },
+      requestId
     }
   };
   return { boundary, res, calls };
@@ -70,20 +76,12 @@ async function runAsyncMiddleware(middleware: Function, req: object, res: object
   return new Promise((resolve) => middleware(req, res, (error?: unknown) => resolve(error)));
 }
 
-function runSyncMiddleware(middleware: Function, req: object, res: object): unknown {
-  let nextValue: unknown = Symbol("not-called");
-  middleware(req, res, (error?: unknown) => {
-    nextValue = error;
-  });
-  return nextValue;
-}
-
 test("access middleware resolves application user then authorization context before permission evaluation", async () => {
   const { boundary, res, calls } = createHarness();
 
   assert.equal(await runAsyncMiddleware(boundary.resolveApplicationUser, {}, res), undefined);
   assert.equal(await runAsyncMiddleware(boundary.resolveAuthorization, {}, res), undefined);
-  assert.equal(runSyncMiddleware(boundary.requirePermission("user.read"), {}, res), undefined);
+  assert.equal(await runAsyncMiddleware(boundary.requirePermission("user.read"), {}, res), undefined);
 
   assert.deepEqual(calls, [
     `application:${authUserId}`,
@@ -126,7 +124,7 @@ test("global permission middleware does not require branch input", async () => {
   const { boundary, res, calls } = createHarness();
   await runAsyncMiddleware(boundary.resolveApplicationUser, {}, res);
   await runAsyncMiddleware(boundary.resolveAuthorization, {}, res);
-  const error = runSyncMiddleware(boundary.requirePermission("user.read"), {}, res);
+  const error = await runAsyncMiddleware(boundary.requirePermission("user.read"), {}, res);
 
   assert.equal(error, undefined);
   assert.equal(calls.includes("permission:user.read"), true);
@@ -137,10 +135,62 @@ test("branch middleware delegates the extracted target branch", async () => {
   await runAsyncMiddleware(boundary.resolveApplicationUser, {}, res);
   await runAsyncMiddleware(boundary.resolveAuthorization, {}, res);
   const middleware = boundary.requireBranchPermission("patient.read", (req) => String(req.params?.branchId ?? ""));
-  const error = runSyncMiddleware(middleware, { params: { branchId: branchA } }, res);
+  const error = await runAsyncMiddleware(middleware, { params: { branchId: branchA } }, res);
 
   assert.equal(error, undefined);
   assert.equal(calls.includes(`branch:patient.read:${branchA}`), true);
+});
+
+test("authorization denial audit is best-effort and preserves the original 403", async () => {
+  const denialEvents: Array<Record<string, unknown>> = [];
+  const authorizationService = {
+    async resolveContext() {
+      return buildAuthorization();
+    },
+    requirePermission() {
+      throw new AuthorizationError("AUTHORIZATION_DENIED");
+    },
+    requireBranchPermission() {
+      throw new AuthorizationError("AUTHORIZATION_DENIED");
+    }
+  };
+  const auditEventService = {
+    async recordAuthorizationDenied(input: Record<string, unknown>) {
+      denialEvents.push(input);
+      throw new Error("audit write unavailable");
+    }
+  } as unknown as AccessRuntimeServices["auditEventService"];
+
+  const { boundary, res } = createHarness({ authorizationService, auditEventService });
+  await runAsyncMiddleware(boundary.resolveApplicationUser, {}, res);
+  await runAsyncMiddleware(boundary.resolveAuthorization, {}, res);
+
+  const denied = await runAsyncMiddleware(boundary.requirePermission("user.read"), {}, res) as AuthorizationError;
+  assert.equal(denied.code, "AUTHORIZATION_DENIED");
+  assert.equal(denied.status, 403);
+
+  const branchDenied = await runAsyncMiddleware(
+    boundary.requireBranchPermission("patient.read", () => branchA),
+    { params: { branchId: branchA } },
+    res
+  ) as AuthorizationError;
+  assert.equal(branchDenied.status, 403);
+  assert.deepEqual(denialEvents, [
+    {
+      actorUserId: appUserId,
+      actorAuthUserId: authUserId,
+      requestId,
+      permission: "user.read",
+      branchId: null
+    },
+    {
+      actorUserId: appUserId,
+      actorAuthUserId: authUserId,
+      requestId,
+      permission: "patient.read",
+      branchId: branchA
+    }
+  ]);
 });
 
 test("authorization denial is forwarded as safe 403", async () => {
@@ -159,10 +209,10 @@ test("authorization denial is forwarded as safe 403", async () => {
   await runAsyncMiddleware(boundary.resolveApplicationUser, {}, res);
   await runAsyncMiddleware(boundary.resolveAuthorization, {}, res);
 
-  const denied = runSyncMiddleware(boundary.requirePermission("user.read"), {}, res) as AuthorizationError;
+  const denied = await runAsyncMiddleware(boundary.requirePermission("user.read"), {}, res) as AuthorizationError;
   assert.equal(denied.status, 403);
 
-  const invalidBranch = runSyncMiddleware(
+  const invalidBranch = await runAsyncMiddleware(
     boundary.requireBranchPermission("patient.read", () => "not-a-uuid"),
     {},
     res

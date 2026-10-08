@@ -70,7 +70,7 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
     const permissions = await pool.query<{ code: string; scope: string }>(
       "SELECT code, scope FROM permissions ORDER BY code ASC"
     );
-    assert.equal(permissions.rows.length, 11);
+    assert.equal(permissions.rows.length, 13);
     assert.equal(permissions.rows.find((row) => row.code === "patient.read")?.scope, "BRANCH");
     assert.equal(permissions.rows.find((row) => row.code === "staff_account.create")?.scope, "GLOBAL");
 
@@ -85,6 +85,8 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
     const grantsFor = (role: string) => roleMapping.rows.filter((row) => row.role_code === role).map((row) => row.permission_code);
     assert.deepEqual(grantsFor("PATIENT"), []);
     assert.deepEqual(grantsFor("CLINIC_ADMINISTRATOR"), [
+      "audit.export",
+      "audit.read",
       "role_assignment.approve",
       "staff_account.create",
       "user.read"
@@ -125,6 +127,8 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
 
     const ownerContext = await authorizationService.resolveContext(await appUserService.resolveByAuthUserId(ownerAuthId));
     authorizationService.requirePermission(ownerContext, "staff_account.create");
+    authorizationService.requirePermission(ownerContext, "audit.read");
+    authorizationService.requirePermission(ownerContext, "audit.export");
     authorizationService.requireBranchPermission(ownerContext, "treatment.finalize", branchA);
     assert.throws(() => authorizationService.requireBranchPermission(ownerContext, "patient.read", branchB), (error) =>
       isAuthorizationError(error, "AUTHORIZATION_DENIED")
@@ -132,6 +136,9 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
 
     const sysContext = await authorizationService.resolveContext(await appUserService.resolveByAuthUserId(sysAuthId));
     authorizationService.requirePermission(sysContext, "role_definition.configure");
+    assert.throws(() => authorizationService.requirePermission(sysContext, "audit.read"), (error) =>
+      isAuthorizationError(error, "AUTHORIZATION_DENIED")
+    );
     assert.throws(() => authorizationService.requireBranchPermission(sysContext, "patient.read", branchA), (error) =>
       isAuthorizationError(error, "AUTHORIZATION_DENIED")
     );

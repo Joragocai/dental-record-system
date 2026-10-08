@@ -1,0 +1,149 @@
+PHASE 09 — AUDIT TRAIL EXPANSION / REVIEW FOUNDATION
+
+STATUS
+Completed and validated for the approved Phase 09 scope. Migration 0009 is applied to the development Supabase PostgreSQL database and migrations 0001–0009 are confirmed APPLIED. Post-review hardening includes spreadsheet-formula neutralization for CSV export, stronger recursive secret detection/redaction, dedicated audit-review repository tests, safe PostgreSQL integration coverage when TEST_DATABASE_URL is available, and an explicit README CRLF whitespace policy.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+SEQUENCE
+08H already established the append-only audit_events table, immutable UPDATE/DELETE protection, safe metadata validation, and the centralized insert boundary.
+08I–08J already added staff invitation, activation, bootstrap, and activation-recovery audit events.
+08K is completed and committed.
+Phase 09 must build on those foundations rather than recreate them.
+
+GOAL
+Complete the next cross-cutting audit foundation required by the V2 architecture: request correlation, Clinic Administrator audit review/export, and audit-of-audit-access, while keeping domain-specific clinical/financial audit events aligned with the later protected vertical slices that actually own those operations.
+
+APPROVED BASELINE / DESIGN CONSTRAINTS
+- audit_events remains append-only.
+- Existing migrations 0001–0008 must never be edited.
+- Clinic Administrator may review the complete clinic audit trail.
+- System Administrator must not receive routine access to the complete clinic audit trail.
+- Clinic Administrator role alone still does not imply clinical record access.
+- Audit metadata must not contain passwords, access/refresh tokens, cookies, authorization headers, provider secrets, connection strings, or unnecessary health information.
+- Audit failures must not replace the primary application/security error.
+- Browser-to-Supabase authentication events must not be falsely labeled as backend-observed login events.
+
+IMPLEMENTATION SCOPE
+
+1. PostgreSQL migration 0009
+- Add nullable audit_events.request_id UUID.
+- Add an index supporting request-id correlation.
+- Add GLOBAL permission audit.read.
+- Add GLOBAL permission audit.export.
+- Grant audit.read and audit.export to CLINIC_ADMINISTRATOR only.
+- Do not grant complete clinic audit access to SYSTEM_ADMINISTRATOR.
+
+2. Request correlation
+- Add a server-generated UUID request identifier for Express API requests.
+- Store it in trusted response/request locals.
+- Return it in a safe X-Request-ID response header.
+- Do not trust arbitrary client data as audit identity.
+- New HTTP-generated audit events should carry the request ID when available.
+- Existing CLI/bootstrap events may continue with request_id = NULL.
+
+3. Audit repository read boundary
+- Keep the existing insert boundary.
+- Add read-only methods needed for:
+  - paginated audit-event listing;
+  - audit-event detail by UUID;
+  - bounded export query.
+- Use parameterized SQL.
+- Use deterministic newest-first ordering.
+- Apply safe maximum page/export limits.
+
+4. Audit review service
+- Add typed validation/normalization for supported filters.
+- Initial filters may include action, outcome, branch UUID, actor application-user UUID, target type, date/time range, and bounded limit.
+- Invalid UUID/date/filter inputs must fail before PostgreSQL access.
+- Do not expose provider secrets or hidden database details in errors.
+
+5. Protected HTTP routes
+Implement the documented V2 route surface:
+- GET /api/audit-events
+- GET /api/audit-events/:auditEventId
+- POST /api/audit-events/export
+
+Requirements:
+- Authenticate first.
+- Resolve active application user.
+- Resolve authorization.
+- list/detail require audit.read.
+- export requires audit.export.
+- Clinic Administrator owner account may access through its CLINIC_ADMINISTRATOR role.
+- DENTIST alone, PERSONNEL, PATIENT, and SYSTEM_ADMINISTRATOR must be denied by default.
+
+6. Audit the audit trail
+- Successful list/detail review must append AUDIT_LOG_VIEWED.
+- Successful export must append AUDIT_LOG_EXPORTED.
+- These events must record trusted actor IDs and request ID.
+- Metadata must be minimal, e.g. view type, bounded result count, and safe filter names/values where appropriate.
+- Audit viewing/export events themselves remain append-only.
+- The event being written for a list view should not mutate or rewrite the already-returned audit history.
+
+7. Export behavior
+- Produce a bounded server-generated CSV response for authorized Clinic Administrator use.
+- Include only audit fields approved for the complete clinic audit view.
+- Do not export passwords, tokens, secrets, connection strings, or raw authorization data.
+- Do not introduce private object storage dependency in Phase 09.
+
+8. Selected authorization-denial audit coverage
+- Add best-effort AUTHORIZATION_DENIED auditing only where a valid authenticated application user has already been resolved and a sensitive permission check is denied.
+- Include permission code, safe branch context when relevant, and request ID.
+- Failure to write this secondary audit event must never replace the original 403 denial.
+- Do not audit malformed/invalid bearer-token contents into PostgreSQL.
+
+9. Tests
+Add focused tests proving:
+- migration 0009 ordering/checksum;
+- request ID generation and response header;
+- audit.read/audit.export role grants;
+- Clinic Administrator list/detail/export success;
+- Dentist-only, Personnel, Patient, and System Administrator denial;
+- list/detail/export input validation;
+- AUDIT_LOG_VIEWED and AUDIT_LOG_EXPORTED events;
+- request ID persisted for HTTP-generated events;
+- authorization-denial audit is best-effort and does not replace the primary 403;
+- append-only UPDATE/DELETE protection still holds;
+- forbidden metadata remains rejected;
+- CSV export is bounded and excludes secret-shaped values.
+
+10. Documentation
+- Update README Section 9/Phase 7 status where needed without claiming domain coverage that is not implemented.
+- Update README Section 27 phase registry.
+- Update docs/architecture/audit-foundation.md or create a focused Phase 09 audit-review architecture note.
+- Update docs/architecture/v2-migration-map.md.
+- Keep docs/codex-prompts/09-Audit-Trail.txt synchronized with README.
+
+EXPLICITLY DEFERRED / OUT OF SCOPE
+- Do not claim LOGIN_SUCCEEDED or LOGIN_FAILED from Express while login occurs directly browser -> Supabase.
+- Do not claim PASSWORD_CHANGED or PASSWORD_RESET_REQUESTED unless the backend/provider integration can truthfully observe those events.
+- Do not move password submission through the Dental System backend merely to create an audit event.
+- Patient/Treatment/Appointment audit events remain with the protected V2 route cutover slices that perform those actions.
+- Attachment audit events remain with Private Storage.
+- Finance audit events remain with Finance / Collectibles.
+- Backup/restore audit events remain with Backup / Recovery.
+- MFA audit events remain with the privileged-auth/MFA implementation.
+- No audit UI/dashboard in this phase beyond the API foundation.
+- No Git commit, push, merge, rebase, or reset unless explicitly requested after validation.
+
+VALIDATION
+Run at minimum:
+- git diff --check
+- npm run typecheck
+- npm run test:audit
+- npm run test:authorization
+- npm run test:postgres:access
+- npm run test:postgres:foundation
+- relevant route tests
+- client build
+- npm run db:migrate:status
+- apply migration 0009 only after reviewing the migration and confirming the development Supabase target
+
+LIVE DATABASE RULE
+The development Supabase database already has migrations 0001–0008 applied.
+Phase 09 must add migration 0009; never modify or re-run altered copies of 0001–0008.

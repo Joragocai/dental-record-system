@@ -20,6 +20,7 @@ export interface InvitePendingStaffInput {
   targetUserId: string;
   actorUserId: string;
   actorAuthUserId: string;
+  requestId?: string;
 }
 
 export interface InvitePendingStaffResult {
@@ -31,6 +32,7 @@ export interface InvitePendingStaffResult {
 export interface ActivateInvitedStaffInput {
   authUserId: string;
   email: string | null;
+  requestId?: string;
 }
 
 export interface StaffProvisioningService {
@@ -87,12 +89,19 @@ export function createStaffProvisioningService(
     actorUserId: string,
     actorAuthUserId: string,
     targetUserId: string,
-    reasonCode: string
+    reasonCode: string,
+    requestId?: string
   ): Promise<void> {
     try {
       await pool.withTransaction(async (executor) => {
         const auditService = createAuditEventService(createAuditEventRepository(executor));
-        await auditService.recordStaffUserInviteFailed({ actorUserId, actorAuthUserId, targetUserId, reasonCode });
+        await auditService.recordStaffUserInviteFailed({
+          actorUserId,
+          actorAuthUserId,
+          targetUserId,
+          reasonCode,
+          requestId
+        });
       });
     } catch {
       // Never replace the primary provisioning failure with an audit write failure.
@@ -132,7 +141,8 @@ export function createStaffProvisioningService(
           actorUserId,
           actorAuthUserId,
           targetUserId,
-          safeError.code === "STAFF_PROVISIONING_PROVIDER_CONFLICT" ? "PROVIDER_CONFLICT" : "PROVIDER_UNAVAILABLE"
+          safeError.code === "STAFF_PROVISIONING_PROVIDER_CONFLICT" ? "PROVIDER_CONFLICT" : "PROVIDER_UNAVAILABLE",
+          input.requestId
         );
         throw safeError;
       }
@@ -144,7 +154,12 @@ export function createStaffProvisioningService(
           if (!linked) throw new StaffProvisioningError("STAFF_PROVISIONING_TARGET_NOT_PENDING");
 
           const auditService = createAuditEventService(createAuditEventRepository(executor));
-          await auditService.recordStaffUserInvited({ actorUserId, actorAuthUserId, targetUserId });
+          await auditService.recordStaffUserInvited({
+            actorUserId,
+            actorAuthUserId,
+            targetUserId,
+            requestId: input.requestId
+          });
         });
       } catch (error) {
         const cleanedUp = await provider.deleteUser(providerUserId);
@@ -152,7 +167,8 @@ export function createStaffProvisioningService(
           actorUserId,
           actorAuthUserId,
           targetUserId,
-          cleanedUp ? "DATABASE_LINK_FAILED_CLEANED_UP" : "RECONCILIATION_REQUIRED"
+          cleanedUp ? "DATABASE_LINK_FAILED_CLEANED_UP" : "RECONCILIATION_REQUIRED",
+          input.requestId
         );
         if (!cleanedUp) {
           throw new StaffProvisioningError("STAFF_PROVISIONING_RECONCILIATION_REQUIRED");
@@ -191,7 +207,8 @@ export function createStaffProvisioningService(
           await auditService.recordStaffUserActivated({
             actorUserId: target.id,
             actorAuthUserId: authUserId,
-            targetUserId: target.id
+            targetUserId: target.id,
+            requestId: input.requestId
           });
         });
       } catch (error) {

@@ -20,7 +20,7 @@
     "bootstrap:owner": "node --env-file=.env --import tsx src/bootstrap/initialOwnerBootstrapCli.ts",
     "bootstrap:owner:resend": "node --env-file=.env --import tsx src/bootstrap/initialOwnerInvitationResendCli.ts",
     "bootstrap:owner:status": "node --env-file=.env --import tsx src/bootstrap/initialOwnerStatusCli.ts",
-    "test:audit": "node --import tsx --test \"src/audit/*.pgtest.ts\" \"src/postgres/access/auditIntegration.pgtest.ts\"",
+    "test:audit": "node --import tsx --test \"src/audit/*.pgtest.ts\" \"src/postgres/access/audit*Integration.pgtest.ts\" \"src/routes/auditEvents.test.js\"",
     "test:auth": "node --import tsx --test \"src/auth/*.pgtest.ts\" \"src/access/accessMiddleware.pgtest.ts\" \"src/routes/auth.test.js\" \"src/routes/staffAccounts.test.js\"",
     "start": "node --env-file=.env src/index.js"
   },

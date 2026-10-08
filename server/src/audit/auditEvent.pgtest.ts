@@ -3,7 +3,12 @@ import test from "node:test";
 import type { QueryResult, QueryResultRow } from "pg";
 import type { PgQueryExecutor } from "../postgres/pool.js";
 import { createAuditEventRepository, type AuditEventRecord } from "../repositories/auditEventRepository.js";
-import { AuditEventError, assertAuditMetadataSafe, createAuditEventService } from "../services/auditEventService.js";
+import {
+  AuditEventError,
+  assertAuditMetadataSafe,
+  createAuditEventService,
+  redactAuditMetadata
+} from "../services/auditEventService.js";
 
 const actorUserId = "11111111-1111-4111-8111-111111111111";
 const actorAuthUserId = "22222222-2222-4222-8222-222222222222";
@@ -55,8 +60,30 @@ test("audit service records safe deterministic staff-account creation metadata",
       branchIds: [branchA],
       status: "pending"
     },
-    occurredAt: "2026-09-06T07:00:00.000Z"
+    occurredAt: "2026-09-06T07:00:00.000Z",
+    requestId: null
   }]);
+});
+
+test("HTTP-backed staff audit events persist trusted request correlation when supplied", async () => {
+  const inserted: AuditEventRecord[] = [];
+  const requestId = "66666666-6666-4666-8666-666666666666";
+  const service = createAuditEventService(
+    { async insert(event) { inserted.push(event); } },
+    {
+      createId: () => auditId,
+      now: () => new Date("2026-09-06T07:00:00.000Z")
+    }
+  );
+
+  await service.recordStaffUserInvited({
+    actorUserId,
+    actorAuthUserId,
+    targetUserId,
+    requestId
+  });
+
+  assert.equal(inserted[0]?.requestId, requestId);
 });
 
 test("audit metadata safety rejects secret-shaped keys and obvious credential values recursively", () => {
@@ -64,8 +91,13 @@ test("audit metadata safety rejects secret-shaped keys and obvious credential va
     { password: "example" },
     { nested: { refreshToken: "example" } },
     { nested: [{ service_role: "example" }] },
+    { apiKey: "example" },
+    { nested: { credential: "example" } },
+    { privateKey: "example" },
     { value: "Bearer abc.def.ghi" },
     { value: "postgresql://user:password@localhost/db" },
+    { value: "sb_secret_example" },
+    { value: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature123" },
     { authorizationHeader: "anything" },
     { cookie: "session=value" }
   ];
@@ -79,6 +111,31 @@ test("audit metadata safety rejects secret-shaped keys and obvious credential va
     branchIds: [branchA],
     status: "pending"
   }));
+});
+
+test("audit metadata redaction recursively preserves safe values and removes secret-shaped content", () => {
+  const redacted = redactAuditMetadata({
+    status: "pending",
+    nested: {
+      apiKey: "should-not-leak",
+      credential: "should-not-leak-either",
+      safeNote: "allowed"
+    },
+    values: [
+      "safe",
+      "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature123"
+    ]
+  });
+
+  assert.deepEqual(redacted, {
+    status: "pending",
+    nested: {
+      apiKey: "[REDACTED]",
+      credential: "[REDACTED]",
+      safeNote: "allowed"
+    },
+    values: ["safe", "[REDACTED]"]
+  });
 });
 
 test("audit repository uses one parameterized insert and serializes metadata without SQL interpolation", async () => {
@@ -102,7 +159,7 @@ test("audit repository uses one parameterized insert and serializes metadata wit
   assert.equal(executor.queries.length, 1);
   const query = executor.queries[0]!;
   assert.match(query.text, /INSERT INTO audit_events/);
-  for (let index = 1; index <= 10; index += 1) {
+  for (let index = 1; index <= 11; index += 1) {
     assert.match(query.text, new RegExp(`\\$${index}`));
   }
   assert.deepEqual(query.values.slice(0, 8), [
@@ -117,5 +174,6 @@ test("audit repository uses one parameterized insert and serializes metadata wit
   ]);
   assert.equal(typeof query.values[8], "string");
   assert.equal(query.values[9], "2026-09-06T07:00:00.000Z");
+  assert.equal(query.values[10], null);
   assert.doesNotMatch(query.text, /PERSONNEL|Bearer|postgresql:\/\//i);
 });

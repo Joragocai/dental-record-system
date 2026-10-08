@@ -10,6 +10,8 @@ export const permissionCodes = [
   "staff_account.create",
   "role_assignment.approve",
   "role_definition.configure",
+  "audit.read",
+  "audit.export",
   "patient.list",
   "patient.read",
   "patient.create",

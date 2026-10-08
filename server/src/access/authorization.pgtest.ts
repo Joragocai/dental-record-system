@@ -36,6 +36,8 @@ const grantsByRole: Record<ApplicationRoleCode, PermissionGrant[]> = {
     { code: "treatment.read", scope: "BRANCH" }
   ],
   CLINIC_ADMINISTRATOR: [
+    { code: "audit.export", scope: "GLOBAL" },
+    { code: "audit.read", scope: "GLOBAL" },
     { code: "role_assignment.approve", scope: "GLOBAL" },
     { code: "staff_account.create", scope: "GLOBAL" },
     { code: "user.read", scope: "GLOBAL" }
@@ -80,6 +82,8 @@ test("AuthorizationService combines owner-dentist permissions from separate role
 
   service.requireBranchPermission(context, "treatment.finalize", branchA);
   service.requirePermission(context, "staff_account.create");
+  service.requirePermission(context, "audit.read");
+  service.requirePermission(context, "audit.export");
   assert.equal(context.permissions.some((grant) => grant.code === "treatment.internal_notes.read"), true);
   assert.equal(context.permissions.some((grant) => grant.code === "role_assignment.approve"), true);
 });
@@ -108,17 +112,37 @@ test("Clinic Administrator role alone has no patient or clinical permission", as
   );
 });
 
-test("System Administrator remains technical and cannot read patient or clinical records", async () => {
+test("System Administrator remains technical and cannot read patient, clinical, or complete audit records", async () => {
   const service = createAuthorizationService(createFakeAuthorizationRepository());
   const context = await service.resolveContext(buildApplicationUser(["SYSTEM_ADMINISTRATOR"]));
 
   service.requirePermission(context, "role_definition.configure");
+  assert.throws(() => service.requirePermission(context, "audit.read"), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
+  assert.throws(() => service.requirePermission(context, "audit.export"), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
   assert.throws(() => service.requireBranchPermission(context, "patient.read", branchA), (error) =>
     assertAuthorizationError(error, "AUTHORIZATION_DENIED")
   );
   assert.throws(() => service.requireBranchPermission(context, "treatment.read", branchA), (error) =>
     assertAuthorizationError(error, "AUTHORIZATION_DENIED")
   );
+});
+
+test("Dentist-only, Personnel, and Patient roles are denied complete audit review and export", async () => {
+  const service = createAuthorizationService(createFakeAuthorizationRepository());
+
+  for (const role of ["DENTIST", "PERSONNEL", "PATIENT"] as const) {
+    const context = await service.resolveContext(buildApplicationUser([role]));
+    assert.throws(() => service.requirePermission(context, "audit.read"), (error) =>
+      assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+    );
+    assert.throws(() => service.requirePermission(context, "audit.export"), (error) =>
+      assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+    );
+  }
 });
 
 test("AuthorizationService denies by default when an active user has no roles", async () => {

@@ -2,12 +2,15 @@ import { buildPgFoundationConfig } from "../postgres/config.js";
 import { createPgPoolManager, type PgPoolManager } from "../postgres/pool.js";
 import { createApplicationUserRepository } from "../repositories/applicationUserRepository.js";
 import { createAuthorizationRepository } from "../repositories/authorizationRepository.js";
+import { createAuditEventRepository } from "../repositories/auditEventRepository.js";
 import { createApplicationUserService, type ApplicationUserService } from "../services/applicationUserService.js";
 import { createAuthorizationService, type AuthorizationService } from "../services/authorizationService.js";
+import { createAuditEventService, type AuditEventService } from "../services/auditEventService.js";
 
 export interface AccessRuntimeServices {
   applicationUserService: ApplicationUserService;
   authorizationService: AuthorizationService;
+  auditEventService?: AuditEventService;
 }
 
 export interface AccessRuntime {
@@ -29,7 +32,8 @@ export function createAccessRuntime(): AccessRuntime {
 
     services = {
       applicationUserService: createApplicationUserService(applicationUserRepository),
-      authorizationService: createAuthorizationService(authorizationRepository)
+      authorizationService: createAuthorizationService(authorizationRepository),
+      auditEventService: createAuditEventService(createAuditEventRepository(pool))
     };
 
     return services;

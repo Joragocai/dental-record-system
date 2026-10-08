@@ -4,10 +4,14 @@ import test from "node:test";
 import express from "express";
 import { AuthenticationError } from "../auth/authErrors.ts";
 import { AuthorizationError } from "../services/authorizationErrors.ts";
+import { createRequestIdMiddleware } from "../middleware/requestId.ts";
 import { createStaffAccountsRouter } from "./staffAccounts.js";
+
+const requestId = "99999999-9999-4999-8999-999999999999";
 
 async function withServer({ authenticationService, accessBoundary, staffAccountRuntime, staffProvisioningRuntime }, callback) {
   const app = express();
+  app.use(createRequestIdMiddleware({ createId: () => requestId }));
   app.use(express.json());
   app.use("/api/staff-accounts", createStaffAccountsRouter(authenticationService, accessBoundary, staffAccountRuntime, staffProvisioningRuntime));
   app.use((error, _req, res, _next) => {
@@ -161,6 +165,7 @@ test("POST /api/staff-accounts/:userId/invite requires both provisioning permiss
     "permission:role_assignment.approve"
   ]);
   assert.equal(received.targetUserId, targetId);
+  assert.equal(received.requestId, requestId);
 });
 
 test("POST /api/staff-accounts/activate uses authenticated provider identity without active-user middleware", async () => {
@@ -192,7 +197,8 @@ test("POST /api/staff-accounts/activate uses authenticated provider identity wit
   assert.deepEqual(accessCalls, []);
   assert.deepEqual(received, {
     authUserId: "22222222-2222-4222-8222-222222222222",
-    email: "admin@example.test"
+    email: "admin@example.test",
+    requestId
   });
 });
 
@@ -239,7 +245,8 @@ test("POST /api/staff-accounts returns only the safe pending staff summary", asy
     assert.deepEqual(receivedBody, body);
     assert.deepEqual(receivedActor, {
       userId: "11111111-1111-4111-8111-111111111111",
-      authUserId: "22222222-2222-4222-8222-222222222222"
+      authUserId: "22222222-2222-4222-8222-222222222222",
+      requestId
     });
     assert.equal("authUserId" in responseBody, false);
     assert.equal("password" in responseBody, false);

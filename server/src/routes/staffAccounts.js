@@ -26,7 +26,8 @@ export function createStaffAccountsRouter(
         const result = await staffProvisioningRuntime.getService().invitePendingStaff({
           targetUserId: req.params.userId,
           actorUserId: applicationUser.userId,
-          actorAuthUserId: applicationUser.authUserId
+          actorAuthUserId: applicationUser.authUserId,
+          requestId: res.locals.requestId
         });
         res.status(result.invitation === "sent" ? 202 : 200).json(result);
       } catch (error) {
@@ -43,7 +44,8 @@ export function createStaffAccountsRouter(
         const principal = res.locals.auth;
         const result = await staffProvisioningRuntime.getService().activateInvitedStaff({
           authUserId: principal.subject,
-          email: principal.email
+          email: principal.email,
+          requestId: res.locals.requestId
         });
         res.json(result);
       } catch (error) {
@@ -64,7 +66,8 @@ export function createStaffAccountsRouter(
         const applicationUser = res.locals.applicationUser;
         const created = await staffAccountRuntime.getService().createPendingStaffAccount(req.body ?? {}, {
           userId: applicationUser.userId,
-          authUserId: applicationUser.authUserId
+          authUserId: applicationUser.authUserId,
+          requestId: res.locals.requestId
         });
         res.status(201).json(created);
       } catch (error) {

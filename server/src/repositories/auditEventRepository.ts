@@ -13,6 +13,7 @@ export interface AuditEventRecord {
   outcome: AuditOutcome;
   metadata: Record<string, unknown>;
   occurredAt: string;
+  requestId?: string | null;
 }
 
 export interface AuditEventRepository {
@@ -25,8 +26,8 @@ export function createAuditEventRepository(executor: PgQueryExecutor): AuditEven
       await executor.query(
         `INSERT INTO audit_events (
            id, actor_user_id, actor_auth_user_id, action, target_type,
-           target_id, branch_id, outcome, metadata, occurred_at
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)`,
+           target_id, branch_id, outcome, metadata, occurred_at, request_id
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11)`,
         [
           event.id,
           event.actorUserId,
@@ -37,7 +38,8 @@ export function createAuditEventRepository(executor: PgQueryExecutor): AuditEven
           event.branchId,
           event.outcome,
           JSON.stringify(event.metadata),
-          event.occurredAt
+          event.occurredAt,
+          event.requestId ?? null
         ]
       );
     }

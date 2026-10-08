@@ -3049,13 +3049,14 @@ This section is the high-level product roadmap. The exact implementation task ID
 ### Phase 7: Audit Trail
 
 - Create `audit_events` table.
-- Add request IDs.
+- Add request IDs and correlate backend-observed HTTP audit events.
 - Add centralized audit service.
-- Audit authentication events.
-- Audit patient and treatment access.
-- Audit payments, expenses, uploads, exports, and role changes.
+- Add Clinic Administrator-only complete audit review/export APIs.
+- Audit audit-trail viewing/export and selected authenticated authorization denials.
 - Protect audit log from modification.
-- Audit account approvals, technical provisioning, support access, backup approval, and restore execution.
+- Audit backend-observed account approvals and technical provisioning events as those workflows are implemented.
+- Defer browser-to-Supabase login/password audit claims until the Dental System backend can truthfully observe those provider events.
+- Defer Patient/Treatment/Appointment, attachment, finance, backup/restore, and MFA audit coverage to their protected V2 implementation phases.
 
 ### Phase 8: Private Attachments and Camera Capture
 
@@ -3376,16 +3377,16 @@ This is the task-level execution sequence for the V2 migration. It is the README
 | 08I | Supabase Staff Provisioning and Activation | Completed and committed. |
 | 08J | Initial Owner / Dentist Bootstrap | Completed. Real Supabase invitation/recovery activation, password login, PostgreSQL activation state, exact owner roles, LILAC branch assignment, audit events, linked Supabase identity, and one-time bootstrap-disable condition were validated in the development environment. |
 | 08K | Clinic / Branch Operating Model Foundation | Completed. Flexible user branch memberships, clinic-wide patient identity semantics, explicit treatment branch context, initial branch bootstrap, and migration 0008 were validated against the development Supabase PostgreSQL database. |
+| 09 | Audit Trail Expansion / Review Foundation | Completed. Request correlation, Clinic Administrator-only audit review/export, audit-of-audit-access, selected authorization-denial coverage, CSV formula-injection protection, defensive metadata redaction, and migration 0009 are implemented and validated. Development Supabase confirms migrations 0001–0009 are applied. |
 
-The older empty umbrella markers `07-Authentication.txt` and `08-Authorization-RBAC.txt` are retained only as historical planning placeholders. The implemented work is represented by the detailed 07A–07C and 08A–08K task specifications above.
+The older empty umbrella markers `07-Authentication.txt` and `08-Authorization-RBAC.txt` are retained only as historical planning placeholders. The implemented work is represented by the detailed 07A–07C, 08A–08K, and 09 task specifications above.
 
 ### Planned Task Phases
 
-The following files currently exist as empty planning placeholders under `docs/codex-prompts/`. They define the intended sequence only; their detailed scope must be written, reviewed against the current codebase, and approved before implementation.
+Phase 09 is complete for its approved scope under `docs/codex-prompts/09-Audit-Trail.txt`. The later phase files remain planning placeholders; their detailed scope must be written, reviewed against the current codebase, and approved before implementation.
 
 | Task ID | Planned Task |
 | --- | --- |
-| 09 | Audit Trail — remaining audit coverage beyond the existing 08H foundation |
 | 10 | Private Storage |
 | 11 | Early Staging |
 | 12 | Appointment Redesign |
@@ -3399,7 +3400,7 @@ The following files currently exist as empty planning placeholders under `docs/c
 | 20 | User Acceptance Testing |
 | 21 | Production Readiness |
 
-Before starting any planned phase, compare its intended scope with completed subphases so already-built foundations are not duplicated. For example, Phase 09 must build on the existing 08H append-only audit foundation rather than recreate it.
+Before starting any planned phase, compare its intended scope with completed subphases so already-built foundations are not duplicated. Phase 10 must build on the existing authentication, authorization, request-correlation, and append-only audit foundations rather than recreate them.
 
 Do not combine PostgreSQL, authentication, storage, finance, or broad TypeScript migration into one task. Keep each approved phase reviewable and protected by the regression-test baseline.
 

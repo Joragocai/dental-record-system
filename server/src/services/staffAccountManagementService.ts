@@ -32,6 +32,7 @@ export interface PendingStaffAccountSummary {
 export interface StaffAccountActor {
   userId: string;
   authUserId: string;
+  requestId?: string;
 }
 
 export interface StaffAccountManagementService {
@@ -156,7 +157,8 @@ export function createStaffAccountManagementService(
             actorAuthUserId: actor.authUserId,
             targetUserId: id,
             roles,
-            branchIds
+            branchIds,
+            requestId: actor.requestId
           });
 
           return {

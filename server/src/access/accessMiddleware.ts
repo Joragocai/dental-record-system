@@ -10,6 +10,7 @@ export interface AccessLocals {
   auth?: AuthenticatedPrincipal;
   applicationUser?: ApplicationUserContext;
   authorization?: AuthorizationContext;
+  requestId?: string;
 }
 
 export interface AccessRequestLike {
@@ -44,12 +45,12 @@ export interface AccessBoundary {
     req: AccessRequestLike,
     res: AccessResponseLike,
     next: AccessNextFunction
-  ) => void;
+  ) => Promise<void>;
   requireBranchPermission(permission: PermissionCode, extractBranchId: BranchIdExtractor): (
     req: AccessRequestLike,
     res: AccessResponseLike,
     next: AccessNextFunction
-  ) => void;
+  ) => Promise<void>;
 }
 
 function createHttpAccessError(status: number, code: string, message: string): HttpAccessError {
@@ -113,6 +114,35 @@ function requireAuthorizationContext(res: AccessResponseLike): AuthorizationCont
   return authorization;
 }
 
+async function recordAuthorizationDeniedBestEffort(
+  services: AccessRuntimeServices,
+  res: AccessResponseLike,
+  permission: PermissionCode,
+  branchId: string | null
+): Promise<void> {
+  const auditEventService = services.auditEventService;
+  const applicationUser = res.locals.applicationUser;
+  const requestId = res.locals.requestId;
+  if (!auditEventService || !applicationUser || !requestId) return;
+
+  try {
+    await auditEventService.recordAuthorizationDenied({
+      actorUserId: applicationUser.userId,
+      actorAuthUserId: applicationUser.authUserId,
+      requestId,
+      permission,
+      branchId
+    });
+  } catch {
+    // Preserve the original authorization denial even if secondary audit persistence fails.
+  }
+}
+
+function shouldAuditAuthorizationDenial(error: unknown): boolean {
+  return error instanceof AuthorizationError &&
+    (error.code === "AUTHORIZATION_DENIED" || error.code === "AUTHORIZATION_OWNERSHIP_NOT_IMPLEMENTED");
+}
+
 export function createAccessBoundary(options: {
   runtime?: AccessRuntime;
   getServices?: () => AccessRuntimeServices;
@@ -152,13 +182,16 @@ export function createAccessBoundary(options: {
     },
 
     requirePermission(permission) {
-      return (_req, res, next) => {
+      return async (_req, res, next) => {
         try {
           const authorization = requireAuthorizationContext(res);
-          const { authorizationService } = getServices();
-          authorizationService.requirePermission(authorization, permission);
+          const services = getServices();
+          services.authorizationService.requirePermission(authorization, permission);
           next();
         } catch (error) {
+          if (shouldAuditAuthorizationDenial(error)) {
+            await recordAuthorizationDeniedBestEffort(getServices(), res, permission, null);
+          }
           if (error instanceof Error && "status" in error) {
             next(error);
             return;
@@ -169,14 +202,18 @@ export function createAccessBoundary(options: {
     },
 
     requireBranchPermission(permission, extractBranchId) {
-      return (req, res, next) => {
+      return async (req, res, next) => {
+        let branchId: string | null = null;
         try {
           const authorization = requireAuthorizationContext(res);
-          const branchId = extractBranchId(req);
-          const { authorizationService } = getServices();
-          authorizationService.requireBranchPermission(authorization, permission, branchId);
+          branchId = extractBranchId(req);
+          const services = getServices();
+          services.authorizationService.requireBranchPermission(authorization, permission, branchId);
           next();
         } catch (error) {
+          if (shouldAuditAuthorizationDenial(error)) {
+            await recordAuthorizationDeniedBestEffort(getServices(), res, permission, branchId);
+          }
           if (error instanceof Error && "status" in error) {
             next(error);
             return;
