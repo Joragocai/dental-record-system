@@ -15,6 +15,9 @@ export function RuntimeStatusProvider({ children }) {
   });
 
   useEffect(() => {
+    // The hosted application has no legacy SQLite runtime/status endpoint.
+    if (import.meta.env.PROD) return undefined;
+
     let isMounted = true;
 
     async function loadRuntimeStatus() {

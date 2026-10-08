@@ -1,19 +1,29 @@
 import app from "./app.js";
-import runtimeConfig, { logRuntimeConfiguration } from "./config/runtimeConfig.js";
-import { initializeDatabase } from "./db/database.js";
-import { startAutomaticBackupScheduler } from "./services/backupService.js";
+import { isHostedEnvironment, validateHostedConfiguration } from "./config/hostedSafety.js";
 
-const port = 3002;
+const staging = isHostedEnvironment();
+validateHostedConfiguration();
+const port = Number(process.env.PORT || 3002);
+const host = process.env.HOST || (staging ? "0.0.0.0" : "127.0.0.1");
 
-initializeDatabase();
-logRuntimeConfiguration();
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error("PORT must be a valid TCP port.");
+}
 
-app.listen(port, "127.0.0.1", () => {
-  console.log(`Dental server running at http://127.0.0.1:${port}`);
-  if (runtimeConfig.autoBackupEnabled) {
-    console.log("[backup] Automatic weekly backup due-check is enabled.");
-  } else {
-    console.log("[backup] Automatic weekly backup due-check is disabled.");
-  }
-  startAutomaticBackupScheduler();
+let startAutomaticBackupScheduler = null;
+if (!staging) {
+  const [{ default: runtimeConfig, logRuntimeConfiguration }, { initializeDatabase }, backupService] = await Promise.all([
+    import("./config/runtimeConfig.js"),
+    import("./db/database.js"),
+    import("./services/backupService.js")
+  ]);
+  initializeDatabase();
+  logRuntimeConfiguration();
+  startAutomaticBackupScheduler = backupService.startAutomaticBackupScheduler;
+  console.log(`[backup] Automatic weekly backup due-check is ${runtimeConfig.autoBackupEnabled ? "enabled" : "disabled"}.`);
+}
+
+app.listen(port, host, () => {
+  console.log(`Dental server listening on ${host}:${port}`);
+  startAutomaticBackupScheduler?.();
 });

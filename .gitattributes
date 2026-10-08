@@ -1,5 +1,6 @@
 README.md whitespace=cr-at-eol
 package.json whitespace=cr-at-eol
+package-lock.json whitespace=cr-at-eol
 server/package.json whitespace=cr-at-eol
 client/src/lib/api.js whitespace=cr-at-eol
 client/src/components/AttachmentUploadForm.jsx whitespace=cr-at-eol

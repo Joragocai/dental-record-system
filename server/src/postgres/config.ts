@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { PoolConfig } from "pg";
 
 export type PgAppEnv = "local" | "test" | "staging" | "production";
@@ -21,6 +22,7 @@ export interface PgFoundationConfig extends PgConnectionSummary {
   statementTimeoutMs: number;
   applicationName: string;
   allowProductionCommands: boolean;
+  sslCaFile?: string | null;
 }
 
 const allowedAppEnvs: readonly PgAppEnv[] = ["local", "test", "staging", "production"];
@@ -157,6 +159,10 @@ export function buildPgFoundationConfig(env: NodeJS.ProcessEnv = process.env): P
   );
   const parsedDatabaseUrl = parsePostgresUrl(env.DATABASE_URL, "DATABASE_URL");
   const parsedTestUrl = env.TEST_DATABASE_URL ? parsePostgresUrl(env.TEST_DATABASE_URL, "TEST_DATABASE_URL") : null;
+  const sslCaFile = String(env.DATABASE_SSL_CA_FILE ?? "").trim() || null;
+  if (sslCaFile && sslMode !== "require") {
+    throw new Error("DATABASE_SSL_CA_FILE requires DATABASE_SSL_MODE=require.");
+  }
 
   return {
     ...summarizeDatabaseUrl(parsedDatabaseUrl.toString(), sslMode, appEnv),
@@ -171,7 +177,8 @@ export function buildPgFoundationConfig(env: NodeJS.ProcessEnv = process.env): P
     ),
     statementTimeoutMs: parsePositiveInteger(env.PGSTATEMENT_TIMEOUT_MS, 15_000, "PGSTATEMENT_TIMEOUT_MS"),
     applicationName: String(env.PGAPP_NAME || "dental-record-system-v2-foundation").trim(),
-    allowProductionCommands: parseBooleanValue(env.ALLOW_PRODUCTION_DB_COMMANDS, false)
+    allowProductionCommands: parseBooleanValue(env.ALLOW_PRODUCTION_DB_COMMANDS, false),
+    sslCaFile
   };
 }
 
@@ -186,10 +193,22 @@ export function buildPgPoolConfig(config: PgFoundationConfig): PoolConfig {
   };
 
   if (config.sslMode === "require") {
+    let ca: string | undefined;
+    if (config.sslCaFile) {
+      try {
+        ca = readFileSync(config.sslCaFile, "utf8");
+      } catch {
+        throw new Error("DATABASE_SSL_CA_FILE cannot be read. Check the configured certificate path.");
+      }
+      if (!/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/.test(ca)) {
+        throw new Error("DATABASE_SSL_CA_FILE must contain a PEM-encoded CA certificate.");
+      }
+    }
     return {
       ...baseConfig,
       ssl: {
-        rejectUnauthorized: true
+        rejectUnauthorized: true,
+        ...(ca === undefined ? {} : { ca })
       }
     };
   }

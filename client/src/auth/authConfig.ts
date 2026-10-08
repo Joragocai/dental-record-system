@@ -19,7 +19,8 @@ export function readBrowserAuthenticationConfig(
 ): BrowserAuthenticationConfigResult {
   const supabaseUrl = String(env.VITE_SUPABASE_URL ?? "").trim();
   const publishableKey = String(env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
-  const apiBaseUrl = trimTrailingSlash(String(env.VITE_API_BASE_URL ?? "http://127.0.0.1:3002/api").trim());
+  const isHosted = env.VITE_APP_ENV === "staging" || env.VITE_APP_ENV === "production" || import.meta.env?.PROD === true;
+  const apiBaseUrl = trimTrailingSlash(String(env.VITE_API_BASE_URL ?? (isHosted ? "" : "http://127.0.0.1:3002/api")).trim());
 
   if (!supabaseUrl || !publishableKey) {
     return {
@@ -39,6 +40,17 @@ export function readBrowserAuthenticationConfig(
   const isLoopback = parsedUrl.hostname === "localhost" || parsedUrl.hostname === "127.0.0.1";
   if (parsedUrl.protocol !== "https:" && !(parsedUrl.protocol === "http:" && isLoopback)) {
     return { configured: false, config: null, reason: "Browser authentication configuration is invalid." };
+  }
+
+  if (isHosted) {
+    try {
+      const apiUrl = new URL(apiBaseUrl);
+      if (apiUrl.protocol !== "https:" || apiUrl.username || apiUrl.password || apiUrl.search || apiUrl.hash || !apiUrl.pathname.endsWith("/api")) {
+        throw new Error("Invalid staging API URL.");
+      }
+    } catch {
+      return { configured: false, config: null, reason: "Hosted authentication requires a valid HTTPS VITE_API_BASE_URL ending in /api." };
+    }
   }
 
   return {

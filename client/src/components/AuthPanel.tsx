@@ -23,7 +23,9 @@ export default function AuthPanel({
         {children}
         {footer ? <div className="mt-6 border-t border-slate-200 pt-5 text-sm text-slate-600">{footer}</div> : null}
         <div className="mt-6 text-center text-xs text-slate-400">
-          <Link to="/" className="hover:text-slate-600">Return to current local system</Link>
+          <Link to={import.meta.env.DEV ? "/" : "/login"} className="hover:text-slate-600">
+            {import.meta.env.DEV ? "Return to local clinic workspace" : "Return to sign in"}
+          </Link>
         </div>
       </section>
     </main>

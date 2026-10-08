@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 import {
   assertPgMutationAllowed,
@@ -45,6 +48,43 @@ test("buildPgFoundationConfig defaults staging and production SSL mode to requir
   assert.equal(config.sslMode, "require");
   const poolConfig = buildPgPoolConfig(config);
   assert.deepEqual(poolConfig.ssl, { rejectUnauthorized: true });
+});
+
+test("verified SSL uses a provided Supabase CA certificate without disabling verification", () => {
+  const tempDir = mkdtempSync(path.join(tmpdir(), "dental-staging-ca-"));
+  const certificatePath = path.join(tempDir, "staging-ca.crt");
+  const fakeCertificate = "-----BEGIN CERTIFICATE-----\nZmljdGlvbmFs\n-----END CERTIFICATE-----\n";
+  try {
+    writeFileSync(certificatePath, fakeCertificate, "utf8");
+    const config = buildPgFoundationConfig({
+      DENTAL_SERVER_ENV: "staging",
+      DATABASE_URL: "postgresql://postgres:fictional@db.staging.example.test:5432/postgres",
+      DATABASE_SSL_MODE: "require",
+      DATABASE_SSL_CA_FILE: certificatePath
+    });
+
+    assert.equal(config.sslCaFile, certificatePath);
+    assert.deepEqual(buildPgPoolConfig(config).ssl, {
+      rejectUnauthorized: true,
+      ca: fakeCertificate
+    });
+    assert.throws(
+      () => buildPgFoundationConfig({
+        DATABASE_URL: "postgresql://postgres:fictional@localhost:5432/postgres",
+        DATABASE_SSL_MODE: "no-verify",
+        DATABASE_SSL_CA_FILE: certificatePath
+      }),
+      /requires DATABASE_SSL_MODE=require/
+    );
+
+    writeFileSync(certificatePath, "not a certificate", "utf8");
+    assert.throws(() => buildPgPoolConfig(config), /PEM-encoded CA certificate/);
+
+    rmSync(certificatePath);
+    assert.throws(() => buildPgPoolConfig(config), /cannot be read/);
+  } finally {
+    rmSync(tempDir, { force: true, recursive: true });
+  }
 });
 
 test("buildPgFoundationConfig accepts explicit no-verify SSL mode and test database URL", () => {

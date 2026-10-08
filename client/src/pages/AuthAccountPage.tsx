@@ -14,7 +14,7 @@ export default function AuthAccountPage() {
   return (
     <AuthPanel
       title="Secure session"
-      subtitle="This page proves that the browser session is accepted by the Express authentication boundary. Clinic roles and permissions are intentionally not loaded yet."
+      subtitle="Your secure browser session was verified by the Express API. This staging page does not expose clinic records or your complete role permissions."
     >
       <dl className="space-y-4 text-sm">
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -26,7 +26,7 @@ export default function AuthAccountPage() {
           <dd className="mt-1 font-semibold text-slate-900">{auth.verifiedIdentity?.email ?? "No verified email returned"}</dd>
         </div>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
-          Authentication confirms identity only. Role, branch, and patient-access authorization will be added in later phases.
+          The backend enforces role and branch permissions on protected routes. This page confirms your identity only; full clinic workflows are not available in staging yet.
         </div>
       </dl>
       <button className="button-secondary mt-6 w-full" type="button" onClick={() => void handleLogout()}>

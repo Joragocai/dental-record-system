@@ -1,20 +1,15 @@
 import cors from "cors";
 import express from "express";
-import patientsRouter from "./routes/patients.js";
-import treatmentsRouter from "./routes/treatments.js";
 import attachmentsRouter from "./routes/attachments.js";
-import exportRouter from "./routes/exports.js";
-import backupRouter from "./routes/backup.js";
-import dashboardRouter from "./routes/dashboard.js";
-import appointmentsRouter from "./routes/appointments.js";
-import runtimeRouter from "./routes/runtime.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createStaffAccountsRouter } from "./routes/staffAccounts.js";
 import { createAuditEventsRouter } from "./routes/auditEvents.js";
 import { createRequestIdMiddleware } from "./middleware/requestId.js";
+import { getAllowedCorsOrigins, isHostedEnvironment } from "./config/hostedSafety.js";
 
 const app = express();
-const allowedOrigins = new Set(["http://127.0.0.1:5173", "http://localhost:5173"]);
+const isHosted = isHostedEnvironment();
+const allowedOrigins = new Set(getAllowedCorsOrigins());
 const authRouter = createAuthRouter();
 const staffAccountsRouter = createStaffAccountsRouter();
 const auditEventsRouter = createAuditEventsRouter();
@@ -28,7 +23,9 @@ app.use(
         callback(null, true);
         return;
       }
-      callback(new Error(`CORS blocked for origin: ${origin}`));
+      const error = new Error("Origin not allowed.");
+      error.status = 403;
+      callback(error);
     },
     exposedHeaders: ["X-Request-ID"]
   })
@@ -39,17 +36,48 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/api/runtime", runtimeRouter);
+app.get("/api/ready", async (_req, res) => {
+  if (!isHosted) {
+    res.json({ status: "ready" });
+    return;
+  }
+  try {
+    const { checkHostedReadiness } = await import("./config/hostedReadiness.js");
+    if (await checkHostedReadiness()) {
+      res.json({ status: "ready" });
+      return;
+    }
+  } catch {
+    // Readiness is intentionally fail-closed; never return connection details.
+  }
+  res.status(503).json({ status: "unavailable" });
+});
+
 app.use("/api/auth", authRouter);
 app.use("/api/staff-accounts", staffAccountsRouter);
 app.use("/api/audit-events", auditEventsRouter);
-app.use("/api/dashboard", dashboardRouter);
-app.use("/api/patients", patientsRouter);
-app.use("/api/treatments", treatmentsRouter);
-app.use("/api/appointments", appointmentsRouter);
 app.use("/api/attachments", attachmentsRouter);
-app.use("/api/export", exportRouter);
-app.use("/api/backup", backupRouter);
+
+// Never import legacy SQLite-backed routes in hosted environments. Merely importing
+// their dependencies can create local database files and runtime directories.
+if (!isHosted) {
+  const [runtime, dashboard, patients, treatments, appointments, exports, backup] = await Promise.all([
+    import("./routes/runtime.js"),
+    import("./routes/dashboard.js"),
+    import("./routes/patients.js"),
+    import("./routes/treatments.js"),
+    import("./routes/appointments.js"),
+    import("./routes/exports.js"),
+    import("./routes/backup.js")
+  ]);
+  app.use("/api/runtime", runtime.default);
+  app.use("/api/dashboard", dashboard.default);
+  app.use("/api/patients", patients.default);
+  app.use("/api/treatments", treatments.default);
+  app.use("/api/appointments", appointments.default);
+  app.use("/api/export", exports.default);
+  app.use("/api/backup", backup.default);
+}
 
 app.use(async (error, _req, res, _next) => {
   if (error?.status) {

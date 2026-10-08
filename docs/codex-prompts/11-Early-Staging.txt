@@ -1,0 +1,53 @@
+PHASE 11 — EARLY STAGING
+
+STATUS
+Implementation in progress. Staging Supabase project provisioned by user; PostgreSQL migrations 0001–0010 applied and verified; isolated private staging Storage bucket created/verified. Vercel frontend/Render backend selected by user and deployment configuration prepared. HTTPS deployment, Auth redirects, fictional bootstrap/live smoke tests and final sign-off remain pending. Not deployed.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+APPROVAL / SCOPE
+The user approved implementing the Phase 11 early-staging scope after a senior-developer inspection. User requested that manual Supabase instructions be given precisely when required, without changing development/production resources. No Git commit, push, merge, or phase advancement is authorized.
+
+SOURCE OF TRUTH
+README.md; AGENTS.md; docs/architecture/{authentication-foundation,application-user-access-foundation,authorization-rbac-foundation,audit-foundation,private-storage-foundation,clinic-branch-operating-model,v2-migration-map}.md; docs/codex-prompts/09-Audit-Trail.txt and 10-Private-Storage.txt; docs/deployment/staging.md.
+
+GOAL
+Create an isolated HTTPS **fictional-data-only** staging target for existing V2 PostgreSQL, Supabase Auth, protected Express/RBAC, request-correlated audit trail and private Storage foundations, without deploying the unprotected legacy clinic UI or calling it a finished V2 clinic release.
+
+ALREADY IMPLEMENTED (REPOSITORY)
+- Hosted Express host/port configuration; hosted mode avoids SQLite initialization and automatic V1 backups; static legacy SQLite route imports are avoided.
+- Exact HTTPS CORS origin allowlist and safe denied-origin response.
+- Startup checks for explicit hosted environment, verified PostgreSQL TLS, service-only secrets, matching Supabase provider URLs, allowed staging invitation redirect, and no production development storage bucket.
+- Hosted /api/health process liveness and read-only PostgreSQL schema /api/ready readiness. The readiness checker reuses a one-connection PostgreSQL pool, coalesces concurrent requests and caches success for 15 seconds/failure for 5 seconds. Render uses /api/ready for health gating.
+- Only protected V2 auth, staff, audit, and attachment routes are mounted in hosted mode.
+- Browser production builds limit pages to login, account, invitation activation, and password recovery. Hosted browser API config requires an explicit HTTPS /api URL; staging Vite builds fail unless the explicit staging Supabase reference matches the project URL and the API targets the approved Render service. Authenticated UI copy no longer refers to nonexistent local screens or missing backend RBAC.
+- No local .env requirement for hosted launch: npm run start:hosted.
+- Hosted/staging negative tests and documentation; existing local development behavior retained.
+- Approved provider-specific deployment configuration: `client/vercel.json` for authentication SPA rewrites; root `render.yaml` for staging-only Express on Render (Node 24, no auto deploy, no automated migrations, manual secret env vars).
+- Hosting manifests are covered by `server/src/config/hostingFiles.pgtest.ts`; the files do not contain live credentials.
+
+STAGING SETUP / MANUAL GATES
+See docs/deployment/staging.md for precise setup, environment variable table, migration guard, Supabase private bucket, Auth redirect, role/attachment/audit smoke tests, and negative tests.
+Manual Gate A: create separate Supabase staging project and configure Auth/database/private Storage under separate secrets; no existing project changes.
+Manual Gate B: AFTER user-approved Git commit/push, create Vercel frontend project with Root Directory `client` and Render API from root `render.yaml`, inject environment values securely and upload staging Supabase CA as a Render Secret File, then set cross-origin and Supabase Auth redirects. See `docs/deployment/staging.md`.
+Manual Gate C: inspect staging target with read-only migration status; only after explicit staging target verification enable ALLOW_PRODUCTION_DB_COMMANDS=true temporarily for migration; verify schema and private bucket; create fictional owner and branch only after approval.
+Never automatically migrate, bootstrap, invite, deploy, use real data, or change production.
+
+QUALITY GATES
+- npm run typecheck
+- npm run build
+- npm run test:staging
+- npm run test:auth --workspace server
+- npm run test:attachments
+- npm run test:audit
+- Existing representative regression tests
+- Controlled live staging smoke tests once services and secrets exist.
+- Document any PostgreSQL integration tests skipped without DATABASE_URL as NOT VALIDATED LIVE.
+- Senior-developer review of safe startup, client isolation, auth/branch scopes, downloads, audit semantics and logs. Do not commit without approval.
+
+OUT OF SCOPE
+Broad patient/treatment HTTP cutover, full clinical UI, full backup/restore, malware scanning, production data, patient portal, finance, CI/CD/Docker, future phases.

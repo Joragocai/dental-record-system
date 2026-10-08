@@ -7,6 +7,8 @@
     "dev": "nodemon --exec \"node --env-file=.env\" src/index.js",
     "db:migrate": "node --env-file=.env --import tsx src/postgres/cli/migrate.ts",
     "db:migrate:status": "node --env-file=.env --import tsx src/postgres/cli/migrateStatus.ts",
+    "db:migrate:status:staging": "node --env-file=.env.staging --import tsx src/postgres/cli/migrateStatus.ts",
+    "db:migrate:staging": "node --env-file=.env.staging --import tsx src/postgres/cli/migrateStaging.ts",
     "test:postgres:foundation": "node --import tsx --test \"src/postgres/*.pgtest.ts\" \"src/postgres/cli/*.pgtest.ts\"",
     "test:postgres:batch-a": "node --import tsx --test \"src/postgres/batchA/*.pgtest.ts\"",
     "test:postgres:batch-b": "node --import tsx --test \"src/postgres/batchB/*.pgtest.ts\"",
@@ -23,20 +25,23 @@
     "test:audit": "node --import tsx --test \"src/audit/*.pgtest.ts\" \"src/postgres/access/audit*Integration.pgtest.ts\" \"src/routes/auditEvents.test.js\"",
     "test:attachments": "node --import tsx --test \"src/attachments/*.pgtest.ts\" \"src/postgres/access/attachment*Integration.pgtest.ts\" \"src/routes/attachments.test.js\"",
     "bootstrap:attachments-storage": "node --env-file=.env --import tsx src/attachments/attachmentBucketBootstrapCli.ts",
+    "bootstrap:attachments-storage:staging": "node --env-file=.env.staging --import tsx src/attachments/attachmentBucketBootstrapStagingCli.ts",
     "validate:attachments:live": "node --env-file=.env --import tsx src/attachments/attachmentLiveValidationCli.ts",
     "test:auth": "node --import tsx --test \"src/auth/*.pgtest.ts\" \"src/access/accessMiddleware.pgtest.ts\" \"src/routes/auth.test.js\" \"src/routes/staffAccounts.test.js\"",
-    "start": "node --env-file=.env src/index.js"
+    "start": "node --env-file=.env src/index.js",
+    "start:hosted": "node --import tsx src/hostedIndex.js",
+    "test:staging": "node --import tsx --test \"src/config/*.pgtest.ts\""
   },
   "dependencies": {
     "cors": "^2.8.5",
     "exceljs": "^4.4.0",
     "express": "^4.21.0",
     "multer": "^1.4.5-lts.1",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "tsx": "^4.23.12"
   },
   "devDependencies": {
     "@types/pg": "^8.21.0",
-    "nodemon": "^3.1.7",
-    "tsx": "^4.23.12"
+    "nodemon": "^3.1.7"
   }
 }

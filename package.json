@@ -20,6 +20,8 @@
     "backup:create": "node server/scripts/createManualBackup.js",
     "db:migrate": "npm run db:migrate --workspace server",
     "db:migrate:status": "npm run db:migrate:status --workspace server",
+    "db:migrate:status:staging": "npm run db:migrate:status:staging --workspace server",
+    "db:migrate:staging": "npm run db:migrate:staging --workspace server",
     "test:postgres:foundation": "npm run test:postgres:foundation --workspace server",
     "test:postgres:batch-a": "npm run test:postgres:batch-a --workspace server",
     "test:postgres:batch-b": "npm run test:postgres:batch-b --workspace server",
@@ -36,12 +38,15 @@
     "test:audit": "npm run test:audit --workspace server",
     "test:attachments": "npm run test:attachments --workspace server",
     "bootstrap:attachments-storage": "npm run bootstrap:attachments-storage --workspace server",
+    "bootstrap:attachments-storage:staging": "npm run bootstrap:attachments-storage:staging --workspace server",
     "validate:attachments:live": "npm run validate:attachments:live --workspace server",
     "typecheck": "npm run typecheck:client && npm run typecheck:server",
     "typecheck:client": "tsc --project client/tsconfig.json",
     "typecheck:server": "tsc --project server/tsconfig.json",
     "build": "npm run build --workspace client",
-    "start": "npm run start --workspace server"
+    "start": "npm run start --workspace server",
+    "start:hosted": "npm run start:hosted --workspace server",
+    "test:staging": "npm run test:staging --workspace server && node --test client/stagingBuildGuard.test.js"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

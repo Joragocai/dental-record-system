@@ -1,9 +1,13 @@
 import { buildPgFoundationConfig, formatPgTarget } from "../config.js";
+import { assertSupabaseDatabaseIdentity } from "../../config/hostedSafety.js";
 import { formatMigrationStatusLines, getMigrationStatus } from "../migrations.js";
 import { createPgPoolManager } from "../pool.js";
 
 async function main() {
   const config = buildPgFoundationConfig();
+  if (config.appEnv === "staging") {
+    assertSupabaseDatabaseIdentity(config.databaseUrl, process.env.SUPABASE_URL ?? "");
+  }
   const pool = createPgPoolManager(config);
 
   try {

@@ -1,0 +1,41 @@
+# Phase 11 staging Express API only. The React frontend deploys separately on Vercel.
+# This Blueprint never provisions a Render PostgreSQL database or runs migrations.
+services:
+  - type: web
+    name: dental-record-staging-api
+    runtime: node
+    plan: free
+    branch: refactor/v2-cloud-migration
+    buildCommand: npm ci
+    startCommand: npm run start:hosted
+    # Readiness must include database access and schema checksum verification.
+    # The API keeps /api/health as a lightweight process liveness endpoint.
+    healthCheckPath: /api/ready
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DENTAL_SERVER_ENV
+        value: staging
+      - key: DATABASE_SSL_MODE
+        value: require
+      - key: DATABASE_SSL_CA_FILE
+        value: /etc/secrets/dental-staging-ca.crt
+      - key: ALLOW_PRODUCTION_DB_COMMANDS
+        value: 'false'
+      - key: SUPABASE_ATTACHMENT_BUCKET
+        value: dental-attachments-staging
+      - key: NODE_VERSION
+        value: '24'
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: STAFF_INVITE_REDIRECT_URL
+        sync: false

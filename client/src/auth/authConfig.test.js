@@ -24,6 +24,20 @@ test("browser auth config accepts public Supabase values and normalizes API base
   });
 });
 
+test("staging browser config fails closed without an HTTPS API URL", () => {
+  const base = {
+    VITE_APP_ENV: "staging",
+    VITE_SUPABASE_URL: "https://staging.supabase.co",
+    VITE_SUPABASE_PUBLISHABLE_KEY: "staging-public-key"
+  };
+  assert.equal(readBrowserAuthenticationConfig(base).configured, false);
+  assert.equal(readBrowserAuthenticationConfig({ ...base, VITE_API_BASE_URL: "http://localhost:3002/api" }).configured, false);
+  assert.equal(readBrowserAuthenticationConfig({ ...base, VITE_API_BASE_URL: "https://api.example.test/other" }).configured, false);
+  const result = readBrowserAuthenticationConfig({ ...base, VITE_API_BASE_URL: "https://api.example.test/api/" });
+  assert.equal(result.configured, true);
+  assert.equal(result.config?.apiBaseUrl, "https://api.example.test/api");
+});
+
 test("browser auth config rejects insecure remote Supabase URLs", () => {
   const result = readBrowserAuthenticationConfig({
     VITE_SUPABASE_URL: "http://example.com",

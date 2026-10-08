@@ -1,4 +1,5 @@
 import path from "node:path";
+import { assertSupabaseDatabaseIdentity } from "../../config/hostedSafety.js";
 import { pathToFileURL } from "node:url";
 import {
   assertPgMutationAllowed,
@@ -18,6 +19,9 @@ export interface PgMigrationCommandOptions {
 export async function runPgMigrationCommand(options: PgMigrationCommandOptions = {}) {
   const config = options.config ?? buildPgFoundationConfig();
   assertPgMutationAllowed(config);
+  if (config.appEnv === "staging") {
+    assertSupabaseDatabaseIdentity(config.databaseUrl, process.env.SUPABASE_URL ?? "");
+  }
 
   const createPoolManager = options.createPoolManager ?? createPgPoolManager;
   const log = options.log ?? console.log;

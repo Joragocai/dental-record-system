@@ -23,7 +23,7 @@ export async function authenticatedV2Fetch(
   init: RequestInit = {},
   options: AuthenticatedFetchOptions
 ): Promise<Response> {
-  const apiBaseUrl = normalizeApiBaseUrl(options.apiBaseUrl ?? "http://127.0.0.1:3002/api");
+  const apiBaseUrl = normalizeApiBaseUrl(options.apiBaseUrl ?? "/api");
   const fetchImpl = options.fetchImpl ?? fetch;
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${options.accessToken}`);

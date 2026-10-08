@@ -5,6 +5,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+!server/.env.staging.example
 .env.local
 .env.development.local
 .env.production.local

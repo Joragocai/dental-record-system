@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://127.0.0.1:3002/api",
+  baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? "http://127.0.0.1:3002/api" : "/api"),
 });
 
 export async function getDashboardSummary() {
@@ -144,7 +144,7 @@ export async function getRuntimeStatus() {
 }
 
 export function getExportUrl(path) {
-  return `http://127.0.0.1:3002${path}`;
+  return `${api.defaults.baseURL.replace(/\/api\/?$/, "")}${path}`;
 }
 
 export function getUploadUrl(_filePath) {
