@@ -1,7 +1,7 @@
 PHASE 13 — NOTIFICATIONS
 
 STATUS
-Approved for implementation in reviewed subphases. Phase 13A notification data/foundation is implemented, locally validated, and staging-synchronized through migration 0012. Phase 13B–13D remain pending. Do not configure a real email provider, send real email, or advance to later subphases without the applicable approval gate. Senior-developer review is automatic.
+Approved for implementation in reviewed subphases. Phase 13A notification data/foundation is implemented, locally validated, and staging-synchronized through migration 0012. Phase 13B appointment notification integration is implemented and locally validated; no real email is sent. Phase 13C–13D remain pending. Do not configure a real email provider, send real email, or advance to later subphases without the applicable approval gate. Senior-developer review is automatic.
 
 PROJECT
 /home/johnr/projects/dental-record-system
@@ -55,7 +55,8 @@ SUBPHASES
 13B — Appointment Notification Integration
 - Map important Phase 12 events to notification intents: confirmation, reschedule, clinic/patient cancellation, and no-show as approved.
 - Avoid routine email for internal operational states such as check-in/start unless separately required.
-- Create in-app notification and durable email intent without making appointment success depend on email delivery.
+- Create durable patient email intents without making appointment success depend on email delivery.
+- Patient in-app notification creation must remain deferred until Phase 14 provides a secure patient-to-app-user ownership link; do not guess or match patient accounts by email/name/phone.
 - Preserve request correlation and idempotency.
 - Add unit/integration tests for recipient/template/privacy rules.
 

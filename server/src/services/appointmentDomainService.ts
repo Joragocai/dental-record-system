@@ -17,6 +17,10 @@ import {
   createAuditEventService,
   type AppointmentAuditAction
 } from "./auditEventService.js";
+import {
+  createNotificationIntentService,
+  type AppointmentNotificationEvent
+} from "./notificationIntentService.js";
 import { AppointmentDomainError, toAppointmentPersistenceError } from "./appointmentDomainErrors.js";
 import {
   assertNotPastSchedule,
@@ -322,6 +326,23 @@ async function writeAudit(
   });
 }
 
+async function queueAppointmentNotification(
+  executor: PgQueryExecutor,
+  actor: AppointmentActor,
+  appointment: AppointmentRecord,
+  event: AppointmentNotificationEvent,
+  occurredAt: string
+): Promise<void> {
+  await createNotificationIntentService(executor).queuePatientAppointmentEmail({
+    patientId: appointment.patientId,
+    appointmentId: appointment.id,
+    branchId: appointment.branchId,
+    requestId: actor.requestId,
+    event,
+    occurredAt
+  });
+}
+
 async function requireExistingForMutation(
   repository: AppointmentRepository,
   appointmentId: string,
@@ -383,6 +404,23 @@ export function createAppointmentDomainService(
           )
         );
         await writeAudit(executor, actor, persisted, auditAction, options.createAuditId, options.now);
+        if (nextStatus === "cancelled_by_clinic") {
+          await queueAppointmentNotification(
+            executor,
+            actor,
+            persisted,
+            "APPOINTMENT_CANCELLED_BY_CLINIC",
+            timestamp
+          );
+        } else if (nextStatus === "no_show") {
+          await queueAppointmentNotification(
+            executor,
+            actor,
+            persisted,
+            "APPOINTMENT_NO_SHOW",
+            timestamp
+          );
+        }
         return persisted;
       });
     } catch (error) {
@@ -562,6 +600,15 @@ export function createAppointmentDomainService(
             buildHistory(requireAppointmentUuid(createHistoryId()), "CREATED", null, persisted, actor, timestamp)
           );
           await writeAudit(executor, actor, persisted, "APPOINTMENT_CREATED", options.createAuditId, options.now);
+          if (persisted.status === "confirmed") {
+            await queueAppointmentNotification(
+              executor,
+              actor,
+              persisted,
+              "APPOINTMENT_CONFIRMED",
+              timestamp
+            );
+          }
           return persisted;
         });
       } catch (error) {
@@ -634,6 +681,13 @@ export function createAppointmentDomainService(
             buildHistory(requireAppointmentUuid(createHistoryId()), "CONFIRMED", existing, persisted, actor, timestamp)
           );
           await writeAudit(executor, actor, persisted, "APPOINTMENT_CONFIRMED", options.createAuditId, options.now);
+          await queueAppointmentNotification(
+            executor,
+            actor,
+            persisted,
+            "APPOINTMENT_CONFIRMED",
+            timestamp
+          );
           return persisted;
         });
       } catch (error) {
@@ -721,6 +775,13 @@ export function createAppointmentDomainService(
             options.createAuditId,
             options.now,
             replacementPersisted.id
+          );
+          await queueAppointmentNotification(
+            executor,
+            actor,
+            replacementPersisted,
+            "APPOINTMENT_RESCHEDULED",
+            timestamp
           );
           return replacementPersisted;
         });

@@ -135,3 +135,22 @@ Phase 13A PostgreSQL integration coverage verifies:
 The broader PostgreSQL foundation, authorization/access, Batch A/B/C, hosted
 staging guards, V1 appointment regressions, typecheck, and client build are
 also required to remain green.
+
+## Phase 13B Appointment Notification Integration
+
+Phase 13B integrates the Phase 12 appointment domain with durable patient email intents only. No email provider call is made in the appointment request path.
+
+Current patient-facing event map:
+
+- confirmed -> `APPOINTMENT_CONFIRMED` / `appointment-confirmed`
+- rescheduled -> `APPOINTMENT_RESCHEDULED` / `appointment-rescheduled`
+- clinic cancelled -> `APPOINTMENT_CANCELLED_BY_CLINIC` / `appointment-cancelled-by-clinic`
+- no-show -> `APPOINTMENT_NO_SHOW` / `appointment-no-show`
+
+Confirmed appointments created directly by staff also enqueue the confirmed intent. Internal operational transitions such as check-in, start, and complete do not enqueue patient email intents in this phase.
+
+The durable row stores only patient UUID, appointment UUID, branch UUID, request UUID, event/template identifiers, timestamps, and delivery state. It does not copy the patient email address or appointment notes/procedure details. If the patient has no nonblank email address, no email intent is created.
+
+Dedupe keys include the channel, domain, event, appointment UUID, request UUID, and patient UUID. Repeating the same intent is therefore idempotent.
+
+Patient in-app notification creation remains deferred until Phase 14 establishes a secure patient-to-application-user ownership relationship. Phase 13B must not infer that relationship by matching email, name, phone number, or other profile fields.

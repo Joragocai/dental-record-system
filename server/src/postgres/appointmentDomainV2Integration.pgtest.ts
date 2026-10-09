@@ -6,6 +6,7 @@ import { createPgPoolManager } from "./pool.js";
 import { assertSafeTestDatabaseTarget, getPgIntegrationReadiness } from "./testSafety.js";
 import { createAppointmentDomainService, type AppointmentActor } from "../services/appointmentDomainService.js";
 import { AppointmentDomainError } from "../services/appointmentDomainErrors.js";
+import { createNotificationIntentService } from "../services/notificationIntentService.js";
 import type { PermissionCode } from "../repositories/authorizationRepository.js";
 
 function buildTestDatabaseConfig() {
@@ -105,9 +106,9 @@ async function seedFoundation(pool: ReturnType<typeof createPgPoolManager>) {
   await pool.query(
     `INSERT INTO patients (
        id, patient_code, branch_id, date_registered, last_name, first_name, birthday,
-       gender, mobile_number, created_at, updated_at
+       gender, mobile_number, email_address, created_at, updated_at
      ) VALUES ($1,'P-2026-9001',$2,DATE '2026-01-01','Patient','Fictional',DATE '1990-01-01',
-       'Other','09000000000',NOW(),NOW())`,
+       'Other','09000000000','fictional.patient@example.test',NOW(),NOW())`,
     [patientId, branchA]
   );
   await pool.query(
@@ -133,7 +134,7 @@ async function seedFoundation(pool: ReturnType<typeof createPgPoolManager>) {
   }
 }
 
-test("Phase 12B appointment domain enforces workflow, cross-branch overlap safety, history, and audit", async (t) => {
+test("Phase 12B appointment workflow and Phase 13B notification intents preserve safety, history, audit, and delivery correlation", async (t) => {
   const readiness = getPgIntegrationReadiness(process.env);
   if (!readiness.ready) {
     t.skip(readiness.reason || "TEST_DATABASE_URL is not configured for safe PostgreSQL integration.");
@@ -482,6 +483,97 @@ test("Phase 12B appointment domain enforces workflow, cross-branch overlap safet
       actor("personnel", "45000000-0000-4000-8000-000000000040")
     );
     assert.equal(cancelledAfterDeactivation.status, "cancelled_by_clinic");
+
+    const notificationRows = await pool.query<{
+      event_type: string;
+      template_key: string;
+      request_id: string;
+      recipient_patient_id: string;
+      source_id: string;
+      status: string;
+    }>(
+      `SELECT event_type, template_key, request_id::text, recipient_patient_id::text,
+              source_id::text, status
+       FROM email_delivery_logs
+       WHERE category='appointment'
+       ORDER BY created_at, id`
+    );
+
+    const eventForRequest = (requestId: string) =>
+      notificationRows.rows.filter((row) => row.request_id === requestId);
+
+    assert.deepEqual(
+      eventForRequest("45000000-0000-4000-8000-000000000003").map((row) => row.event_type),
+      ["APPOINTMENT_CONFIRMED"]
+    );
+    assert.deepEqual(
+      eventForRequest("45000000-0000-4000-8000-000000000021").map((row) => row.event_type),
+      ["APPOINTMENT_CONFIRMED"]
+    );
+    assert.deepEqual(
+      eventForRequest("45000000-0000-4000-8000-000000000028").map((row) => row.event_type),
+      ["APPOINTMENT_RESCHEDULED"]
+    );
+    assert.deepEqual(
+      eventForRequest("45000000-0000-4000-8000-000000000031").map((row) => row.event_type),
+      ["APPOINTMENT_NO_SHOW"]
+    );
+    assert.deepEqual(
+      eventForRequest("45000000-0000-4000-8000-000000000033").map((row) => row.event_type),
+      ["APPOINTMENT_CANCELLED_BY_CLINIC"]
+    );
+    assert.deepEqual(
+      eventForRequest("45000000-0000-4000-8000-000000000040").map((row) => row.event_type),
+      ["APPOINTMENT_CANCELLED_BY_CLINIC"]
+    );
+
+    for (const requestId of [
+      "45000000-0000-4000-8000-000000000022",
+      "45000000-0000-4000-8000-000000000024",
+      "45000000-0000-4000-8000-000000000025"
+    ]) {
+      assert.deepEqual(eventForRequest(requestId), []);
+    }
+
+    for (const row of notificationRows.rows) {
+      assert.equal(row.recipient_patient_id, patientId);
+      assert.equal(row.status, "pending");
+      assert.ok(row.source_id);
+      assert.match(row.template_key, /^appointment-/);
+    }
+
+    const intentService = createNotificationIntentService(pool);
+    const idempotentIntent = {
+      patientId,
+      appointmentId: providerStateSource.id,
+      branchId: branchA,
+      requestId: "45000000-0000-4000-8000-000000000043",
+      event: "APPOINTMENT_CONFIRMED" as const,
+      occurredAt: fixedNow.toISOString()
+    };
+    assert.equal(await intentService.queuePatientAppointmentEmail(idempotentIntent), true);
+    assert.equal(await intentService.queuePatientAppointmentEmail(idempotentIntent), true);
+    const idempotentCount = await pool.query<{ count: string }>(
+      "SELECT COUNT(*)::text AS count FROM email_delivery_logs WHERE request_id=$1",
+      [idempotentIntent.requestId]
+    );
+    assert.equal(Number(idempotentCount.rows[0]?.count ?? 0), 1);
+
+    await pool.query("UPDATE patients SET email_address=NULL, updated_at=NOW() WHERE id=$1", [patientId]);
+    const queuedWithoutEmail = await createNotificationIntentService(pool).queuePatientAppointmentEmail({
+      patientId,
+      appointmentId: providerStateSource.id,
+      branchId: branchA,
+      requestId: "45000000-0000-4000-8000-000000000044",
+      event: "APPOINTMENT_CONFIRMED",
+      occurredAt: fixedNow.toISOString()
+    });
+    assert.equal(queuedWithoutEmail, false);
+    const skippedEmailIntent = await pool.query<{ count: string }>(
+      "SELECT COUNT(*)::text AS count FROM email_delivery_logs WHERE request_id=$1",
+      ["45000000-0000-4000-8000-000000000044"]
+    );
+    assert.equal(Number(skippedEmailIntent.rows[0]?.count ?? 0), 0);
 
     await assert.rejects(
       service.getSchedulingContext(
