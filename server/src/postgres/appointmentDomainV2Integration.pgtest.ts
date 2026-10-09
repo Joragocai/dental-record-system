@@ -174,6 +174,14 @@ test("Phase 12B appointment domain enforces workflow, cross-branch overlap safet
         mobileNumber: "09000000000"
       }
     ]);
+    assert.deepEqual(
+      await service.searchPatients(
+        "Fictional Patient",
+        branchB,
+        actor("personnel", "45000000-0000-4000-8000-000000000043")
+      ),
+      patients
+    );
 
     const first = await service.createAppointment(
       {

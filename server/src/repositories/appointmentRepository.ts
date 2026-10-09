@@ -233,6 +233,10 @@ export function createAppointmentRepository(executor: PgQueryExecutor): Appointm
          WHERE patient_code ILIKE $1
             OR first_name ILIKE $1
             OR last_name ILIKE $1
+            OR trim(concat_ws(' ', first_name, middle_name, last_name)) ILIKE $1
+            OR trim(concat_ws(' ', first_name, last_name)) ILIKE $1
+            OR trim(concat_ws(' ', last_name, first_name, middle_name)) ILIKE $1
+            OR trim(concat_ws(' ', last_name, first_name)) ILIKE $1
             OR mobile_number ILIKE $1
          ORDER BY last_name, first_name, patient_code
          LIMIT $2`,
