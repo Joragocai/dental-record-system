@@ -47,6 +47,9 @@ function createHarness(overrides: Partial<AccessRuntimeServices> = {}) {
     requirePermission(_context: AuthorizationContext, permission: string) {
       calls.push(`permission:${permission}`);
     },
+    requireAnyBranchPermission(_context: AuthorizationContext, permission: string) {
+      calls.push(`any-branch:${permission}`);
+    },
     requireBranchPermission(_context: AuthorizationContext, permission: string, branchId: string) {
       calls.push(`branch:${permission}:${branchId}`);
     }
@@ -130,6 +133,16 @@ test("global permission middleware does not require branch input", async () => {
   assert.equal(calls.includes("permission:user.read"), true);
 });
 
+test("any-branch middleware delegates branch-scoped permission without browser branch input", async () => {
+  const { boundary, res, calls } = createHarness();
+  await runAsyncMiddleware(boundary.resolveApplicationUser, {}, res);
+  await runAsyncMiddleware(boundary.resolveAuthorization, {}, res);
+  const error = await runAsyncMiddleware(boundary.requireAnyBranchPermission("patient.read"), {}, res);
+
+  assert.equal(error, undefined);
+  assert.equal(calls.includes("any-branch:patient.read"), true);
+});
+
 test("branch middleware delegates the extracted target branch", async () => {
   const { boundary, res, calls } = createHarness();
   await runAsyncMiddleware(boundary.resolveApplicationUser, {}, res);
@@ -148,6 +161,9 @@ test("authorization denial audit is best-effort and preserves the original 403",
       return buildAuthorization();
     },
     requirePermission() {
+      throw new AuthorizationError("AUTHORIZATION_DENIED");
+    },
+    requireAnyBranchPermission() {
       throw new AuthorizationError("AUTHORIZATION_DENIED");
     },
     requireBranchPermission() {
@@ -199,6 +215,9 @@ test("authorization denial is forwarded as safe 403", async () => {
       return buildAuthorization();
     },
     requirePermission() {
+      throw new AuthorizationError("AUTHORIZATION_DENIED");
+    },
+    requireAnyBranchPermission() {
       throw new AuthorizationError("AUTHORIZATION_DENIED");
     },
     requireBranchPermission() {

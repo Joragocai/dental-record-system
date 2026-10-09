@@ -262,6 +262,22 @@ test("AuthorizationService denies by default when an active user has no roles", 
   );
 });
 
+test("any-branch permission requires a matching grant and at least one assigned branch", async () => {
+  const service = createAuthorizationService(createFakeAuthorizationRepository());
+  const personnel = await service.resolveContext(buildApplicationUser(["PERSONNEL"], [branchA, branchB]));
+  service.requireAnyBranchPermission(personnel, "appointment.list");
+
+  const branchless = await service.resolveContext(buildApplicationUser(["PERSONNEL"], []));
+  assert.throws(() => service.requireAnyBranchPermission(branchless, "appointment.list"), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
+
+  const clinicAdmin = await service.resolveContext(buildApplicationUser(["CLINIC_ADMINISTRATOR"], [branchA]));
+  assert.throws(() => service.requireAnyBranchPermission(clinicAdmin, "appointment.list"), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
+});
+
 test("Branch-scoped permission allows assigned branch and denies another branch", async () => {
   const service = createAuthorizationService(createFakeAuthorizationRepository());
   const context = await service.resolveContext(buildApplicationUser(["PERSONNEL"], [branchA]));

@@ -68,7 +68,7 @@ requires more than the present unit and service-level parity tests.
 | `server/src/services/appointmentService.js` | BRIDGE | Preserve while JavaScript route consumers still import it. |
 | `server/src/routes/appointments.js` | RETIRE-LATER | Active V1 SQLite route path. Phase 12 will replace it with authenticated/RBAC-protected PostgreSQL appointment routes; retire only after replacement and regression/staging gates pass. |
 | Appointment JSX UI files | RETIRE-LATER | Current V1 UI remains reference/compatibility material until Phase 12D authenticated scheduling/calendar UI is proven. |
-| Appointment API calls in `client/src/lib/api.js` | RETIRE-LATER | Replace with authenticated V2 appointment API helpers during Phase 12C/12D; keep until intended consumers are migrated. |
+| Appointment API calls in `client/src/lib/api.js` | RETIRE-LATER | Phase 12D now uses dedicated authenticated helpers under `client/src/appointments/`; retain the legacy helpers only for local V1 consumers until the legacy clinical UI is formally retired after staging/parity gates. |
 | Appointment logic in `server/src/db/database.js` | RETIRE-LATER | Persistence path is tied to SQLite and should not be converted further just for parity. |
 
 ## Authentication Foundation

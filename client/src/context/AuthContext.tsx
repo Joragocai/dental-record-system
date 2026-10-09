@@ -26,6 +26,7 @@ interface AuthContextValue {
   recoveringPassword: boolean;
   providerSession: BrowserAuthSession | null;
   verifiedIdentity: VerifiedBackendIdentity | null;
+  apiBaseUrl: string | null;
   error: string | null;
   login(email: string, password: string): Promise<void>;
   logout(): Promise<void>;
@@ -221,6 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     recoveringPassword,
     providerSession,
     verifiedIdentity,
+    apiBaseUrl: configResult.config?.apiBaseUrl ?? null,
     error,
     login,
     logout,

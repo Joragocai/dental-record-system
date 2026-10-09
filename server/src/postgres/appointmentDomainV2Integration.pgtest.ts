@@ -147,9 +147,16 @@ test("Phase 12B appointment domain enforces workflow, cross-branch overlap safet
     const fixedNow = new Date("2026-10-09T10:00:00.000Z");
     const service = createAppointmentDomainService(pool, { now: () => fixedNow });
 
+    const bootstrap = await service.getSchedulingBootstrap(
+      actor("personnel", "45000000-0000-4000-8000-000000000001")
+    );
+    assert.deepEqual(bootstrap.branches.map((branch) => branch.id), [branchA, branchB]);
+    assert.equal(bootstrap.capabilities.start, false);
+    assert.equal(bootstrap.capabilities.create, true);
+
     const context = await service.getSchedulingContext(
       branchA,
-      actor("personnel", "45000000-0000-4000-8000-000000000001")
+      actor("personnel", "45000000-0000-4000-8000-000000000041")
     );
     assert.equal(context.branch.id, branchA);
     assert.deepEqual(context.dentists.map((item) => item.id), [dentistId]);
@@ -181,6 +188,13 @@ test("Phase 12B appointment domain enforces workflow, cross-branch overlap safet
       actor("personnel", "45000000-0000-4000-8000-000000000003")
     );
     assert.equal(first.status, "confirmed");
+    const firstRead = await service.getAppointment(
+      first.id,
+      actor("personnel", "45000000-0000-4000-8000-000000000042")
+    );
+    assert.equal(firstRead.patientCode, "P-2026-9001");
+    assert.equal(firstRead.patientDisplayName, "Fictional Patient");
+    assert.equal(firstRead.patientMobileNumber, "09000000000");
 
     await assert.rejects(
       service.createAppointment(

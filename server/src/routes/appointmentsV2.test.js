@@ -77,6 +77,16 @@ function allowedBoundary(calls, options = {}) {
         next();
       };
     },
+    requireAnyBranchPermission(permission) {
+      return async (_req, _res, next) => {
+        calls.push(`any-branch:${permission}`);
+        if (options.denyPermission === permission) {
+          next(new AuthorizationError("AUTHORIZATION_DENIED"));
+          return;
+        }
+        next();
+      };
+    },
     requireBranchPermission(permission, extractBranchId) {
       return async (req, _res, next) => {
         const branchId = extractBranchId(req);
@@ -106,9 +116,43 @@ function createRuntime(overrides = {}) {
       calls.push({ method: "detail", id, actor });
       return { id, branchId: branchA, status: "confirmed" };
     },
+    async getSchedulingBootstrap(actor) {
+      calls.push({ method: "bootstrap", actor });
+      return {
+        branches: [
+          { id: branchA, branchCode: "A", branchName: "Branch A" },
+          { id: branchB, branchCode: "B", branchName: "Branch B" }
+        ],
+        capabilities: {
+          create: true,
+          update: true,
+          confirm: true,
+          reschedule: true,
+          cancel: true,
+          checkIn: true,
+          start: false,
+          complete: true,
+          noShow: true
+        }
+      };
+    },
     async getSchedulingContext(id, actor) {
       calls.push({ method: "context", id, actor });
-      return { branch: { id, branchCode: "A", branchName: "Branch A" }, dentists: [] };
+      return {
+        branch: { id, branchCode: "A", branchName: "Branch A" },
+        dentists: [],
+        capabilities: {
+          create: true,
+          update: true,
+          confirm: true,
+          reschedule: true,
+          cancel: true,
+          checkIn: true,
+          start: false,
+          complete: true,
+          noShow: true
+        }
+      };
     },
     async searchPatients(query, id, actor) {
       calls.push({ method: "search", query, branchId: id, actor });
@@ -390,6 +434,31 @@ test("slot conflicts are exposed as safe 409 without persistence details", async
     assert.deepEqual(body, { message: "The selected Dentist is already booked for that time." });
     assert.doesNotMatch(JSON.stringify(body), /postgresql|secret/i);
   });
+});
+
+test("scheduling bootstrap discovers only authenticated appointment branches without browser branch input", async () => {
+  const accessCalls = [];
+  const harness = createRuntime();
+
+  await withServer({
+    boundary: allowedBoundary(accessCalls),
+    runtime: harness.runtime
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/appointments/scheduling-context`, {
+      headers: { Authorization: "Bearer token" }
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(body.branches.map((branch) => branch.id), [branchA, branchB]);
+    assert.equal(body.capabilities.start, false);
+  });
+
+  assert.deepEqual(accessCalls, [
+    "application-user",
+    "authorization",
+    "any-branch:appointment.list"
+  ]);
+  assert.equal(harness.calls.some((entry) => entry.method === "bootstrap"), true);
 });
 
 test("patient search and availability require narrow branch permissions", async () => {

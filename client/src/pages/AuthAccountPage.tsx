@@ -26,12 +26,17 @@ export default function AuthAccountPage() {
           <dd className="mt-1 font-semibold text-slate-900">{auth.verifiedIdentity?.email ?? "No verified email returned"}</dd>
         </div>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
-          The backend enforces role and branch permissions on protected routes. This page confirms your identity only; full clinic workflows are not available in staging yet.
+          The backend enforces role and branch permissions on protected routes. Appointment scheduling is available only when your account has the required appointment permissions and branch assignment.
         </div>
       </dl>
-      <button className="button-secondary mt-6 w-full" type="button" onClick={() => void handleLogout()}>
-        Sign out
-      </button>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <button className="button-primary w-full" type="button" onClick={() => navigate("/appointments")}>
+          Open appointment schedule
+        </button>
+        <button className="button-secondary w-full" type="button" onClick={() => void handleLogout()}>
+          Sign out
+        </button>
+      </div>
     </AuthPanel>
   );
 }

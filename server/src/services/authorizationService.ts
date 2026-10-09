@@ -15,6 +15,7 @@ export interface AuthorizationContext extends ApplicationUserContext {
 export interface AuthorizationService {
   resolveContext(applicationUser: ApplicationUserContext): Promise<AuthorizationContext>;
   requirePermission(context: AuthorizationContext, permission: PermissionCode): void;
+  requireAnyBranchPermission(context: AuthorizationContext, permission: PermissionCode): void;
   requireBranchPermission(context: AuthorizationContext, permission: PermissionCode, branchId: string): void;
 }
 
@@ -55,6 +56,17 @@ export function createAuthorizationService(repository: AuthorizationRepository):
       }
       if (grant.scope === "BRANCH") {
         throw new AuthorizationError("AUTHORIZATION_BRANCH_REQUIRED");
+      }
+    },
+
+    requireAnyBranchPermission(context, permission) {
+      const grant = findGrant(context, permission);
+      if (grant.scope === "OWN") {
+        throw new AuthorizationError("AUTHORIZATION_OWNERSHIP_NOT_IMPLEMENTED");
+      }
+      if (grant.scope === "GLOBAL") return;
+      if (context.branchIds.length === 0) {
+        throw new AuthorizationError("AUTHORIZATION_DENIED");
       }
     },
 

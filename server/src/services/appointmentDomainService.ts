@@ -90,9 +90,27 @@ export interface AvailabilityInput {
   excludeAppointmentId?: unknown;
 }
 
+export interface AppointmentUiCapabilities {
+  create: boolean;
+  update: boolean;
+  confirm: boolean;
+  reschedule: boolean;
+  cancel: boolean;
+  checkIn: boolean;
+  start: boolean;
+  complete: boolean;
+  noShow: boolean;
+}
+
+export interface AppointmentSchedulingBootstrap {
+  branches: SchedulingBranch[];
+  capabilities: AppointmentUiCapabilities;
+}
+
 export interface AppointmentSchedulingContext {
   branch: SchedulingBranch;
   dentists: SchedulingDentist[];
+  capabilities: AppointmentUiCapabilities;
 }
 
 export interface AppointmentAccessContext {
@@ -107,6 +125,7 @@ export interface AppointmentAvailability {
 
 export interface AppointmentDomainService {
   getAccessContext(appointmentId: unknown): Promise<AppointmentAccessContext>;
+  getSchedulingBootstrap(actor: AppointmentActor): Promise<AppointmentSchedulingBootstrap>;
   listAppointments(filter: AppointmentListFilter, actor: AppointmentActor): Promise<AppointmentRecord[]>;
   getAppointment(appointmentId: unknown, actor: AppointmentActor): Promise<AppointmentRecord>;
   getSchedulingContext(branchId: unknown, actor: AppointmentActor): Promise<AppointmentSchedulingContext>;
@@ -148,6 +167,26 @@ function requireBranchPermission(actor: AppointmentActor, permission: Permission
   if (!actor.permissions.includes(permission) || !actor.branchIds.includes(branchId)) {
     throw new AppointmentDomainError("APPOINTMENT_PERMISSION_DENIED");
   }
+}
+
+function requireAnyAssignedBranchPermission(actor: AppointmentActor, permission: PermissionCode): void {
+  if (!actor.permissions.includes(permission) || actor.branchIds.length === 0) {
+    throw new AppointmentDomainError("APPOINTMENT_PERMISSION_DENIED");
+  }
+}
+
+function appointmentCapabilities(actor: AppointmentActor): AppointmentUiCapabilities {
+  return {
+    create: actor.permissions.includes("appointment.create"),
+    update: actor.permissions.includes("appointment.update"),
+    confirm: actor.permissions.includes("appointment.confirm"),
+    reschedule: actor.permissions.includes("appointment.reschedule"),
+    cancel: actor.permissions.includes("appointment.cancel"),
+    checkIn: actor.permissions.includes("appointment.check_in"),
+    start: actor.permissions.includes("appointment.start"),
+    complete: actor.permissions.includes("appointment.complete"),
+    noShow: actor.permissions.includes("appointment.no_show")
+  };
 }
 
 function requireAnyBranchPermission(
@@ -363,6 +402,20 @@ export function createAppointmentDomainService(
       }
     },
 
+    async getSchedulingBootstrap(actorValue) {
+      const actor = normalizeActor(actorValue);
+      requireAnyAssignedBranchPermission(actor, "appointment.list");
+      try {
+        const branches = await repositoryFactory(pool).listBranchesByIds(actor.branchIds);
+        return {
+          branches,
+          capabilities: appointmentCapabilities(actor)
+        };
+      } catch (error) {
+        throw toAppointmentPersistenceError(error);
+      }
+    },
+
     async listAppointments(filter, actorValue) {
       const actor = normalizeActor(actorValue);
       const branchId = requireAppointmentUuid(filter.branchId);
@@ -403,7 +456,11 @@ export function createAppointmentDomainService(
         const repository = repositoryFactory(pool);
         const branch = await repository.getBranch(branchId);
         if (!branch) throw new AppointmentDomainError("APPOINTMENT_BRANCH_NOT_FOUND");
-        return { branch, dentists: await repository.listActiveDentistsForBranch(branchId) };
+        return {
+          branch,
+          dentists: await repository.listActiveDentistsForBranch(branchId),
+          capabilities: appointmentCapabilities(actor)
+        };
       } catch (error) {
         throw toAppointmentPersistenceError(error);
       }

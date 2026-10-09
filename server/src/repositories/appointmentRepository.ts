@@ -6,6 +6,9 @@ import type { AppointmentStatus } from "../postgres/batchC/appointments.js";
 export interface AppointmentRecord {
   id: string;
   patientId: string;
+  patientCode?: string | null;
+  patientDisplayName?: string | null;
+  patientMobileNumber?: string | null;
   branchId: string;
   dentistUserId: string | null;
   appointmentDate: string;
@@ -75,6 +78,7 @@ export interface AppointmentRepository {
   list(filter: AppointmentListFilter): Promise<AppointmentRecord[]>;
   searchPatients(query: string, limit: number): Promise<MinimalAppointmentPatient[]>;
   getBranch(branchId: string): Promise<SchedulingBranch | null>;
+  listBranchesByIds(branchIds: readonly string[]): Promise<SchedulingBranch[]>;
   listActiveDentistsForBranch(branchId: string): Promise<SchedulingDentist[]>;
   dentistIsActiveAndAssigned(dentistUserId: string, branchId: string): Promise<boolean>;
   lockDentistDate(dentistUserId: string, appointmentDate: string): Promise<void>;
@@ -104,6 +108,9 @@ interface AppointmentRow extends QueryResultRow {
   rescheduled_from_appointment_id: string | null;
   created_at: string | Date;
   updated_at: string | Date;
+  patient_code?: string | null;
+  patient_display_name?: string | null;
+  patient_mobile_number?: string | null;
 }
 
 function iso(value: string | Date): string {
@@ -120,6 +127,9 @@ function mapAppointment(row: AppointmentRow): AppointmentRecord {
   return {
     id: String(row.id),
     patientId: String(row.patient_id),
+    patientCode: row.patient_code == null ? null : String(row.patient_code),
+    patientDisplayName: row.patient_display_name == null ? null : String(row.patient_display_name),
+    patientMobileNumber: row.patient_mobile_number == null ? null : String(row.patient_mobile_number),
     branchId: String(row.branch_id),
     dentistUserId: row.dentist_user_id === null ? null : String(row.dentist_user_id),
     appointmentDate: normalizePgDateOnly(row.appointment_date, "Appointment appointment_date"),
@@ -141,6 +151,15 @@ const selectColumns = `
   created_at, updated_at
 `;
 
+const readColumns = `
+  a.id, a.patient_id, a.branch_id, a.dentist_user_id, a.appointment_date, a.appointment_time,
+  a.duration_minutes, a.planned_procedure, a.notes, a.status, a.rescheduled_from_appointment_id,
+  a.created_at, a.updated_at,
+  p.patient_code,
+  trim(concat_ws(' ', p.first_name, p.middle_name, p.last_name)) AS patient_display_name,
+  p.mobile_number AS patient_mobile_number
+`;
+
 export function createAppointmentRepository(executor: PgQueryExecutor): AppointmentRepository {
   return {
     async branchExists(branchId) {
@@ -153,14 +172,22 @@ export function createAppointmentRepository(executor: PgQueryExecutor): Appointm
     },
     async getById(id) {
       const result = await executor.query<AppointmentRow>(
-        `SELECT ${selectColumns} FROM appointments WHERE id = $1 LIMIT 1`,
+        `SELECT ${readColumns}
+         FROM appointments a
+         INNER JOIN patients p ON p.id = a.patient_id
+         WHERE a.id = $1
+         LIMIT 1`,
         [id]
       );
       return result.rows[0] ? mapAppointment(result.rows[0]) : null;
     },
     async getByIdForUpdate(id) {
       const result = await executor.query<AppointmentRow>(
-        `SELECT ${selectColumns} FROM appointments WHERE id = $1 FOR UPDATE`,
+        `SELECT ${readColumns}
+         FROM appointments a
+         INNER JOIN patients p ON p.id = a.patient_id
+         WHERE a.id = $1
+         FOR UPDATE OF a`,
         [id]
       );
       return result.rows[0] ? mapAppointment(result.rows[0]) : null;
@@ -181,10 +208,11 @@ export function createAppointmentRepository(executor: PgQueryExecutor): Appointm
         where.push(`status = $${values.length}`);
       }
       const result = await executor.query<AppointmentRow>(
-        `SELECT ${selectColumns}
-         FROM appointments
-         WHERE ${where.join(" AND ")}
-         ORDER BY appointment_date ASC, appointment_time ASC NULLS FIRST, id ASC`,
+        `SELECT ${readColumns}
+         FROM appointments a
+         INNER JOIN patients p ON p.id = a.patient_id
+         WHERE ${where.map((clause) => `a.${clause}`).join(" AND ")}
+         ORDER BY a.appointment_date ASC, a.appointment_time ASC NULLS FIRST, a.id ASC`,
         values
       );
       return result.rows.map(mapAppointment);
@@ -224,6 +252,21 @@ export function createAppointmentRepository(executor: PgQueryExecutor): Appointm
       );
       const row = result.rows[0];
       return row ? { id: row.id, branchCode: row.branch_code, branchName: row.branch_name } : null;
+    },
+    async listBranchesByIds(branchIds) {
+      if (branchIds.length === 0) return [];
+      const result = await executor.query<{ id: string; branch_code: string; branch_name: string }>(
+        `SELECT id::text, branch_code, branch_name
+         FROM branches
+         WHERE id = ANY($1::uuid[])
+         ORDER BY branch_name, branch_code, id`,
+        [[...branchIds]]
+      );
+      return result.rows.map((row) => ({
+        id: row.id,
+        branchCode: row.branch_code,
+        branchName: row.branch_name
+      }));
     },
     async listActiveDentistsForBranch(branchId) {
       const result = await executor.query<{ id: string; display_name: string }>(

@@ -11,14 +11,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (auth.authenticated) return <Navigate to="/auth/account" replace />;
+  if (auth.authenticated) return <Navigate to="/appointments" replace />;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setSubmitting(true);
     try {
       await auth.login(email, password);
-      const destination = (location.state as { from?: string } | null)?.from ?? "/auth/account";
+      const destination = (location.state as { from?: string } | null)?.from ?? "/appointments";
       navigate(destination, { replace: true });
     } catch {
       // AuthContext exposes a safe user-facing message.

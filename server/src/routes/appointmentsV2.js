@@ -52,6 +52,30 @@ function loadAppointmentAccess(runtime) {
   };
 }
 
+function requireSchedulingContextAccess(accessBoundary) {
+  const requireAnyBranch = accessBoundary.requireAnyBranchPermission("appointment.list");
+  const requireBranch = accessBoundary.requireBranchPermission(
+    "appointment.list",
+    (req) => req.appointmentBranchId
+  );
+
+  return async (req, res, next) => {
+    const rawBranchId = req.query?.branchId;
+    if (rawBranchId === undefined || rawBranchId === null || rawBranchId === "") {
+      await requireAnyBranch(req, res, next);
+      return;
+    }
+
+    try {
+      req.appointmentBranchId = requireAppointmentUuid(rawBranchId);
+    } catch (error) {
+      next(toAppointmentHttpError(error));
+      return;
+    }
+    await requireBranch(req, res, next);
+  };
+}
+
 function requireConfirmForConfirmedCreate(accessBoundary) {
   const requireConfirm = accessBoundary.requireBranchPermission(
     "appointment.confirm",
@@ -113,13 +137,12 @@ export function createAppointmentsRouter(
   router.get(
     "/scheduling-context",
     ...resolveAccess,
-    validateUuidValue((req) => req.query?.branchId, (req, id) => { req.appointmentBranchId = id; }),
-    accessBoundary.requireBranchPermission("appointment.list", (req) => req.appointmentBranchId),
+    requireSchedulingContextAccess(accessBoundary),
     handleDomain(async (req, res) => {
-      const result = await appointmentRuntime.getService().getSchedulingContext(
-        req.appointmentBranchId,
-        actorFromResponse(res)
-      );
+      const actor = actorFromResponse(res);
+      const result = req.appointmentBranchId
+        ? await appointmentRuntime.getService().getSchedulingContext(req.appointmentBranchId, actor)
+        : await appointmentRuntime.getService().getSchedulingBootstrap(actor);
       res.json(result);
     })
   );

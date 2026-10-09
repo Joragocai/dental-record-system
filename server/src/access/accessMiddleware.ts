@@ -46,6 +46,11 @@ export interface AccessBoundary {
     res: AccessResponseLike,
     next: AccessNextFunction
   ) => Promise<void>;
+  requireAnyBranchPermission(permission: PermissionCode): (
+    req: AccessRequestLike,
+    res: AccessResponseLike,
+    next: AccessNextFunction
+  ) => Promise<void>;
   requireBranchPermission(permission: PermissionCode, extractBranchId: BranchIdExtractor): (
     req: AccessRequestLike,
     res: AccessResponseLike,
@@ -187,6 +192,26 @@ export function createAccessBoundary(options: {
           const authorization = requireAuthorizationContext(res);
           const services = getServices();
           services.authorizationService.requirePermission(authorization, permission);
+          next();
+        } catch (error) {
+          if (shouldAuditAuthorizationDenial(error)) {
+            await recordAuthorizationDeniedBestEffort(getServices(), res, permission, null);
+          }
+          if (error instanceof Error && "status" in error) {
+            next(error);
+            return;
+          }
+          next(toSafeAuthorizationHttpError(error));
+        }
+      };
+    },
+
+    requireAnyBranchPermission(permission) {
+      return async (_req, res, next) => {
+        try {
+          const authorization = requireAuthorizationContext(res);
+          const services = getServices();
+          services.authorizationService.requireAnyBranchPermission(authorization, permission);
           next();
         } catch (error) {
           if (shouldAuditAuthorizationDenial(error)) {

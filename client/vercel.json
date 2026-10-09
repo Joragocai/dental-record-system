@@ -20,6 +20,10 @@
     {
       "source": "/auth/account",
       "destination": "/index.html"
+    },
+    {
+      "source": "/appointments",
+      "destination": "/index.html"
     }
   ]
 }
