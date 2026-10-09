@@ -20,6 +20,17 @@ const branchB = "55555555-5555-4555-8555-555555555555";
 const grantsByRole: Record<ApplicationRoleCode, PermissionGrant[]> = {
   PATIENT: [],
   PERSONNEL: [
+    { code: "appointment.cancel", scope: "BRANCH" },
+    { code: "appointment.check_in", scope: "BRANCH" },
+    { code: "appointment.complete", scope: "BRANCH" },
+    { code: "appointment.confirm", scope: "BRANCH" },
+    { code: "appointment.create", scope: "BRANCH" },
+    { code: "appointment.list", scope: "BRANCH" },
+    { code: "appointment.no_show", scope: "BRANCH" },
+    { code: "appointment.patient_lookup", scope: "BRANCH" },
+    { code: "appointment.read", scope: "BRANCH" },
+    { code: "appointment.reschedule", scope: "BRANCH" },
+    { code: "appointment.update", scope: "BRANCH" },
     { code: "attachment.create", scope: "BRANCH" },
     { code: "attachment.download", scope: "BRANCH" },
     { code: "attachment.read", scope: "BRANCH" },
@@ -30,6 +41,18 @@ const grantsByRole: Record<ApplicationRoleCode, PermissionGrant[]> = {
     { code: "treatment.read", scope: "BRANCH" }
   ],
   DENTIST: [
+    { code: "appointment.cancel", scope: "BRANCH" },
+    { code: "appointment.check_in", scope: "BRANCH" },
+    { code: "appointment.complete", scope: "BRANCH" },
+    { code: "appointment.confirm", scope: "BRANCH" },
+    { code: "appointment.create", scope: "BRANCH" },
+    { code: "appointment.list", scope: "BRANCH" },
+    { code: "appointment.no_show", scope: "BRANCH" },
+    { code: "appointment.patient_lookup", scope: "BRANCH" },
+    { code: "appointment.read", scope: "BRANCH" },
+    { code: "appointment.reschedule", scope: "BRANCH" },
+    { code: "appointment.start", scope: "BRANCH" },
+    { code: "appointment.update", scope: "BRANCH" },
     { code: "attachment.create", scope: "BRANCH" },
     { code: "attachment.delete", scope: "BRANCH" },
     { code: "attachment.download", scope: "BRANCH" },
@@ -119,6 +142,52 @@ test("Personnel may read branch clinical records but cannot read internal notes 
   );
 });
 
+test("Personnel receives only approved Phase 12 appointment permissions on assigned branches", async () => {
+  const service = createAuthorizationService(createFakeAuthorizationRepository());
+  const context = await service.resolveContext(buildApplicationUser(["PERSONNEL"], [branchA]));
+
+  for (const permission of [
+    "appointment.list",
+    "appointment.read",
+    "appointment.patient_lookup",
+    "appointment.create",
+    "appointment.update",
+    "appointment.confirm",
+    "appointment.reschedule",
+    "appointment.cancel",
+    "appointment.check_in",
+    "appointment.complete",
+    "appointment.no_show"
+  ] as const) {
+    service.requireBranchPermission(context, permission, branchA);
+  }
+
+  assert.throws(() => service.requireBranchPermission(context, "appointment.start", branchA), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
+  assert.throws(() => service.requireBranchPermission(context, "appointment.create", branchB), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
+});
+
+test("Dentist may start appointments and owner role union does not grant appointment access through Clinic Administrator", async () => {
+  const service = createAuthorizationService(createFakeAuthorizationRepository());
+  const dentistContext = await service.resolveContext(buildApplicationUser(["DENTIST"], [branchA]));
+  service.requireBranchPermission(dentistContext, "appointment.start", branchA);
+
+  const clinicAdminContext = await service.resolveContext(buildApplicationUser(["CLINIC_ADMINISTRATOR"], [branchA]));
+  assert.throws(() => service.requireBranchPermission(clinicAdminContext, "appointment.read", branchA), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
+
+  const ownerContext = await service.resolveContext(buildApplicationUser(["DENTIST", "CLINIC_ADMINISTRATOR"], [branchA]));
+  service.requireBranchPermission(ownerContext, "appointment.start", branchA);
+  assert.equal(
+    grantsByRole.CLINIC_ADMINISTRATOR.some((grant) => grant.code.startsWith("appointment.")),
+    false
+  );
+});
+
 test("Clinic Administrator role alone has no patient or clinical permission", async () => {
   const service = createAuthorizationService(createFakeAuthorizationRepository());
   const context = await service.resolveContext(buildApplicationUser(["CLINIC_ADMINISTRATOR"]));
@@ -128,6 +197,9 @@ test("Clinic Administrator role alone has no patient or clinical permission", as
     assertAuthorizationError(error, "AUTHORIZATION_DENIED")
   );
   assert.throws(() => service.requireBranchPermission(context, "attachment.read", branchA), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
+  assert.throws(() => service.requireBranchPermission(context, "appointment.read", branchA), (error) =>
     assertAuthorizationError(error, "AUTHORIZATION_DENIED")
   );
 });
@@ -152,6 +224,9 @@ test("System Administrator remains technical and cannot read patient, clinical, 
   assert.throws(() => service.requireBranchPermission(context, "attachment.read", branchA), (error) =>
     assertAuthorizationError(error, "AUTHORIZATION_DENIED")
   );
+  assert.throws(() => service.requireBranchPermission(context, "appointment.read", branchA), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
 });
 
 test("Dentist-only, Personnel, and Patient roles are denied complete audit review and export", async () => {
@@ -166,6 +241,15 @@ test("Dentist-only, Personnel, and Patient roles are denied complete audit revie
       assertAuthorizationError(error, "AUTHORIZATION_DENIED")
     );
   }
+});
+
+test("Patient receives no Phase 12 appointment permissions", async () => {
+  const service = createAuthorizationService(createFakeAuthorizationRepository());
+  const context = await service.resolveContext(buildApplicationUser(["PATIENT"], [branchA]));
+
+  assert.throws(() => service.requireBranchPermission(context, "appointment.read", branchA), (error) =>
+    assertAuthorizationError(error, "AUTHORIZATION_DENIED")
+  );
 });
 
 test("AuthorizationService denies by default when an active user has no roles", async () => {

@@ -28,6 +28,7 @@ const resetTables = [
   "app_users",
   "roles",
   "legacy_appointment_identity_map",
+  "appointment_history",
   "appointments",
   "legacy_treatment_identity_map",
   "treatments",
@@ -71,7 +72,7 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
     const permissions = await pool.query<{ code: string; scope: string }>(
       "SELECT code, scope FROM permissions ORDER BY code ASC"
     );
-    assert.equal(permissions.rows.length, 18);
+    assert.equal(permissions.rows.length, 30);
     assert.equal(permissions.rows.find((row) => row.code === "patient.read")?.scope, "BRANCH");
     assert.equal(permissions.rows.find((row) => row.code === "staff_account.create")?.scope, "GLOBAL");
 
@@ -97,6 +98,36 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
       "attachment.read",
       "attachment.update"
     ]);
+    assert.deepEqual(grantsFor("PERSONNEL").filter((code) => code.startsWith("appointment.")), [
+      "appointment.cancel",
+      "appointment.check_in",
+      "appointment.complete",
+      "appointment.confirm",
+      "appointment.create",
+      "appointment.list",
+      "appointment.no_show",
+      "appointment.patient_lookup",
+      "appointment.read",
+      "appointment.reschedule",
+      "appointment.update"
+    ]);
+    assert.deepEqual(grantsFor("DENTIST").filter((code) => code.startsWith("appointment.")), [
+      "appointment.cancel",
+      "appointment.check_in",
+      "appointment.complete",
+      "appointment.confirm",
+      "appointment.create",
+      "appointment.list",
+      "appointment.no_show",
+      "appointment.patient_lookup",
+      "appointment.read",
+      "appointment.reschedule",
+      "appointment.start",
+      "appointment.update"
+    ]);
+    assert.deepEqual(grantsFor("PATIENT").filter((code) => code.startsWith("appointment.")), []);
+    assert.deepEqual(grantsFor("CLINIC_ADMINISTRATOR").filter((code) => code.startsWith("appointment.")), []);
+    assert.deepEqual(grantsFor("SYSTEM_ADMINISTRATOR").filter((code) => code.startsWith("appointment.")), []);
     assert.deepEqual(grantsFor("CLINIC_ADMINISTRATOR"), [
       "audit.export",
       "audit.read",
@@ -144,6 +175,8 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
     authorizationService.requirePermission(ownerContext, "audit.export");
     authorizationService.requireBranchPermission(ownerContext, "treatment.finalize", branchA);
     authorizationService.requireBranchPermission(ownerContext, "attachment.delete", branchA);
+    authorizationService.requireBranchPermission(ownerContext, "appointment.start", branchA);
+    authorizationService.requireBranchPermission(ownerContext, "appointment.no_show", branchA);
     assert.throws(() => authorizationService.requireBranchPermission(ownerContext, "patient.read", branchB), (error) =>
       isAuthorizationError(error, "AUTHORIZATION_DENIED")
     );
@@ -157,6 +190,9 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
       isAuthorizationError(error, "AUTHORIZATION_DENIED")
     );
     assert.throws(() => authorizationService.requireBranchPermission(sysContext, "attachment.read", branchA), (error) =>
+      isAuthorizationError(error, "AUTHORIZATION_DENIED")
+    );
+    assert.throws(() => authorizationService.requireBranchPermission(sysContext, "appointment.read", branchA), (error) =>
       isAuthorizationError(error, "AUTHORIZATION_DENIED")
     );
 

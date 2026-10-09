@@ -35,12 +35,12 @@ export interface MigratedLegacyAppointmentResult extends MappedAppointmentDraft 
 export type PgAppointmentMigrationRunner = PgQueryExecutor &
   Pick<PgPoolManager, "withTransaction">;
 
-const allowedStatuses = new Set<AppointmentStatus>([
-  "Scheduled",
-  "Completed",
-  "Cancelled",
-  "No-show"
-]);
+const legacyStatusMap: Record<string, AppointmentStatus> = {
+  Scheduled: "confirmed",
+  Completed: "completed",
+  Cancelled: "cancelled_by_clinic",
+  "No-show": "no_show"
+};
 
 interface ResolvedPatientSnapshot {
   patientId: string;
@@ -85,11 +85,12 @@ function normalizeOptionalString(value: unknown): string | null {
 
 function normalizeAppointmentStatus(value: string | null): AppointmentStatus {
   const normalized = normalizeOptionalString(value) ?? "Scheduled";
-  if (!allowedStatuses.has(normalized as AppointmentStatus)) {
+  const mapped = legacyStatusMap[normalized];
+  if (!mapped) {
     throw new Error(`Legacy appointment status is invalid: ${normalized}.`);
   }
 
-  return normalized as AppointmentStatus;
+  return mapped;
 }
 
 function normalizeLegacyTimestamp(value: string, label: string): string {

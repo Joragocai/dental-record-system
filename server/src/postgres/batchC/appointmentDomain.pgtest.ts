@@ -365,7 +365,7 @@ test("mapLegacyAppointmentToDraft preserves full V1 appointment parity and patie
     appointmentTime: legacyAppointment.appointment_time,
     plannedProcedure: legacyAppointment.planned_procedure,
     notes: legacyAppointment.notes,
-    status: "Scheduled",
+    status: "confirmed",
     createdAt: legacyAppointment.created_at,
     updatedAt: legacyAppointment.updated_at
   });
@@ -386,7 +386,7 @@ test("mapLegacyAppointmentToDraft normalizes blanks to NULL and keeps optional a
   assert.equal(mapped.appointment.appointmentTime, null);
   assert.equal(mapped.appointment.plannedProcedure, null);
   assert.equal(mapped.appointment.notes, null);
-  assert.equal(mapped.appointment.status, "Scheduled");
+  assert.equal(mapped.appointment.status, "confirmed");
 });
 
 test("mapLegacyAppointmentToDraft accepts JS ISO timestamps and SQLite CURRENT_TIMESTAMP form", async () => {

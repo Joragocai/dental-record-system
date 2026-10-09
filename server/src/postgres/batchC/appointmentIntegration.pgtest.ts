@@ -29,6 +29,7 @@ function buildTestDatabaseConfig() {
 
 const batchCTestResetTables = [
   "legacy_appointment_identity_map",
+  "appointment_history",
   "appointments",
   "legacy_treatment_identity_map",
   "treatments",
@@ -151,7 +152,7 @@ test("Batch C PostgreSQL integration enforces branch FK on appointments", async 
       appointmentTime: "09:15",
       plannedProcedure: "Consultation",
       notes: null,
-      status: "Scheduled",
+      status: "confirmed",
       createdAt: "2026-08-20T08:00:00.000Z",
       updatedAt: "2026-08-20T08:30:00.000Z"
     };

@@ -967,13 +967,15 @@ Availability checks must be enforced in the database transaction, not only in Re
 Use a combination of:
 
 - Dentist
-- Branch
 - Appointment date
 - Start time
 - End time or duration
 - Active appointment status
+- Branch membership validation for the selected appointment location
 
-The backend must handle concurrent requests safely. When two users attempt to book the same slot, one must receive a clear conflict response.
+The same Dentist must not be double-booked across different branches at overlapping times. Branch is the appointment location and an authorization/membership constraint; it must not allow a Dentist to occupy overlapping slots simply because the branch differs.
+
+The backend must handle concurrent requests safely inside PostgreSQL transactions. When two users attempt to reserve overlapping active slots for the same Dentist, only one may succeed and the other must receive a clear conflict response.
 
 ### 10.5 Full Calendar Requirements
 
@@ -988,6 +990,8 @@ The backend must handle concurrent requests safely. When two users attempt to bo
 - Appointment details drawer or modal
 - Rescheduling workflow
 - Waiting-list support as a later enhancement
+
+**Implementation sequencing:** Task Phase 12 builds the protected clinic appointment engine and calendar. Task Phase 13 adds in-app/email notifications to appointment transitions. Task Phase 14 adds patient OWN-scoped self-service request/cancellation/reschedule workflows. Phase 12 may support the underlying `requested` and `pending_confirmation` states, but it must not pull the Patient Portal or notification delivery subsystems forward.
 
 ---
 
@@ -1476,7 +1480,7 @@ Rules:
 ### 13.7 Dates and Time
 
 - Use `DATE` for birthdays and date-only clinical values.
-- Use `TIMESTAMPTZ` for events, logins, uploads, appointments, and audit times.
+- Use `TIMESTAMPTZ` for workflow/event timestamps such as logins, uploads, appointment history/actions, and audit times. Keep the clinic appointment schedule itself as `DATE` + local wall-clock `TIME` (with duration) so Asia/Manila scheduling is not accidentally shifted by timezone conversion.
 - Store event timestamps in UTC.
 - Display timestamps using the clinic's configured timezone.
 - Default clinic timezone: `Asia/Manila` unless configured otherwise.
@@ -1640,6 +1644,9 @@ GET    /api/treatments/:treatmentId/attachments
 
 ```text
 GET    /api/appointments
+GET    /api/appointments/scheduling-context
+GET    /api/appointments/patient-search?q=&branchId=
+GET    /api/appointments/availability
 GET    /api/appointments/:appointmentId
 POST   /api/appointments
 PATCH  /api/appointments/:appointmentId
@@ -1647,9 +1654,9 @@ POST   /api/appointments/:appointmentId/confirm
 POST   /api/appointments/:appointmentId/reschedule
 POST   /api/appointments/:appointmentId/cancel
 POST   /api/appointments/:appointmentId/check-in
+POST   /api/appointments/:appointmentId/start
 POST   /api/appointments/:appointmentId/complete
 POST   /api/appointments/:appointmentId/no-show
-GET    /api/appointments/availability
 GET    /api/calendar
 ```
 
@@ -3071,18 +3078,34 @@ Private attachment/storage foundation is completed through task Phase 10:
 - Camera capture, preview/retake/rotate/crop enhancements remain deferred to a later UI-focused task.
 - Attachment backup/restore remains a Phase 18 Backup / Recovery dependency.
 
-### Phase 9: Appointment Redesign
+### Task Phase 12: Appointment Redesign
 
-- Add expanded statuses.
-- Add patient request flow.
-- Add personnel confirmation flow.
-- Add cancellation and rescheduling history.
-- Add database conflict prevention.
-- Add full calendar page.
-- Add in-app notifications and transactional email notifications.
-- Do not add SMS providers, SMS templates, SMS delivery tables, or SMS environment variables in the initial V2 implementation.
+- Replace the legacy SQLite appointment runtime with a protected PostgreSQL V2 workflow.
+- Add stable machine statuses, Dentist/provider assignment, duration, cancellation/reschedule lineage, and append-only appointment history.
+- Add Personnel/Dentist branch-scoped appointment RBAC while preserving the rule that Clinic Administrator and System Administrator receive no routine clinical access by role alone.
+- Enforce transaction-safe Dentist double-book prevention across branches.
+- Add protected scheduling/availability APIs and a day/week/mobile-agenda calendar experience.
+- Preserve clinic-wide patient identity while recording the actual appointment branch.
+- Prepare requested/pending-confirmation states for later patient self-service without implementing the Patient Portal in this phase.
+- Appointment in-app/email notifications remain Phase 13; SMS remains excluded.
 
-### Phase 10: Financial Module
+### Task Phase 13: Notifications
+
+- Add in-app notifications for important appointment and account events.
+- Add transactional email notifications and retry/delivery tracking.
+- Integrate with Phase 12 appointment transitions without making successful appointment writes depend on email delivery.
+- Do not add SMS providers, SMS templates, SMS delivery tables, or SMS environment variables unless a later approved requirement changes the policy.
+
+### Task Phase 14: Patient Portal
+
+- Add patient dashboard.
+- Add approved treatment history.
+- Add OWN-scoped patient appointment request, cancellation-request, and reschedule-request workflows using the Phase 12 appointment domain.
+- Add balance and payment history.
+- Add approved documents.
+- Add privacy information.
+
+### Task Phase 15: Finance / Collectibles
 
 - Add invoices and invoice items.
 - Add payments and allocations.
@@ -3095,37 +3118,42 @@ Private attachment/storage foundation is completed through task Phase 10:
 - Add daily cash closing.
 - Add reports and controlled exports.
 
-### Phase 11: Patient Portal
+### Task Phase 16: Role Dashboard
 
-- Add patient dashboard.
-- Add approved treatment history.
-- Add appointment requests and cancellation.
-- Add balance and payment history.
-- Add approved documents.
-- Add privacy information.
+- Add role-specific dashboard content and shortcuts using already protected domain APIs.
+- Keep System Administrator views technical and exclude routine patient/clinical/financial data.
+- Keep Clinic Administrator administrative/business authority separate from Dentist clinical authority.
 
-### Phase 12: Responsive UI and Accessibility
+### Task Phase 17: Responsive UI / Accessibility
 
 - Add desktop sidebar.
 - Add mobile bottom navigation.
-- Add role-specific dashboards.
-- Convert large mobile tables to cards.
+- Convert large mobile tables to cards or appropriate mobile layouts.
 - Improve forms and validation.
 - Add keyboard and accessibility checks.
 - Test required viewport sizes.
 
-### Phase 13: Deployment, Monitoring, and Production Review
+### Task Phase 18: Backup / Recovery
 
-- Configure staging deployment.
-- Configure production deployment.
-- Add CI checks.
-- Add error monitoring.
-- Add uptime monitoring.
-- Add backup monitoring.
-- Complete restore test.
-- Complete permission and security tests.
-- Complete clinic user acceptance testing.
-- Complete privacy and accounting review.
+- Implement cloud-compatible backup and recovery controls.
+- Add backup monitoring and complete a restore test.
+- Preserve private object-storage and PostgreSQL consistency.
+
+### Task Phase 19: Integration / End-to-End / Security Testing
+
+- Run protected end-to-end workflows across authentication, authorization, branches, clinical modules, storage, audit, notifications, and finance as implemented.
+- Complete permission, negative-path, concurrency, and security testing.
+
+### Task Phase 20: User Acceptance Testing
+
+- Complete clinic user acceptance testing with approved fictional/non-production data.
+- Resolve UAT findings before production readiness.
+
+### Task Phase 21: Production Readiness
+
+- Configure production deployment only after all prior gates are complete.
+- Add required CI, error monitoring, uptime monitoring, and operational controls.
+- Complete privacy, security, accounting, backup/recovery, and production-readiness review before authorizing real patient data.
 
 ---
 
@@ -3386,12 +3414,12 @@ The older empty umbrella markers `07-Authentication.txt` and `08-Authorization-R
 
 ### Planned Task Phases
 
-Phases 09 and 10 are complete for their approved scopes under `docs/codex-prompts/09-Audit-Trail.txt` and `docs/codex-prompts/10-Private-Storage.txt`. Phase 11 Early Staging has completed its approved staging scope under `docs/codex-prompts/11-Early-Staging.txt` and `docs/deployment/staging.md`: isolated Supabase staging database/Auth/private Storage, migrations 0001–0010, Vercel frontend, Render API, verified TLS/readiness, staged owner activation/login, legacy-route isolation, and fictional private-attachment lifecycle were live-validated. This does NOT authorize production or real patient data. The remaining phase files are planning placeholders requiring separate approval.
+Phases 09 and 10 are complete for their approved scopes under `docs/codex-prompts/09-Audit-Trail.txt` and `docs/codex-prompts/10-Private-Storage.txt`. Phase 11 Early Staging has completed its approved staging scope under `docs/codex-prompts/11-Early-Staging.txt` and `docs/deployment/staging.md`: isolated Supabase staging database/Auth/private Storage, migrations 0001–0010, Vercel frontend, Render API, verified TLS/readiness, staged owner activation/login, legacy-route isolation, and fictional private-attachment lifecycle were live-validated. This does NOT authorize production or real patient data. Phase 12 Appointment Redesign is now approved under `docs/codex-prompts/12-Appointment-Redesign.txt`; implementation must proceed in reviewed subphases 12A–12D. Phases 13–21 remain planning placeholders requiring separate approval.
 
 | Task ID | Planned Task |
 | --- | --- |
 | 11 | Early Staging — Completed for approved scope. Vercel frontend, Render API, Supabase staging Auth/PostgreSQL/private Storage, owner activation/login, negative route checks, and fictional attachment lifecycle live-validated; production remains out of scope |
-| 12 | Appointment Redesign |
+| 12 | Appointment Redesign — Approved/in progress. Implement in reviewed subphases 12A schema/workflow/RBAC, 12B PostgreSQL domain and conflict safety, 12C protected API, and 12D scheduling/calendar UI; Notifications and Patient Portal remain Phases 13 and 14 |
 | 13 | Notifications |
 | 14 | Patient Portal |
 | 15 | Finance / Collectibles |
@@ -3402,7 +3430,7 @@ Phases 09 and 10 are complete for their approved scopes under `docs/codex-prompt
 | 20 | User Acceptance Testing |
 | 21 | Production Readiness |
 
-Before starting any planned phase, compare its intended scope with completed subphases so already-built foundations are not duplicated. Phase 11 must build on the completed authentication, authorization, audit, PostgreSQL, branch, and private-storage foundations rather than recreate them.
+Before starting any planned phase, compare its intended scope with completed subphases so already-built foundations are not duplicated. Phase 12 must build on the completed PostgreSQL appointment foundation plus authentication, authorization, audit, branch, and staging foundations rather than recreate them. Appointment notifications stay in Phase 13 and patient self-service appointment requests stay in Phase 14.
 
 Do not combine PostgreSQL, authentication, storage, finance, or broad TypeScript migration into one task. Keep each approved phase reviewable and protected by the regression-test baseline.
 

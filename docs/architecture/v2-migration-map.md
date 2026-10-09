@@ -58,17 +58,17 @@ requires more than the present unit and service-level parity tests.
 | `client/src/lib/attachments.js` | BRIDGE | Keep until all callers use the TypeScript module directly. |
 | `client/src/lib/formatters.js` | BRIDGE | Keep until all callers use the TypeScript module directly. |
 
-## Appointment Batch 5
+## Appointment Domain / Phase 12 Handoff
 
 | Area | Classification | Notes |
 | --- | --- | --- |
 | `server/src/postgres/migrations/0004_appointment_core.sql` | KEEP | Batch C Appointment foundation migration; extend only through later ordered migrations. |
-| `server/src/postgres/batchC/*.ts` | KEEP | Dedicated PostgreSQL Appointment foundation and fictional parity helpers; no runtime cutover yet. |
-| `server/src/services/appointmentService.ts` | ADAPT | Useful typed domain and service base for future replacement slices. |
+| `server/src/postgres/batchC/*.ts` | KEEP | Dedicated PostgreSQL Appointment foundation and fictional parity helpers. Phase 12 builds on these UUID/date/time/branch semantics rather than replacing the migration seam. |
+| `server/src/services/appointmentService.ts` | ADAPT | Legacy SQLite-oriented typed service/reference. Phase 12 should implement a PostgreSQL V2 repository/service boundary rather than extending this file as the final cloud runtime. |
 | `server/src/services/appointmentService.js` | BRIDGE | Preserve while JavaScript route consumers still import it. |
-| `server/src/routes/appointments.js` | RETIRE-LATER | Active V1 route path; replacement depends on broader V2 API and auth work. |
-| Appointment JSX UI files | RETIRE-LATER | Current UI can remain until the V2 appointment slice is implemented. |
-| Appointment API calls in `client/src/lib/api.js` | RETIRE-LATER | Likely to change during V2 API and auth transition. |
+| `server/src/routes/appointments.js` | RETIRE-LATER | Active V1 SQLite route path. Phase 12 will replace it with authenticated/RBAC-protected PostgreSQL appointment routes; retire only after replacement and regression/staging gates pass. |
+| Appointment JSX UI files | RETIRE-LATER | Current V1 UI remains reference/compatibility material until Phase 12D authenticated scheduling/calendar UI is proven. |
+| Appointment API calls in `client/src/lib/api.js` | RETIRE-LATER | Replace with authenticated V2 appointment API helpers during Phase 12C/12D; keep until intended consumers are migrated. |
 | Appointment logic in `server/src/db/database.js` | RETIRE-LATER | Persistence path is tied to SQLite and should not be converted further just for parity. |
 
 ## Authentication Foundation

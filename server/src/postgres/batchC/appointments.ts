@@ -2,7 +2,17 @@ import type { QueryResultRow } from "pg";
 import { normalizePgDateOnly, type PgDateOnlyValue } from "../dateOnly.js";
 import type { PgQueryExecutor } from "../pool.js";
 
-export type AppointmentStatus = "Scheduled" | "Completed" | "Cancelled" | "No-show";
+export type AppointmentStatus =
+  | "requested"
+  | "pending_confirmation"
+  | "confirmed"
+  | "checked_in"
+  | "in_progress"
+  | "completed"
+  | "cancelled_by_patient"
+  | "cancelled_by_clinic"
+  | "no_show"
+  | "rescheduled";
 
 export interface NewAppointmentRecord {
   id: string;

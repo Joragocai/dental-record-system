@@ -169,6 +169,30 @@ verified Clinic Administrator identity
 
 No privileged provider provisioning credential is introduced in Phase 08E.
 
+## Phase 12 Appointment RBAC Extension
+
+Migration `0011_appointment_workflow_redesign.sql` extends the existing deny-by-default RBAC model with BRANCH-scoped clinic appointment permissions.
+
+Personnel receives:
+
+- `appointment.list`
+- `appointment.read`
+- `appointment.patient_lookup`
+- `appointment.create`
+- `appointment.update`
+- `appointment.confirm`
+- `appointment.reschedule`
+- `appointment.cancel`
+- `appointment.check_in`
+- `appointment.complete`
+- `appointment.no_show`
+
+Dentist receives all Personnel appointment permissions plus:
+
+- `appointment.start`
+
+Patient, Clinic Administrator, and System Administrator receive no Phase 12 appointment permissions. The owner-dentist receives appointment access only through the separate Dentist role, while Clinic Administrator permissions remain administrative/business permissions. Appointment permissions remain branch-scoped and therefore still require an allowed `user_branches` membership for the target appointment branch.
+
 ## Next Gates
 
 Phase 08G now uses this authorization boundary to create pending Personnel/Dentist application records with approved branch assignments. The next security work is:

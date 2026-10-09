@@ -29,6 +29,7 @@ const resetTables = [
   "app_users",
   "roles",
   "legacy_appointment_identity_map",
+  "appointment_history",
   "appointments",
   "legacy_treatment_identity_map",
   "treatments",

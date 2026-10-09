@@ -93,7 +93,7 @@ class FakeMigrationRunner implements PgMigrationRunner {
 test("listMigrationFiles returns ordered SQL migrations with checksums", async () => {
   const migrations = await listMigrationFiles();
 
-  assert.equal(migrations.length, 10);
+  assert.equal(migrations.length, 11);
   assert.equal(migrations[0]?.name, "0001_v2_foundation_probe.sql");
   assert.equal(migrations[1]?.name, "0002_branch_patient_core.sql");
   assert.equal(migrations[2]?.name, "0003_treatment_core.sql");
@@ -104,6 +104,7 @@ test("listMigrationFiles returns ordered SQL migrations with checksums", async (
   assert.equal(migrations[7]?.name, "0008_treatment_branch_context.sql");
   assert.equal(migrations[8]?.name, "0009_audit_review_request_correlation.sql");
   assert.equal(migrations[9]?.name, "0010_private_attachment_storage.sql");
+  assert.equal(migrations[10]?.name, "0011_appointment_workflow_redesign.sql");
   for (const migration of migrations) assert.equal(migration.checksum.length, 64);
 
   const treatmentBranchMigration = migrations[7]?.sql ?? "";
@@ -125,6 +126,17 @@ test("listMigrationFiles returns ordered SQL migrations with checksums", async (
   assert.match(attachmentMigration, /attachment\.delete/);
   assert.match(attachmentMigration, /r\.code = 'PERSONNEL'/);
   assert.match(attachmentMigration, /r\.code = 'DENTIST'/);
+
+  const appointmentWorkflowMigration = migrations[10]?.sql ?? "";
+  assert.match(appointmentWorkflowMigration, /WHEN 'Scheduled' THEN 'confirmed'/);
+  assert.match(appointmentWorkflowMigration, /CREATE TABLE IF NOT EXISTS appointment_history/);
+  assert.match(appointmentWorkflowMigration, /appointment_history is append-only/);
+  assert.match(appointmentWorkflowMigration, /appointment\.patient_lookup/);
+  assert.match(appointmentWorkflowMigration, /appointment\.start/);
+  assert.match(appointmentWorkflowMigration, /appointment\.complete/);
+  assert.match(appointmentWorkflowMigration, /appointment\.no_show/);
+  assert.match(appointmentWorkflowMigration, /r\.code = 'PERSONNEL'/);
+  assert.match(appointmentWorkflowMigration, /r\.code = 'DENTIST'/);
 });
 
 test("compareMigrationState reports pending, applied, and orphaned migrations", () => {
@@ -208,7 +220,7 @@ test("getMigrationStatus remains read-only when the migration table is absent", 
 
   const statuses = await getMigrationStatus(runner);
 
-  assert.equal(statuses.length, 10);
+  assert.equal(statuses.length, 11);
   for (const status of statuses) assert.equal(status.applied, false);
   assert.equal(
     runner.executedSql.some((statement) => statement.startsWith(`CREATE TABLE IF NOT EXISTS ${migrationTableName}`)),

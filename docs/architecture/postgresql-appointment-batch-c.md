@@ -69,7 +69,7 @@ branch at migration time.
 | `appointment_time` | `appointment_time` | preserve local wall-clock `HH:MM`; blank/whitespace -> `NULL` |
 | `planned_procedure` | `planned_procedure` | blank/whitespace -> `NULL`, otherwise preserve |
 | `notes` | `notes` | blank/whitespace -> `NULL`, otherwise preserve |
-| `status` | `status` | blank -> `Scheduled`; preserve current V1 allowed values only |
+| `status` | `status` | blank -> legacy `Scheduled`, then map legacy values into V2 machine statuses: `Scheduled` -> `confirmed`, `Completed` -> `completed`, `Cancelled` -> `cancelled_by_clinic`, `No-show` -> `no_show` |
 | `created_at` | `created_at` | accept proven V1 legacy timestamp forms and normalize to `TIMESTAMPTZ` |
 | `updated_at` | `updated_at` | accept proven V1 legacy timestamp forms and normalize to `TIMESTAMPTZ` |
 
@@ -89,14 +89,18 @@ branch at migration time.
 
 ## Status / History Semantics
 
-- Batch C preserves the existing V1 appointment status values:
+- Legacy Batch C migration input still accepts only the existing V1 appointment status values:
   - `Scheduled`
   - `Completed`
   - `Cancelled`
   - `No-show`
+- The Batch C migration helper now maps those legacy labels into the Phase 12 V2 machine statuses before PostgreSQL insertion:
+  - `Scheduled` -> `confirmed`
+  - `Completed` -> `completed`
+  - `Cancelled` -> `cancelled_by_clinic`
+  - `No-show` -> `no_show`
 - no separate appointment history table exists in V1
-- status changes in V1 mutate the same row, and Batch C preserves that
-  persisted-record reality without redesigning history
+- Phase 12 migration `0011_appointment_workflow_redesign.sql` adds append-only `appointment_history` for future V2 workflow events; legacy rows are translated, not retroactively given invented history
 
 ## Transactional And Rerun Behavior
 
@@ -116,12 +120,34 @@ branch at migration time.
 - future runtime booking enforcement remains a required later Appointment-domain
   replacement behavior
 
+## Phase 12 Handoff
+
+Phase 12 Appointment Redesign is now approved under
+`docs/codex-prompts/12-Appointment-Redesign.txt`. It must extend this Batch C
+foundation through a new ordered migration rather than editing migration 0004.
+
+The approved Phase 12 direction is:
+
+- preserve clinic-wide Patient UUID identity and explicit appointment branch;
+- add a nullable Dentist application-user relationship for requests that do not
+  yet have a final provider;
+- add duration for slot-reserving appointments;
+- move persisted status to stable V2 machine values while safely translating
+  the four legacy values;
+- add append-only appointment business history and centralized audit events;
+- enforce Dentist branch membership and transaction-safe overlapping-slot
+  conflict prevention across branches;
+- replace the legacy SQLite appointment runtime/API/UI only after the protected
+  PostgreSQL replacement passes its retirement gates.
+
+Notifications remain Phase 13 and patient self-service appointment workflows
+remain Phase 14.
+
 ## Known Limitations
 
-- active Appointment runtime still uses SQLite
-- no Appointment service/API/UI cutover exists yet
-- no auth/RBAC/notifications/finance work is included
-- no Treatment linkage or provider linkage exists because V1 does not persist
-  them
-- real-data migration still depends on the reviewed production migration plan
-  and downstream V2 runtime work
+- active Appointment runtime still uses SQLite until the Phase 12 replacement is implemented and verified
+- no protected V2 Appointment service/API/UI cutover exists yet
+- migration 0011 extends the Batch C schema to the approved V2 machine-status set and adds appointment history/provider/duration foundations; protected runtime workflow and conflict enforcement remain later Phase 12 subphases
+- appointment conflict enforcement and protected workflow logic are not yet implemented
+- no Treatment linkage exists because V1 does not persist one
+- real-data migration still depends on the reviewed production migration plan and downstream V2 runtime work

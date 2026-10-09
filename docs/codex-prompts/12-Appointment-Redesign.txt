@@ -1,0 +1,339 @@
+PHASE 12 — APPOINTMENT REDESIGN
+
+STATUS
+Approved for implementation in reviewed subphases. Phase 12A schema/workflow/RBAC foundation is currently in progress. Do not proceed to Phase 12B, deploy/apply migration 0011 to staging, commit, push, merge, or advance phases without the user's explicit approval at the applicable review gate.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+APPROVAL / SCOPE
+The user approved the Phase 12 Appointment Redesign scope after senior-developer inspection and approved updating the documentation as needed before implementation. Phase 12 must replace the active legacy SQLite appointment workflow with a protected PostgreSQL V2 appointment workflow without disturbing the preserved v1-local-stable reference.
+
+SOURCE OF TRUTH
+README.md; AGENTS.md; docs/architecture/postgresql-appointment-batch-c.md; docs/architecture/clinic-branch-operating-model.md; docs/architecture/authorization-rbac-foundation.md; docs/architecture/audit-foundation.md; docs/architecture/v2-migration-map.md; completed Phase 08–11 foundations.
+
+GOAL
+Implement a transaction-safe, branch-aware, provider-aware V2 appointment workflow using PostgreSQL, Supabase-authenticated application users, backend RBAC, append-only appointment history, request-correlated audit events, and a responsive clinic scheduling/calendar UI.
+
+FOUNDATIONS TO REUSE
+- Migration 0004 appointment foundation and Batch C PostgreSQL appointment mapping/parity code.
+- Clinic-wide patient identity with transaction-specific appointment branch identity.
+- Many-to-many user_branches for flexible Dentist/Personnel branch membership.
+- Supabase authentication and active application-user resolution.
+- Deny-by-default RBAC middleware.
+- Request ID and append-only audit infrastructure.
+- Phase 11 Vercel/Render/Supabase staging environment.
+- Existing V1 appointment behavior only as a parity/reference source; do not extend SQLite for V2.
+
+CORE BUSINESS MODEL
+
+1. Patient identity
+- Patients remain clinic-wide.
+- An appointment branch is the location where that appointment occurs.
+- A patient registered/originating at Branch A may have an appointment at Branch B without creating another patient.
+- Phase 12 may expose only the minimal patient lookup needed for scheduling; broad Patient route/UI cutover remains separate.
+
+2. Dentist/provider assignment
+- Add a nullable Dentist application-user relationship to appointments.
+- Requested/pending appointments may exist without a final assigned Dentist.
+- A slot-reserving appointment must have an assigned active application user holding the DENTIST role and assigned to the selected branch.
+- Dentist availability is global across branches: the same Dentist cannot occupy overlapping active slots at two branches.
+- Do not create a permanent home-branch concept or staff shift tables.
+
+3. Appointment timing
+- Preserve appointment_date as PostgreSQL DATE and appointment_time as clinic-local wall-clock TIME.
+- Default clinic scheduling timezone remains Asia/Manila.
+- Add duration_minutes for slot-reserving appointments instead of relying on a separately editable end time.
+- Workflow/event timestamps use TIMESTAMPTZ/UTC.
+- Appointment time may remain unset while a request has no final time.
+- A confirmed/slot-reserving appointment requires a valid start time and duration.
+
+4. Stable V2 statuses
+Store stable machine values and display friendly labels:
+- requested
+- pending_confirmation
+- confirmed
+- checked_in
+- in_progress
+- completed
+- cancelled_by_patient
+- cancelled_by_clinic
+- no_show
+- rescheduled
+
+Migration compatibility for existing V2 rows:
+- Scheduled -> confirmed
+- Completed -> completed
+- Cancelled -> cancelled_by_clinic because the V1 workflow had no patient self-service cancellation path
+- No-show -> no_show
+
+Do not silently preserve old display labels as the new persisted machine values.
+
+5. Rescheduling and cancellation
+- Cancellation never deletes an appointment.
+- Rescheduling must preserve the original appointment and lineage rather than destructively erasing the prior slot.
+- The preferred model is to mark the original appointment rescheduled and create/link a replacement appointment for the new schedule.
+- Preserve who acted, when, reason when supplied, old/new schedule facts, and replacement lineage.
+- A rescheduled/cancelled/completed/no-show appointment does not reserve an active slot.
+
+6. Appointment history
+Add an append-only appointment_history structure for business workflow history.
+History should capture enough trusted server-side facts to reconstruct important changes, including:
+- appointment UUID
+- transition/action
+- previous and new status
+- previous and new date/time/duration/provider/branch when applicable
+- actor application-user UUID when an authenticated clinic user performed the action
+- cancellation/reschedule reason when supplied
+- related replacement appointment UUID when applicable
+- request ID correlation
+- occurred_at timestamp
+
+History is not a replacement for audit_events. appointment_history is the appointment business timeline; audit_events remains the security/compliance audit trail. Both should use server-observed facts.
+
+PHASE 12A — SCHEMA / WORKFLOW FOUNDATION
+
+Create the next ordered migration (expected 0011_appointment_workflow_redesign.sql; do not edit old applied migrations).
+
+The migration should, after exact implementation review:
+- evolve appointments to V2 machine statuses;
+- add Dentist/provider relationship;
+- add duration_minutes;
+- add reschedule lineage where needed;
+- create append-only appointment_history;
+- add required indexes/constraints;
+- add BRANCH-scoped appointment permissions;
+- migrate existing development/staging appointment status values safely;
+- preserve UUID patient and branch relationships;
+- keep foreign-key and check-constraint behavior deterministic.
+
+Appointment permissions should be narrow and action-oriented, for example:
+- appointment.list
+- appointment.read
+- appointment.patient_lookup
+- appointment.create
+- appointment.update
+- appointment.confirm
+- appointment.reschedule
+- appointment.cancel
+- appointment.check_in
+- appointment.start
+- appointment.complete
+- appointment.no_show
+
+Initial grant policy:
+- PERSONNEL: `appointment.list`, `appointment.read`, `appointment.patient_lookup`, `appointment.create`, `appointment.update`, `appointment.confirm`, `appointment.reschedule`, `appointment.cancel`, `appointment.check_in`, `appointment.complete`, and `appointment.no_show`, all BRANCH-scoped. Personnel must not receive `appointment.start`.
+- DENTIST: all Personnel appointment permissions plus BRANCH-scoped `appointment.start`.
+- CLINIC_ADMINISTRATOR: no routine appointment/clinical permission by role alone.
+- SYSTEM_ADMINISTRATOR: no routine appointment/clinical permission.
+- PATIENT: no Phase 12 clinic appointment permission. OWN-scoped patient self-service is Phase 14.
+
+The owner account continues to receive clinical appointment access through its separate DENTIST role, not by CLINIC_ADMINISTRATOR implication.
+
+PHASE 12B — POSTGRESQL DOMAIN / CONFLICT SAFETY
+
+Build new V2 TypeScript repository/service boundaries for:
+- list/detail
+- scheduling context
+- minimal clinic-wide patient lookup for an authorized target branch
+- availability
+- create
+- update non-state scheduling metadata where appropriate
+- confirm
+- reschedule
+- cancel
+- check-in
+- start/in-progress
+- complete
+- no-show
+
+Validation requirements:
+- UUIDs validated before database access.
+- Branch exists and actor has the required branch-scoped permission.
+- Assigned Dentist is active, has DENTIST role, and has membership in the target branch.
+- Date/time/duration rules are validated server-side.
+- Past-time rules use clinic-local scheduling semantics.
+- Invalid status transitions fail safely.
+- Patient lookup for scheduling returns only minimal operational fields and must not become a broad unauthenticated Patient API.
+
+Double-book prevention:
+- Must be enforced in a PostgreSQL transaction, not only in React.
+- For a slot-reserving write/update/reschedule, serialize conflict decisions for the Dentist/date in PostgreSQL (for example with a transaction-scoped advisory lock or another reviewed database-safe mechanism).
+- Query overlapping active appointment intervals using start time + duration.
+- Conflict checks apply across all branches for the same Dentist.
+- Concurrent attempts for the same overlapping Dentist slot must result in only one successful reservation; the loser receives a safe 409-style conflict.
+- requested/pending_confirmation rows do not have to reserve a Dentist slot until confirmation policy requires it.
+- Do not rely on a simple start-time equality check because partially overlapping appointments must conflict.
+
+Status-transition policy must be explicit and tested. Do not expose a generic arbitrary status mutation endpoint that bypasses workflow rules.
+
+Every material write should persist appointment_history and the applicable audit event with the trusted request ID. Where practical, database state + history + audit should commit atomically.
+
+PHASE 12C — PROTECTED V2 APPOINTMENT API
+
+Mount only authenticated/RBAC-protected V2 appointment endpoints in hosted mode.
+
+Expected API surface:
+- GET  /api/appointments
+- GET  /api/appointments/scheduling-context
+- GET  /api/appointments/patient-search
+- GET  /api/appointments/availability
+- GET  /api/appointments/:appointmentId
+- POST /api/appointments
+- PATCH /api/appointments/:appointmentId
+- POST /api/appointments/:appointmentId/confirm
+- POST /api/appointments/:appointmentId/reschedule
+- POST /api/appointments/:appointmentId/cancel
+- POST /api/appointments/:appointmentId/check-in
+- POST /api/appointments/:appointmentId/start
+- POST /api/appointments/:appointmentId/complete
+- POST /api/appointments/:appointmentId/no-show
+- GET  /api/calendar (or an equivalently reviewed protected calendar endpoint)
+
+Route composition must follow:
+authenticate
+-> resolve active application user
+-> resolve authorization
+-> require exact global/branch permission
+-> validate request
+-> domain service
+-> PostgreSQL transaction/history/audit
+
+Do not reactivate the legacy hosted /api/patients or other SQLite clinical routes merely to support appointments.
+
+PHASE 12D — CLINIC SCHEDULING / CALENDAR UI
+
+Replace the legacy appointment scheduling experience for the V2 workflow with authenticated UI that can support:
+- day view
+- week view
+- mobile agenda view
+- branch filter
+- Dentist filter
+- status filter
+- pending-request panel
+- appointment details
+- create appointment
+- confirmation
+- rescheduling
+- cancellation
+- check-in
+- start/in-progress
+- complete
+- no-show
+- clear status text labels; color may supplement but must not be the only status indicator
+
+Use the current working V1 UI only as behavior/reference material. New V2 UI should use TypeScript/TSX by default and authenticated V2 API helpers.
+
+DEFERRED TO LATER PHASES
+
+Phase 13 — Notifications
+- in-app appointment notifications
+- transactional appointment email notifications
+- notification retry/delivery tracking
+- no SMS
+
+Phase 14 — Patient Portal
+- patient self-service appointment request
+- patient cancellation/reschedule request
+- OWN-scoped patient appointment authorization
+- patient-facing appointment dashboard
+
+Phase 15 — Finance / Collectibles
+No financial work belongs in Phase 12.
+
+Phase 16 — Role Dashboard
+Broader role-specific dashboards are separate, although the Phase 12 calendar may expose the scheduling UI required for appointment operations.
+
+Phase 17 — Responsive UI / Accessibility
+Phase 12 calendar/forms must be reasonably usable and accessible, but broad application-wide responsive/accessibility remediation remains Phase 17.
+
+Phase 18+ — Backup/recovery, broad integration/security testing, UAT, production readiness
+Do not claim Phase 12 completion as production authorization.
+
+Also deferred:
+- waiting list
+- staff shift/roster subsystem
+- generalized branch CRUD
+- SMS
+- treatment/finance redesign
+- production data migration
+- real patient data in staging
+- broad Patient/Treatment route cutover unless a narrowly scoped scheduling dependency is explicitly reviewed.
+
+AUDIT ACTIONS
+
+Use existing centralized audit infrastructure for material appointment actions. Expected action names include:
+- APPOINTMENT_CREATED
+- APPOINTMENT_UPDATED
+- APPOINTMENT_CONFIRMED
+- APPOINTMENT_RESCHEDULED
+- APPOINTMENT_CANCELLED
+- APPOINTMENT_CHECKED_IN
+- APPOINTMENT_STARTED
+- APPOINTMENT_COMPLETED
+- APPOINTMENT_NO_SHOW
+
+Audit metadata must be safe and must not include secrets or unnecessary clinical text.
+
+LEGACY RETIREMENT RULE
+
+Do not remove the SQLite/V1 appointment path until:
+- V2 PostgreSQL schema/domain/API/UI replacement exists for the intended workflow;
+- migration/status compatibility is tested;
+- auth/RBAC/branch rules are tested;
+- conflict/concurrency tests pass;
+- history/audit tests pass;
+- required V1 regression behavior remains protected;
+- hosted staging smoke tests pass;
+- no intended V2 consumer still depends on the legacy route.
+
+v1-local-stable remains untouched.
+
+QUALITY GATES
+
+At minimum for the applicable subphase:
+- migration unit/integrity tests
+- PostgreSQL appointment domain tests
+- transaction/concurrency conflict tests
+- authorization/branch tests
+- appointment-history append-only tests
+- audit correlation tests
+- route authentication/RBAC/validation tests
+- relevant V1 appointment regression tests
+- npm run typecheck
+- npm run build
+- git diff --check
+- migration status verification against approved development/test target
+- controlled fictional-data staging smoke test before Phase 12 closure
+
+Live PostgreSQL integration tests that skip because TEST_DATABASE_URL is absent must be reported as skipped, not passed.
+
+IMPLEMENTATION ORDER
+
+12A schema/workflow/permission foundation
+-> senior-developer review and tests
+-> 12B PostgreSQL domain/conflict safety
+-> review and tests
+-> 12C protected API
+-> review and tests
+-> 12D calendar/scheduling UI
+-> live fictional staging validation
+-> final Phase 12 review
+-> user-approved commit/closeout
+
+STOP CONDITIONS
+
+Stop and report before continuing if:
+- requirements conflict with README.md or approved branch/security architecture;
+- implementing scheduling would require exposing legacy unauthenticated clinical routes in hosted mode;
+- conflict prevention cannot be made transaction-safe;
+- a schema change would require editing an already-applied migration;
+- a role would gain appointment/clinical access contrary to the approved permission model;
+- patient self-service or notification work begins to expand beyond Phases 13/14 boundaries;
+- tests reveal regression or data-integrity issues.
+
+GIT / DEPLOYMENT
+Do not commit, push, merge, deploy, migrate staging, or advance to Phase 13 without explicit user approval at the applicable gate.
