@@ -1,1 +1,1 @@
-export * from "./attachmentService.ts";
+export * from "./attachmentPrivateService.ts";
