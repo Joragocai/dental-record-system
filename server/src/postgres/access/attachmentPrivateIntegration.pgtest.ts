@@ -20,6 +20,9 @@ function buildTestDatabaseConfig() {
 }
 
 const resetTables = [
+  "email_delivery_logs",
+  "notification_preferences",
+  "notifications",
   "audit_events",
   "attachments",
   "role_permissions",

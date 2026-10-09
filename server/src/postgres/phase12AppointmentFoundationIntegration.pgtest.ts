@@ -18,6 +18,9 @@ function buildTestDatabaseConfig() {
 }
 
 const resetTables = [
+  "email_delivery_logs",
+  "notification_preferences",
+  "notifications",
   "audit_events",
   "attachments",
   "role_permissions",
@@ -127,7 +130,7 @@ test("Phase 12A migration enforces appointment workflow schema, history immutabi
 
   try {
     const migrations = await listMigrationFiles();
-    assert.equal(migrations.at(-1)?.name, "0011_appointment_workflow_redesign.sql");
+    assert.equal(migrations[10]?.name, "0011_appointment_workflow_redesign.sql");
 
     await runPendingMigrationsFromList(pool, migrations.slice(0, 10));
 
@@ -159,7 +162,7 @@ test("Phase 12A migration enforces appointment workflow schema, history immutabi
       );
     }
 
-    await runPendingMigrationsFromList(pool, migrations.slice(10));
+    await runPendingMigrationsFromList(pool, migrations.slice(10, 11));
 
     const migratedStatuses = await pool.query<{ id: string; status: string }>(
       `SELECT id::text, status FROM appointments WHERE id = ANY($1::uuid[]) ORDER BY id ASC`,

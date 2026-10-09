@@ -93,7 +93,7 @@ class FakeMigrationRunner implements PgMigrationRunner {
 test("listMigrationFiles returns ordered SQL migrations with checksums", async () => {
   const migrations = await listMigrationFiles();
 
-  assert.equal(migrations.length, 11);
+  assert.equal(migrations.length, 12);
   assert.equal(migrations[0]?.name, "0001_v2_foundation_probe.sql");
   assert.equal(migrations[1]?.name, "0002_branch_patient_core.sql");
   assert.equal(migrations[2]?.name, "0003_treatment_core.sql");
@@ -105,6 +105,7 @@ test("listMigrationFiles returns ordered SQL migrations with checksums", async (
   assert.equal(migrations[8]?.name, "0009_audit_review_request_correlation.sql");
   assert.equal(migrations[9]?.name, "0010_private_attachment_storage.sql");
   assert.equal(migrations[10]?.name, "0011_appointment_workflow_redesign.sql");
+  assert.equal(migrations[11]?.name, "0012_notification_foundation.sql");
   for (const migration of migrations) assert.equal(migration.checksum.length, 64);
 
   const treatmentBranchMigration = migrations[7]?.sql ?? "";
@@ -137,6 +138,15 @@ test("listMigrationFiles returns ordered SQL migrations with checksums", async (
   assert.match(appointmentWorkflowMigration, /appointment\.no_show/);
   assert.match(appointmentWorkflowMigration, /r\.code = 'PERSONNEL'/);
   assert.match(appointmentWorkflowMigration, /r\.code = 'DENTIST'/);
+
+  const notificationMigration = migrations[11]?.sql ?? "";
+  assert.match(notificationMigration, /CREATE TABLE IF NOT EXISTS notifications/);
+  assert.match(notificationMigration, /CREATE TABLE IF NOT EXISTS notification_preferences/);
+  assert.match(notificationMigration, /CREATE TABLE IF NOT EXISTS email_delivery_logs/);
+  assert.match(notificationMigration, /email_delivery_logs_exactly_one_recipient/);
+  assert.match(notificationMigration, /dedupe_key TEXT NOT NULL UNIQUE/);
+  assert.match(notificationMigration, /status IN \('pending', 'processing', 'failed', 'sent', 'abandoned'\)/);
+  assert.doesNotMatch(notificationMigration, /sms/i);
 });
 
 test("compareMigrationState reports pending, applied, and orphaned migrations", () => {
@@ -220,7 +230,7 @@ test("getMigrationStatus remains read-only when the migration table is absent", 
 
   const statuses = await getMigrationStatus(runner);
 
-  assert.equal(statuses.length, 11);
+  assert.equal(statuses.length, 12);
   for (const status of statuses) assert.equal(status.applied, false);
   assert.equal(
     runner.executedSql.some((statement) => statement.startsWith(`CREATE TABLE IF NOT EXISTS ${migrationTableName}`)),

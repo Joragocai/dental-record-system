@@ -29,6 +29,9 @@ function buildTestDatabaseConfig() {
 }
 
 const batchBTestResetTables = [
+  "email_delivery_logs",
+  "notification_preferences",
+  "notifications",
   "legacy_treatment_identity_map",
   "treatments",
   "treatment_code_counters",

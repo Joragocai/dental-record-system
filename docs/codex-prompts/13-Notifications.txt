@@ -1,0 +1,89 @@
+PHASE 13 — NOTIFICATIONS
+
+STATUS
+Approved for implementation in reviewed subphases. Phase 13A notification data/foundation is implemented, locally validated, and staging-synchronized through migration 0012. Phase 13B–13D remain pending. Do not configure a real email provider, send real email, or advance to later subphases without the applicable approval gate. Senior-developer review is automatic.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+GOAL
+Add resilient, privacy-conscious in-app notifications and transactional email delivery for important V2 events, beginning with Phase 12 appointment transitions. Successful appointment/account operations must never depend on email-provider availability.
+
+APPROVED CHANNELS
+- In-app notifications.
+- Transactional email.
+- SMS is excluded. Do not add SMS providers, templates, delivery tables, environment variables, verification flows, reminders, or status updates.
+
+FOUNDATIONS TO REUSE
+- PostgreSQL ordered migrations and test safety.
+- Supabase-authenticated application users.
+- Branch-aware RBAC and deny-by-default access.
+- Phase 09 request-correlated append-only audit trail.
+- Phase 12 appointment workflow/history/audit transitions.
+- Existing staging isolation on Supabase + Render + Vercel.
+
+PRIVACY / SECURITY RULES
+- Email messages must avoid unnecessary clinical or financial details and should direct recipients to the secure application where appropriate.
+- Do not store provider secrets, bearer tokens, passwords, raw provider error bodies, or unnecessary recipient email addresses in notification/delivery rows.
+- System Administrator receives no routine clinical notification visibility by role alone.
+- In-app notification APIs must be recipient-owned; no cross-user notification browsing.
+- Patient Portal/OWN-scoped patient self-service remains Phase 14.
+- Supabase Auth invitation, verification, and recovery delivery remains managed by the existing auth/provider flow; Phase 13 must not replace it.
+
+FAILURE SEMANTICS
+- A successful appointment/account transaction must remain successful even if email delivery fails.
+- Email work must be durable, retryable, and idempotent.
+- Delivery failures must use safe internal codes and retry metadata, not raw provider payloads.
+- Render/API restarts must not lose pending delivery work.
+
+SUBPHASES
+
+13A — Notification Data / Foundation
+- Add ordered migration 0012.
+- Add notifications, notification_preferences, and email_delivery_logs.
+- Use UUID primary keys, request correlation, timestamps, strict checks, useful indexes, and recipient foreign keys.
+- In-app notifications belong to one application user and retain read/unread history.
+- Preferences belong to one application user and one supported category.
+- Email queue/log rows reference either an application user or a patient, never both, so recipient email need not be duplicated in the durable log.
+- Add idempotency/dedupe keys suitable for later event integration.
+- Add real PostgreSQL integration coverage.
+- No routes, provider calls, workers, appointment hooks, or UI yet.
+
+13B — Appointment Notification Integration
+- Map important Phase 12 events to notification intents: confirmation, reschedule, clinic/patient cancellation, and no-show as approved.
+- Avoid routine email for internal operational states such as check-in/start unless separately required.
+- Create in-app notification and durable email intent without making appointment success depend on email delivery.
+- Preserve request correlation and idempotency.
+- Add unit/integration tests for recipient/template/privacy rules.
+
+13C — Transactional Email Delivery
+- Add a provider-neutral server adapter.
+- Process durable pending deliveries with bounded retries/backoff and safe delivery-state updates.
+- Record sent/failed state, attempt count, safe error code, provider message identifier when safe, and timestamps.
+- Keep provider configuration server-only.
+- Real provider selection/configuration and real-email staging verification are separate deployment gates.
+
+13D — In-App Notification API / UI
+- Add authenticated recipient-owned notification list/unread-count/mark-read/mark-all-read endpoints.
+- Add a responsive notification center in the hosted UI.
+- Never expose other users' notifications.
+- Patient portal-specific notification ownership/experience remains Phase 14.
+
+PHASE 13 ACCEPTANCE
+- Important appointment events create the correct safe notification intent.
+- In-app notification history and read/unread state are retained.
+- Email delivery is durable, retryable, idempotent, and independent of appointment transaction success.
+- No unnecessary clinical/financial detail is included in email payloads.
+- No SMS implementation exists.
+- Authorization, PostgreSQL integration, hosted staging guards, typecheck/build, and relevant regressions pass.
+- Fictional-data staging verification passes before Phase 13 is closed.
+
+OUT OF SCOPE
+- SMS.
+- Patient Portal and patient self-service workflows.
+- Finance notifications beyond separately approved later integration.
+- Replacing Supabase Auth invitation/recovery email.
+- Production deployment or real patient data.

@@ -28,6 +28,9 @@ function buildTestDatabaseConfig() {
 }
 
 const batchCTestResetTables = [
+  "email_delivery_logs",
+  "notification_preferences",
+  "notifications",
   "legacy_appointment_identity_map",
   "appointment_history",
   "appointments",
