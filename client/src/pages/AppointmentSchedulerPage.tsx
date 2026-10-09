@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
 import {
@@ -8,7 +8,7 @@ import {
   createAppointment,
   getSchedulingBootstrap,
   getSchedulingContext,
-  listCalendarAppointments,
+  listCalendarWeekAppointments,
   rescheduleAppointment,
   runAppointmentAction,
   searchSchedulingPatients,
@@ -206,6 +206,9 @@ export default function AppointmentSchedulerPage() {
   const [selectedPatient, setSelectedPatient] = useState<MinimalAppointmentPatient | null>(null);
   const [searchingPatients, setSearchingPatients] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [createFeedback, setCreateFeedback] = useState("");
+  const [actionFeedback, setActionFeedback] = useState("");
+  const submissionLockRef = useRef(false);
 
   const [createForm, setCreateForm] = useState<CreateFormState>({
     branchId: "",
@@ -289,10 +292,8 @@ export default function AppointmentSchedulerPage() {
     const dates = weekDates(selectedDate);
     setLoadingCalendar(true);
     try {
-      const rows = await Promise.all(
-        dates.map((date) => listCalendarAppointments({ branchId: selectedBranchId, date }, requestOptions))
-      );
-      setAppointments(sortAppointments(rows.flat()));
+      const rows = await listCalendarWeekAppointments(selectedBranchId, dates, requestOptions);
+      setAppointments(sortAppointments(rows));
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Unable to load appointments.");
     } finally {
@@ -319,7 +320,7 @@ export default function AppointmentSchedulerPage() {
         }));
       })
       .catch((error) => {
-        if (active) setFeedback(error instanceof Error ? error.message : "Unable to load target branch Dentists.");
+        if (active) setActionFeedback(error instanceof Error ? error.message : "Unable to load target branch Dentists.");
       });
     return () => {
       active = false;
@@ -371,10 +372,12 @@ export default function AppointmentSchedulerPage() {
       reason: "",
       status: "confirmed"
     });
+    setCreateFeedback("");
     setCreateOpen(true);
   }
 
   function openAction(mode: ActionMode, appointment: AppointmentRecord) {
+    setActionFeedback("");
     setActionState({ mode, appointment });
     setActionDentists(dentists);
     setActionForm({
@@ -391,15 +394,15 @@ export default function AppointmentSchedulerPage() {
 
   async function searchPatients() {
     if (!requestOptions || !selectedBranchId || patientQuery.trim().length < 2) {
-      setFeedback("Enter at least two characters to search patients.");
+      setCreateFeedback("Enter at least two characters to search patients.");
       return;
     }
     setSearchingPatients(true);
-    setFeedback("");
+    setCreateFeedback("");
     try {
       setPatientResults(await searchSchedulingPatients(selectedBranchId, patientQuery.trim(), requestOptions));
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Unable to search patients.");
+      setCreateFeedback(error instanceof Error ? error.message : "Unable to search patients.");
     } finally {
       setSearchingPatients(false);
     }
@@ -431,12 +434,14 @@ export default function AppointmentSchedulerPage() {
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
     if (!requestOptions || !selectedPatient) {
-      setFeedback("Select a patient before creating the appointment.");
+      setCreateFeedback("Select a patient before creating the appointment.");
       return;
     }
+    if (submissionLockRef.current) return;
 
+    submissionLockRef.current = true;
     setSubmitting(true);
-    setFeedback("");
+    setCreateFeedback("");
     try {
       const confirmed = createForm.status === "confirmed";
       const duration = Number(createForm.durationMinutes);
@@ -471,19 +476,21 @@ export default function AppointmentSchedulerPage() {
       setCreateOpen(false);
       refresh("Appointment created.");
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Unable to create the appointment.");
+      setCreateFeedback(error instanceof Error ? error.message : "Unable to create the appointment.");
     } finally {
+      submissionLockRef.current = false;
       setSubmitting(false);
     }
   }
 
   async function handleActionSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!requestOptions || !actionState) return;
+    if (!requestOptions || !actionState || submissionLockRef.current) return;
     const { mode, appointment } = actionState;
 
+    submissionLockRef.current = true;
     setSubmitting(true);
-    setFeedback("");
+    setActionFeedback("");
     try {
       if (mode === "edit") {
         await updateAppointment(
@@ -552,14 +559,15 @@ export default function AppointmentSchedulerPage() {
               : "Appointment details updated."
       );
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Unable to update the appointment.");
+      setActionFeedback(error instanceof Error ? error.message : "Unable to update the appointment.");
     } finally {
+      submissionLockRef.current = false;
       setSubmitting(false);
     }
   }
 
   async function runSimpleAction(action: "check-in" | "start" | "complete" | "no-show") {
-    if (!requestOptions || !selectedAppointment) return;
+    if (!requestOptions || !selectedAppointment || submissionLockRef.current) return;
     const labels = {
       "check-in": "check in",
       start: "start",
@@ -568,6 +576,7 @@ export default function AppointmentSchedulerPage() {
     };
     if (!window.confirm(`Are you sure you want to ${labels[action]} this appointment?`)) return;
 
+    submissionLockRef.current = true;
     setSubmitting(true);
     setFeedback("");
     try {
@@ -577,6 +586,7 @@ export default function AppointmentSchedulerPage() {
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Unable to update the appointment.");
     } finally {
+      submissionLockRef.current = false;
       setSubmitting(false);
     }
   }
@@ -901,6 +911,11 @@ export default function AppointmentSchedulerPage() {
       {createOpen ? (
         <Modal title="New appointment" subtitle={selectedBranch?.branchName} onClose={() => setCreateOpen(false)} wide>
           <form className="space-y-5" onSubmit={handleCreate}>
+            {createFeedback ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">
+                {createFeedback}
+              </div>
+            ) : null}
             <section className="rounded-2xl border border-slate-200 p-4">
               <h3 className="font-bold text-slate-900">Patient</h3>
               {selectedPatient ? (
@@ -1039,6 +1054,11 @@ export default function AppointmentSchedulerPage() {
           onClose={() => setActionState(null)}
         >
           <form className="space-y-4" onSubmit={handleActionSubmit}>
+            {actionFeedback ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">
+                {actionFeedback}
+              </div>
+            ) : null}
             {actionState.mode === "cancel" ? (
               <LabeledField label="Cancellation reason" hint="Optional; retained in appointment history.">
                 <textarea

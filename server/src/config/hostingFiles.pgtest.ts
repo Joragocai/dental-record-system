@@ -22,6 +22,14 @@ test("Vercel serves only the approved hosted authentication SPA routes", () => {
   assert.equal(file.includes("DATABASE_URL"), false);
 });
 
+test("hosted appointment and calendar routes share one access boundary and one appointment runtime", () => {
+  const file = readFileSync(path.join(repositoryRoot, "server/src/app.js"), "utf8");
+  assert.equal((file.match(/const appointmentAccessBoundary = createAccessBoundary\(\);/g) ?? []).length, 1);
+  assert.equal((file.match(/const appointmentRuntime = createAppointmentRuntime\(\);/g) ?? []).length, 1);
+  assert.ok(file.includes("createAppointmentsRouter(undefined, appointmentAccessBoundary, appointmentRuntime)"));
+  assert.ok(file.includes("createAppointmentCalendarRouter(undefined, appointmentAccessBoundary, appointmentRuntime)"));
+});
+
 test("Render staging blueprint remains manual, isolated, and secret-free", () => {
   const file = readFileSync(path.join(repositoryRoot, "render.yaml"), "utf8");
   for (const rule of [

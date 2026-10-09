@@ -59,9 +59,19 @@ app.use("/api/audit-events", auditEventsRouter);
 app.use("/api/attachments", attachmentsRouter);
 
 if (isHosted) {
-  const { createAppointmentsRouter, createAppointmentCalendarRouter } = await import("./routes/appointmentsV2.js");
-  app.use("/api/appointments", createAppointmentsRouter());
-  app.use("/api/calendar", createAppointmentCalendarRouter());
+  const [
+    { createAppointmentsRouter, createAppointmentCalendarRouter },
+    { createAccessBoundary },
+    { createAppointmentRuntime }
+  ] = await Promise.all([
+    import("./routes/appointmentsV2.js"),
+    import("./access/accessMiddleware.js"),
+    import("./appointments/appointmentRuntime.ts")
+  ]);
+  const appointmentAccessBoundary = createAccessBoundary();
+  const appointmentRuntime = createAppointmentRuntime();
+  app.use("/api/appointments", createAppointmentsRouter(undefined, appointmentAccessBoundary, appointmentRuntime));
+  app.use("/api/calendar", createAppointmentCalendarRouter(undefined, appointmentAccessBoundary, appointmentRuntime));
 }
 
 // Never import legacy SQLite-backed routes in hosted environments. Merely importing

@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   getSchedulingBootstrap,
   listCalendarAppointments,
+  listCalendarWeekAppointments,
   searchSchedulingPatients
 } from "./appointmentApi.js";
 
@@ -29,6 +30,29 @@ test("appointment API helpers use bearer-authenticated protected endpoints", asy
     url: "https://api.example.test/api/appointments/scheduling-context",
     authorization: "Bearer fictional-token"
   }]);
+});
+
+test("weekly calendar helper keeps authenticated requests sequential to protect hosted database sessions", async () => {
+  let active = 0;
+  let peak = 0;
+  const fetchImpl = async () => {
+    active += 1;
+    peak = Math.max(peak, active);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    active -= 1;
+    return new Response(JSON.stringify([]), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    });
+  };
+
+  await listCalendarWeekAppointments(
+    "44444444-4444-4444-8444-444444444444",
+    ["2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10", "2026-10-11"],
+    { ...options, fetchImpl }
+  );
+
+  assert.equal(peak, 1);
 });
 
 test("calendar and patient-search helpers encode operational filters safely", async () => {

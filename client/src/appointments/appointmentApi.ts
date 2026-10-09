@@ -163,6 +163,18 @@ export function listCalendarAppointments(
   );
 }
 
+export async function listCalendarWeekAppointments(
+  branchId: string,
+  dates: readonly string[],
+  options: AuthenticatedFetchOptions
+): Promise<AppointmentRecord[]> {
+  const rows: AppointmentRecord[] = [];
+  for (const date of dates) {
+    rows.push(...await listCalendarAppointments({ branchId, date }, options));
+  }
+  return rows;
+}
+
 export function searchSchedulingPatients(
   branchId: string,
   query: string,
