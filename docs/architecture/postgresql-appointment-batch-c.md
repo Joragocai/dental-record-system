@@ -149,6 +149,6 @@ remain Phase 14.
 - no protected V2 Appointment service/API/UI cutover exists yet
 - migration 0011 extends the Batch C schema to the approved V2 machine-status set and adds appointment history/provider/duration foundations
 - Phase 12B now adds a separate TypeScript PostgreSQL appointment repository/domain service with explicit workflow transitions, branch/provider validation, append-only history + audit writes, and transaction-scoped Dentist/date conflict serialization across branches
-- protected hosted HTTP route mounting remains deferred to Phase 12C, so the active hosted API still does not expose V2 appointment routes
+- Phase 12C now provides authenticated, branch-RBAC-protected V2 appointment and calendar route mounting for hosted mode only; the local V1 appointment route remains isolated, and the Phase 12C hosted code remains undeployed until its separate approval gate
 - no Treatment linkage exists because V1 does not persist one
 - real-data migration still depends on the reviewed production migration plan and downstream V2 runtime work

@@ -3420,7 +3420,7 @@ Phases 09 and 10 are complete for their approved scopes under `docs/codex-prompt
 | Task ID | Planned Task |
 | --- | --- |
 | 11 | Early Staging — Completed for approved scope. Vercel frontend, Render API, Supabase staging Auth/PostgreSQL/private Storage, owner activation/login, negative route checks, and fictional attachment lifecycle live-validated; production remains out of scope |
-| 12 | Appointment Redesign — In progress. 12A schema/workflow/RBAC is complete and staging-synchronized; 12B PostgreSQL domain/conflict safety is implemented, senior-reviewed, corrected, and validated locally, with the corrective diff pending Git finalization; 12C protected API and 12D scheduling/calendar UI remain pending. Notifications and Patient Portal remain Phases 13 and 14 |
+| 12 | Appointment Redesign — In progress. 12A schema/workflow/RBAC is complete and staging-synchronized; 12B PostgreSQL domain/conflict safety is complete; 12C protected hosted appointment/calendar API is implemented, senior-reviewed, validated, and awaiting its separate staging deployment gate; 12D scheduling/calendar UI remains pending. Notifications and Patient Portal remain Phases 13 and 14 |
 | 13 | Notifications |
 | 14 | Patient Portal |
 | 15 | Finance / Collectibles |

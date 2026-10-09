@@ -58,6 +58,12 @@ app.use("/api/staff-accounts", staffAccountsRouter);
 app.use("/api/audit-events", auditEventsRouter);
 app.use("/api/attachments", attachmentsRouter);
 
+if (isHosted) {
+  const { createAppointmentsRouter, createAppointmentCalendarRouter } = await import("./routes/appointmentsV2.js");
+  app.use("/api/appointments", createAppointmentsRouter());
+  app.use("/api/calendar", createAppointmentCalendarRouter());
+}
+
 // Never import legacy SQLite-backed routes in hosted environments. Merely importing
 // their dependencies can create local database files and runtime directories.
 if (!isHosted) {

@@ -18,9 +18,14 @@ test("staging serves only safe health and protected V2 routes", async () => {
     assert.equal(health.status, 200);
     assert.deepEqual(await health.json(), { status: "ok" });
 
-    for (const path of ["/api/runtime/status", "/api/dashboard/summary", "/api/patients", "/api/treatments", "/api/appointments", "/api/export", "/api/backup"]) {
+    for (const path of ["/api/runtime/status", "/api/dashboard/summary", "/api/patients", "/api/treatments", "/api/export", "/api/backup"]) {
       const response = await fetch(`${base}${path}`);
       assert.equal(response.status, 404, `${path} must not be reachable in staging`);
+    }
+
+    for (const path of ["/api/appointments", "/api/calendar"]) {
+      const response = await fetch(`${base}${path}?branchId=44444444-4444-4444-8444-444444444444`);
+      assert.equal(response.status, 401, `${path} must require authentication in staging`);
     }
 
     const session = await fetch(`${base}/api/auth/session`);

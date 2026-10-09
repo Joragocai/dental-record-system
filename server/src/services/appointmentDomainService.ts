@@ -21,6 +21,7 @@ import { AppointmentDomainError, toAppointmentPersistenceError } from "./appoint
 import {
   assertNotPastSchedule,
   assertSlotShape,
+  normalizeAppointmentStatusFilter,
   normalizeDate,
   normalizeDentistId,
   normalizeDuration,
@@ -94,11 +95,18 @@ export interface AppointmentSchedulingContext {
   dentists: SchedulingDentist[];
 }
 
+export interface AppointmentAccessContext {
+  id: string;
+  branchId: string;
+  status: AppointmentStatus;
+}
+
 export interface AppointmentAvailability {
   available: boolean;
 }
 
 export interface AppointmentDomainService {
+  getAccessContext(appointmentId: unknown): Promise<AppointmentAccessContext>;
   listAppointments(filter: AppointmentListFilter, actor: AppointmentActor): Promise<AppointmentRecord[]>;
   getAppointment(appointmentId: unknown, actor: AppointmentActor): Promise<AppointmentRecord>;
   getSchedulingContext(branchId: unknown, actor: AppointmentActor): Promise<AppointmentSchedulingContext>;
@@ -344,6 +352,17 @@ export function createAppointmentDomainService(
   }
 
   return {
+    async getAccessContext(appointmentIdValue) {
+      const appointmentId = requireAppointmentUuid(appointmentIdValue);
+      try {
+        const record = await repositoryFactory(pool).getById(appointmentId);
+        if (!record) throw new AppointmentDomainError("APPOINTMENT_NOT_FOUND");
+        return { id: record.id, branchId: record.branchId, status: record.status };
+      } catch (error) {
+        throw toAppointmentPersistenceError(error);
+      }
+    },
+
     async listAppointments(filter, actorValue) {
       const actor = normalizeActor(actorValue);
       const branchId = requireAppointmentUuid(filter.branchId);
@@ -352,7 +371,7 @@ export function createAppointmentDomainService(
         branchId,
         date: filter.date ? normalizeDate(filter.date) : null,
         dentistUserId: filter.dentistUserId ? requireAppointmentUuid(filter.dentistUserId) : null,
-        status: filter.status ?? null
+        status: normalizeAppointmentStatusFilter(filter.status)
       };
       try {
         const repository = repositoryFactory(pool);
@@ -407,7 +426,7 @@ export function createAppointmentDomainService(
     async checkAvailability(input, actorValue) {
       const actor = normalizeActor(actorValue);
       const branchId = requireAppointmentUuid(input.branchId);
-      requireAnyBranchPermission(actor, ["appointment.create", "appointment.confirm", "appointment.reschedule"], branchId);
+      requireAnyBranchPermission(actor, ["appointment.list", "appointment.create", "appointment.confirm", "appointment.reschedule"], branchId);
       const schedule: NormalizedSchedule = {
         appointmentDate: normalizeDate(input.appointmentDate),
         appointmentTime: normalizeTime(input.appointmentTime, false),
@@ -444,6 +463,9 @@ export function createAppointmentDomainService(
       const branchId = requireAppointmentUuid(input.branchId);
       requireBranchPermission(actor, "appointment.create", branchId);
       const status = normalizeCreateStatus(input.status);
+      if (status === "confirmed") {
+        requireBranchPermission(actor, "appointment.confirm", branchId);
+      }
       const schedule: NormalizedSchedule = {
         appointmentDate: normalizeDate(input.appointmentDate),
         appointmentTime: normalizeTime(input.appointmentTime),

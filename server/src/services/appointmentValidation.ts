@@ -6,6 +6,18 @@ const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 export const clinicTimeZone = "Asia/Manila";
+export const appointmentStatuses = new Set<AppointmentStatus>([
+  "requested",
+  "pending_confirmation",
+  "confirmed",
+  "checked_in",
+  "in_progress",
+  "completed",
+  "cancelled_by_patient",
+  "cancelled_by_clinic",
+  "no_show",
+  "rescheduled"
+]);
 export const slotReservingStatuses = new Set<AppointmentStatus>(["confirmed", "checked_in", "in_progress"]);
 
 export interface NormalizedSchedule {
@@ -108,6 +120,14 @@ export function assertSlotShape(schedule: NormalizedSchedule): void {
 
 export function normalizeReason(value: unknown): string | null {
   return normalizeOptionalText(value, 500);
+}
+
+export function normalizeAppointmentStatusFilter(value: unknown): AppointmentStatus | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string" || !appointmentStatuses.has(value as AppointmentStatus)) {
+    throw new AppointmentDomainError("APPOINTMENT_INPUT_INVALID");
+  }
+  return value as AppointmentStatus;
 }
 
 export function normalizeSearchQuery(value: unknown): string {
