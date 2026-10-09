@@ -1,7 +1,7 @@
 PHASE 11 — EARLY STAGING
 
 STATUS
-Implementation in progress. Staging Supabase project provisioned by user; PostgreSQL migrations 0001–0010 applied and verified; isolated private staging Storage bucket created/verified. Vercel frontend/Render backend selected by user and deployment configuration prepared. HTTPS deployment, Auth redirects, fictional bootstrap/live smoke tests and final sign-off remain pending. Not deployed.
+Completed for the approved Phase 11 staging scope. Vercel frontend and Render API are live against the isolated Supabase staging project. PostgreSQL migrations 0001–0010, verified TLS, private Storage, Auth redirects, fictional branch/owner bootstrap, invitation activation/login, legacy-route isolation, unauthenticated denial, readiness, audit linkage and the full fictional private-attachment lifecycle were live-validated. Production and real patient data remain out of scope.
 
 PROJECT
 /home/johnr/projects/dental-record-system
@@ -45,7 +45,7 @@ QUALITY GATES
 - npm run test:attachments
 - npm run test:audit
 - Existing representative regression tests
-- Controlled live staging smoke tests once services and secrets exist.
+- Controlled live staging smoke tests: completed for hosted health/readiness, auth activation/login, negative route isolation, owner status/roles/branch/audit linkage, and fictional private attachment lifecycle.
 - Document any PostgreSQL integration tests skipped without DATABASE_URL as NOT VALIDATED LIVE.
 - Senior-developer review of safe startup, client isolation, auth/branch scopes, downloads, audit semantics and logs. Do not commit without approval.
 

@@ -3386,11 +3386,11 @@ The older empty umbrella markers `07-Authentication.txt` and `08-Authorization-R
 
 ### Planned Task Phases
 
-Phases 09 and 10 are complete for their approved scopes under `docs/codex-prompts/09-Audit-Trail.txt` and `docs/codex-prompts/10-Private-Storage.txt`. Phase 11 Early Staging is approved and its **repository isolation/configuration foundation is being implemented** under `docs/codex-prompts/11-Early-Staging.txt` and `docs/deployment/staging.md`. Phase 11 is NOT deployed or fully live-validated. The separate staging Supabase project has been created; staging migrations 0001–0010 and the separate private Storage bucket have been applied and verified. Vercel frontend + Render backend are approved for staging, and their deployment configuration is prepared; actual HTTPS deployment, Auth redirects, fictional smoke tests and final review remain pending. The remaining phase files are planning placeholders requiring separate approval.
+Phases 09 and 10 are complete for their approved scopes under `docs/codex-prompts/09-Audit-Trail.txt` and `docs/codex-prompts/10-Private-Storage.txt`. Phase 11 Early Staging has completed its approved staging scope under `docs/codex-prompts/11-Early-Staging.txt` and `docs/deployment/staging.md`: isolated Supabase staging database/Auth/private Storage, migrations 0001–0010, Vercel frontend, Render API, verified TLS/readiness, staged owner activation/login, legacy-route isolation, and fictional private-attachment lifecycle were live-validated. This does NOT authorize production or real patient data. The remaining phase files are planning placeholders requiring separate approval.
 
 | Task ID | Planned Task |
 | --- | --- |
-| 11 | Early Staging — staging database and private Storage verified; Vercel frontend and Render API configuration prepared (uncommitted); HTTPS deployment, Auth redirects and live smoke tests pending |
+| 11 | Early Staging — Completed for approved scope. Vercel frontend, Render API, Supabase staging Auth/PostgreSQL/private Storage, owner activation/login, negative route checks, and fictional attachment lifecycle live-validated; production remains out of scope |
 | 12 | Appointment Redesign |
 | 13 | Notifications |
 | 14 | Patient Portal |

@@ -27,6 +27,7 @@
     "bootstrap:attachments-storage": "node --env-file=.env --import tsx src/attachments/attachmentBucketBootstrapCli.ts",
     "bootstrap:attachments-storage:staging": "node --env-file=.env.staging --import tsx src/attachments/attachmentBucketBootstrapStagingCli.ts",
     "validate:attachments:live": "node --env-file=.env --import tsx src/attachments/attachmentLiveValidationCli.ts",
+    "validate:attachments:live:staging": "ATTACHMENT_LIVE_VALIDATION_TARGET=staging node --env-file=.env.staging --import tsx src/attachments/attachmentLiveValidationCli.ts",
     "test:auth": "node --import tsx --test \"src/auth/*.pgtest.ts\" \"src/access/accessMiddleware.pgtest.ts\" \"src/routes/auth.test.js\" \"src/routes/staffAccounts.test.js\"",
     "start": "node --env-file=.env src/index.js",
     "start:hosted": "node --import tsx src/hostedIndex.js",

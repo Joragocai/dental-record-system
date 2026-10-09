@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
-import { buildPgFoundationConfig } from "../postgres/config.js";
+import { assertPgMutationAllowed, buildPgFoundationConfig } from "../postgres/config.js";
+import { assertSupabaseDatabaseIdentity } from "../config/hostedSafety.js";
 import { createPgPoolManager } from "../postgres/pool.js";
 import { createApplicationUserRepository } from "../repositories/applicationUserRepository.js";
 import { createAuthorizationRepository } from "../repositories/authorizationRepository.js";
@@ -9,18 +10,39 @@ import { createAttachmentService } from "../services/attachmentPrivateService.js
 import { buildAttachmentStorageConfig } from "./attachmentStorageConfig.js";
 import { createSupabaseAttachmentStorageAdapter } from "./attachmentStorageAdapter.js";
 
-function requireLocalValidation(): void {
-  if (process.env.ATTACHMENT_LIVE_VALIDATION !== "YES") {
+export function assertAttachmentLiveValidationTarget(env: NodeJS.ProcessEnv = process.env): void {
+  if (env.ATTACHMENT_LIVE_VALIDATION !== "YES") {
     throw new Error("Set ATTACHMENT_LIVE_VALIDATION=YES to run the fictional private-storage validation.");
   }
-  const config = buildPgFoundationConfig();
-  if (config.appEnv !== "local") {
-    throw new Error("Attachment live validation is restricted to the local development environment.");
+
+  const config = buildPgFoundationConfig(env);
+  const target = String(env.ATTACHMENT_LIVE_VALIDATION_TARGET ?? "local").trim().toLowerCase();
+
+  if (target === "local") {
+    if (config.appEnv !== "local") {
+      throw new Error("Local attachment live validation requires DENTAL_SERVER_ENV=local.");
+    }
+    return;
   }
+
+  if (target === "staging") {
+    if (config.appEnv !== "staging") {
+      throw new Error("Staging attachment live validation requires DENTAL_SERVER_ENV=staging.");
+    }
+    assertPgMutationAllowed(config);
+    const storage = buildAttachmentStorageConfig(env);
+    if (storage.bucket !== "dental-attachments-staging") {
+      throw new Error("Staging attachment live validation requires dental-attachments-staging.");
+    }
+    assertSupabaseDatabaseIdentity(config.databaseUrl, storage.supabaseUrl);
+    return;
+  }
+
+  throw new Error("ATTACHMENT_LIVE_VALIDATION_TARGET must be local or staging.");
 }
 
 async function main(): Promise<void> {
-  requireLocalValidation();
+  assertAttachmentLiveValidationTarget();
   const pgConfig = buildPgFoundationConfig();
   const pool = createPgPoolManager(pgConfig);
   const storageConfig = buildAttachmentStorageConfig();
@@ -199,7 +221,11 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
-  console.error(`[attachments] Live validation failed: ${error instanceof Error ? error.message : "unknown error"}`);
-  process.exitCode = 1;
-});
+const isDirectExecution = process.argv[1]?.endsWith("attachmentLiveValidationCli.ts") === true;
+
+if (isDirectExecution) {
+  main().catch((error) => {
+    console.error(`[attachments] Live validation failed: ${error instanceof Error ? error.message : "unknown error"}`);
+    process.exitCode = 1;
+  });
+}

@@ -1,6 +1,6 @@
 # Phase 11 — Early Staging
 
-Status: **Repository staging foundation implemented; provider provisioning and live staging validation pending.** This is NOT production authorization.
+Status: **Completed for the approved Phase 11 staging scope.** Vercel frontend, Render API, isolated Supabase staging Auth/PostgreSQL/private Storage, owner activation/login, readiness, route isolation, and fictional attachment lifecycle were live-validated. This is NOT production authorization.
 
 ## Goal and constraints
 
@@ -102,4 +102,4 @@ Run `npm run typecheck`, `npm run build`, `npm run test:staging`, `npm run test:
 - Production deployment, real patient data, general public registration, unrelated phases 12–21.
 - Docker, broad CI/CD and production-provider configuration; the user has specifically approved Vercel frontend + Render API for Phase 11 staging, so only the necessary `client/vercel.json` and `render.yaml` are included.
 
-**Current live status:** The user created an isolated staging Supabase project on October 8, 2026. Verified staging database connection, project-target identity, TLS, migrations 0001–0010 APPLIED with matching checksums, and the private `dental-attachments-staging` bucket creation/verification. HTTPS frontend/API hosting, Auth redirects, fictional owner/branch bootstrap and live smoke testing remain pending. Do not claim production or clinical readiness.
+**Current live status:** Phase 11 staging is live and validated on fictional data. The isolated Supabase staging project has verified TLS, migrations 0001–0010 with matching checksums, private `dental-attachments-staging`, Auth Site/redirect URLs, an active fictional owner with `DENTIST + CLINIC_ADMINISTRATOR`, and audit-linked activation. Vercel serves the hosted auth UI; Render serves the protected API; `/api/health` and `/api/ready` passed; legacy `/api/patients` and `/api/runtime/status` are unavailable; unauthenticated `/api/auth/session` is denied. The staging-only private attachment validator passed upload, completion/checksum, signed download transfer, deletion, object-key safety and correlated audit checks. Do not claim production or clinical readiness.
