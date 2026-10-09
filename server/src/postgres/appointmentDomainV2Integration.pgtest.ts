@@ -420,6 +420,45 @@ test("Phase 12B appointment domain enforces workflow, cross-branch overlap safet
     );
 
     await assert.rejects(
+      service.createAppointment(
+        {
+          patientId,
+          branchId: branchA,
+          appointmentDate: "2026-10-08",
+          status: "requested"
+        },
+        actor("personnel", "45000000-0000-4000-8000-000000000037")
+      ),
+      expectCode("APPOINTMENT_INPUT_INVALID")
+    );
+
+    const providerStateSource = await service.createAppointment(
+      {
+        patientId,
+        branchId: branchA,
+        dentistUserId: dentistId,
+        appointmentDate: "2026-10-17",
+        appointmentTime: "09:00",
+        durationMinutes: 30
+      },
+      actor("personnel", "45000000-0000-4000-8000-000000000038")
+    );
+    await pool.query("UPDATE app_users SET status='deactivated', updated_at=NOW() WHERE id=$1", [dentistId]);
+    await assert.rejects(
+      service.checkInAppointment(
+        providerStateSource.id,
+        actor("personnel", "45000000-0000-4000-8000-000000000039")
+      ),
+      expectCode("APPOINTMENT_DENTIST_INVALID")
+    );
+    const cancelledAfterDeactivation = await service.cancelAppointment(
+      providerStateSource.id,
+      { reason: "Provider became unavailable" },
+      actor("personnel", "45000000-0000-4000-8000-000000000040")
+    );
+    assert.equal(cancelledAfterDeactivation.status, "cancelled_by_clinic");
+
+    await assert.rejects(
       service.getSchedulingContext(
         branchB,
         actor("personnel", "45000000-0000-4000-8000-000000000036", [branchA])

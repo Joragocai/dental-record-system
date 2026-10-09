@@ -1,7 +1,7 @@
 PHASE 12 — APPOINTMENT REDESIGN
 
 STATUS
-Approved for implementation in reviewed subphases. Phase 12A schema/workflow/RBAC foundation is complete, committed, PostgreSQL-validated, and applied to staging. Phase 12B PostgreSQL domain/conflict safety is implemented locally and pending review. Do not proceed to Phase 12C, commit, push, merge, deploy Phase 12B code, or advance phases without the user's explicit approval at the applicable review gate.
+Approved for implementation in reviewed subphases. Phase 12A schema/workflow/RBAC foundation is complete, committed, PostgreSQL-validated, and applied to staging. Phase 12B PostgreSQL domain/conflict safety is implemented, senior-reviewed, corrected, and validated locally; the corrective diff is pending Git finalization. Do not proceed to Phase 12C, commit, push, merge, deploy Phase 12B code, or advance phases without the user's explicit approval at the applicable gate. Senior-developer review itself is automatic under the repository workflow and does not require a separate user prompt.
 
 PROJECT
 /home/johnr/projects/dental-record-system

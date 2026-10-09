@@ -304,7 +304,8 @@ export function createAppointmentDomainService(
     nextStatus: AppointmentStatus,
     action: string,
     auditAction: AppointmentAuditAction,
-    reason: string | null = null
+    reason: string | null = null,
+    requireActiveDentist = false
   ): Promise<AppointmentRecord> {
     const appointmentId = requireAppointmentUuid(appointmentIdValue);
     const actor = normalizeActor(actorValue);
@@ -315,6 +316,9 @@ export function createAppointmentDomainService(
         const repository = repositoryFactory(executor);
         const existing = await requireExistingForMutation(repository, appointmentId, actor, permission);
         if (!allowedFrom.has(existing.status)) throw new AppointmentDomainError("APPOINTMENT_STATE_INVALID");
+        if (requireActiveDentist) {
+          await validateDentist(repository, existing.dentistUserId, existing.branchId);
+        }
 
         const updated: AppointmentRecord = { ...existing, status: nextStatus, updatedAt: timestamp };
         const persisted = await repository.update(updated);
@@ -667,7 +671,9 @@ export function createAppointmentDomainService(
         new Set<AppointmentStatus>(["confirmed"]),
         "checked_in",
         "CHECKED_IN",
-        "APPOINTMENT_CHECKED_IN"
+        "APPOINTMENT_CHECKED_IN",
+        null,
+        true
       );
     },
 
@@ -679,7 +685,9 @@ export function createAppointmentDomainService(
         new Set<AppointmentStatus>(["checked_in"]),
         "in_progress",
         "STARTED",
-        "APPOINTMENT_STARTED"
+        "APPOINTMENT_STARTED",
+        null,
+        true
       );
     },
 

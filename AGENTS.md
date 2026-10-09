@@ -88,6 +88,14 @@ For the current development workflow, Codex should not commit, push, merge, reba
 
 After implementation and validation, Codex should leave the working tree available for review and report the files changed and checks performed.
 
+## Automatic Senior-Developer Review Rule
+
+After every implementation or corrective change set, automatically run a senior-developer review before asking for any Git, deployment, migration, or next-phase approval. Do not ask the user whether to perform this review.
+
+The senior review must inspect the committed/uncommitted diff as applicable for scope control, architecture alignment, authorization/security trust boundaries, data integrity, transaction/concurrency safety where relevant, audit/history behavior, regression risk, tests, typecheck/build, and diff quality. If the review finds defects that are clearly within the already approved task scope, correct them and rerun the senior review automatically without requesting a separate review/fix approval.
+
+This automatic review rule does not remove approval gates for commit, push, merge, rebase, reset, staging/production database migration, deployment, or advancing to the next roadmap phase unless the user explicitly changes those gates.
+
 The preferred workflow is:
 
 Task specification
@@ -95,7 +103,8 @@ Task specification
 -> subagent review
 -> implementation
 -> automated validation
--> Codex review
+-> automatic senior-developer review
+-> automatic in-scope review fixes and re-review when needed
 -> human diff review
 -> human-approved commit
 

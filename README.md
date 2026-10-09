@@ -3358,6 +3358,7 @@ Codex must follow these rules when changing the project:
 41. TypeScript types do not replace runtime validation at API, environment, database, storage, or other trust boundaries.
 42. Run `npm run typecheck`, relevant tests, and the relevant production build before declaring a TypeScript migration task complete.
 43. Keep the task-phase registry in Section 27 synchronized with `docs/codex-prompts/`. When a phase/subphase task file is added, renamed, superseded, or retired, update the README in the same change. Empty placeholder prompt files are planning markers only and are not approved implementation specifications until their scope is written and approved.
+44. After every implementation or corrective change set, automatically perform a senior-developer review before requesting any commit/push/deploy/next-phase approval. Do not ask the user whether to run this review. The review must inspect scope, architecture, authorization/security boundaries, data integrity, concurrency/transaction behavior where applicable, regression risk, tests, typecheck/build, and diff quality. If the review finds issues that are clearly within the already approved scope, fix them and rerun the review automatically. Continue to require explicit user approval for Git finalization (commit/push/merge/rebase/reset), staging/production migrations, deployments, or advancing to the next phase unless the user explicitly changes those gates.
 
 ### 26.1 Codex Task Completion Format
 
@@ -3419,7 +3420,7 @@ Phases 09 and 10 are complete for their approved scopes under `docs/codex-prompt
 | Task ID | Planned Task |
 | --- | --- |
 | 11 | Early Staging — Completed for approved scope. Vercel frontend, Render API, Supabase staging Auth/PostgreSQL/private Storage, owner activation/login, negative route checks, and fictional attachment lifecycle live-validated; production remains out of scope |
-| 12 | Appointment Redesign — In progress. 12A schema/workflow/RBAC is complete and staging-synchronized; 12B PostgreSQL domain/conflict safety is implemented locally and pending review; 12C protected API and 12D scheduling/calendar UI remain pending. Notifications and Patient Portal remain Phases 13 and 14 |
+| 12 | Appointment Redesign — In progress. 12A schema/workflow/RBAC is complete and staging-synchronized; 12B PostgreSQL domain/conflict safety is implemented, senior-reviewed, corrected, and validated locally, with the corrective diff pending Git finalization; 12C protected API and 12D scheduling/calendar UI remain pending. Notifications and Patient Portal remain Phases 13 and 14 |
 | 13 | Notifications |
 | 14 | Patient Portal |
 | 15 | Finance / Collectibles |

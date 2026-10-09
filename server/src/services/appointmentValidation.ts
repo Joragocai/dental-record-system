@@ -84,9 +84,8 @@ export function getManilaLocalParts(now: Date): { date: string; time: string } {
 }
 
 export function assertNotPastSchedule(date: string, time: string | null, now: Date): void {
-  if (!time) return;
   const local = getManilaLocalParts(now);
-  if (date < local.date || (date === local.date && time < local.time)) {
+  if (date < local.date || (time !== null && date === local.date && time < local.time)) {
     throw new AppointmentDomainError("APPOINTMENT_INPUT_INVALID", ["Appointment schedule cannot be in the past."]);
   }
 }
