@@ -3414,12 +3414,12 @@ The older empty umbrella markers `07-Authentication.txt` and `08-Authorization-R
 
 ### Planned Task Phases
 
-Phases 09 and 10 are complete for their approved scopes under `docs/codex-prompts/09-Audit-Trail.txt` and `docs/codex-prompts/10-Private-Storage.txt`. Phase 11 Early Staging has completed its approved staging scope under `docs/codex-prompts/11-Early-Staging.txt` and `docs/deployment/staging.md`: isolated Supabase staging database/Auth/private Storage, migrations 0001–0010, Vercel frontend, Render API, verified TLS/readiness, staged owner activation/login, legacy-route isolation, and fictional private-attachment lifecycle were live-validated. This does NOT authorize production or real patient data. Phase 12 Appointment Redesign is now approved under `docs/codex-prompts/12-Appointment-Redesign.txt`; implementation must proceed in reviewed subphases 12A–12D. Phases 13–21 remain planning placeholders requiring separate approval.
+Phases 09 and 10 are complete for their approved scopes under `docs/codex-prompts/09-Audit-Trail.txt` and `docs/codex-prompts/10-Private-Storage.txt`. Phase 11 Early Staging has completed its approved staging scope under `docs/codex-prompts/11-Early-Staging.txt` and `docs/deployment/staging.md`: isolated Supabase staging database/Auth/private Storage, migrations 0001–0011, Vercel frontend, Render API, verified TLS/readiness, staged owner activation/login, legacy-route isolation, and fictional private-attachment lifecycle were live-validated. This does NOT authorize production or real patient data. Phase 12 Appointment Redesign is now approved under `docs/codex-prompts/12-Appointment-Redesign.txt`; implementation must proceed in reviewed subphases 12A–12D. Phases 13–21 remain planning placeholders requiring separate approval.
 
 | Task ID | Planned Task |
 | --- | --- |
 | 11 | Early Staging — Completed for approved scope. Vercel frontend, Render API, Supabase staging Auth/PostgreSQL/private Storage, owner activation/login, negative route checks, and fictional attachment lifecycle live-validated; production remains out of scope |
-| 12 | Appointment Redesign — Approved/in progress. Implement in reviewed subphases 12A schema/workflow/RBAC, 12B PostgreSQL domain and conflict safety, 12C protected API, and 12D scheduling/calendar UI; Notifications and Patient Portal remain Phases 13 and 14 |
+| 12 | Appointment Redesign — In progress. 12A schema/workflow/RBAC is complete and staging-synchronized; 12B PostgreSQL domain/conflict safety is implemented locally and pending review; 12C protected API and 12D scheduling/calendar UI remain pending. Notifications and Patient Portal remain Phases 13 and 14 |
 | 13 | Notifications |
 | 14 | Patient Portal |
 | 15 | Finance / Collectibles |

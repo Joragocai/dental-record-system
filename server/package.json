@@ -9,7 +9,7 @@
     "db:migrate:status": "node --env-file=.env --import tsx src/postgres/cli/migrateStatus.ts",
     "db:migrate:status:staging": "node --env-file=.env.staging --import tsx src/postgres/cli/migrateStatus.ts",
     "db:migrate:staging": "node --env-file=.env.staging --import tsx src/postgres/cli/migrateStaging.ts",
-    "test:postgres:foundation": "node --import tsx --test \"src/postgres/*.pgtest.ts\" \"src/postgres/cli/*.pgtest.ts\"",
+    "test:postgres:foundation": "node --import tsx --test --test-concurrency=1 \"src/postgres/*.pgtest.ts\" \"src/postgres/cli/*.pgtest.ts\"",
     "test:postgres:batch-a": "node --import tsx --test \"src/postgres/batchA/*.pgtest.ts\"",
     "test:postgres:batch-b": "node --import tsx --test \"src/postgres/batchB/*.pgtest.ts\"",
     "test:postgres:batch-c": "node --import tsx --test \"src/postgres/batchC/*.pgtest.ts\"",

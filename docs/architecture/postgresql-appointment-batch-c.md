@@ -147,7 +147,8 @@ remain Phase 14.
 
 - active Appointment runtime still uses SQLite until the Phase 12 replacement is implemented and verified
 - no protected V2 Appointment service/API/UI cutover exists yet
-- migration 0011 extends the Batch C schema to the approved V2 machine-status set and adds appointment history/provider/duration foundations; protected runtime workflow and conflict enforcement remain later Phase 12 subphases
-- appointment conflict enforcement and protected workflow logic are not yet implemented
+- migration 0011 extends the Batch C schema to the approved V2 machine-status set and adds appointment history/provider/duration foundations
+- Phase 12B now adds a separate TypeScript PostgreSQL appointment repository/domain service with explicit workflow transitions, branch/provider validation, append-only history + audit writes, and transaction-scoped Dentist/date conflict serialization across branches
+- protected hosted HTTP route mounting remains deferred to Phase 12C, so the active hosted API still does not expose V2 appointment routes
 - no Treatment linkage exists because V1 does not persist one
 - real-data migration still depends on the reviewed production migration plan and downstream V2 runtime work

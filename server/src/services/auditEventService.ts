@@ -74,6 +74,31 @@ export interface AttachmentAuditInput {
   branchId: string;
 }
 
+export const appointmentAuditActions = [
+  "APPOINTMENT_CREATED",
+  "APPOINTMENT_UPDATED",
+  "APPOINTMENT_CONFIRMED",
+  "APPOINTMENT_RESCHEDULED",
+  "APPOINTMENT_CANCELLED",
+  "APPOINTMENT_CHECKED_IN",
+  "APPOINTMENT_STARTED",
+  "APPOINTMENT_COMPLETED",
+  "APPOINTMENT_NO_SHOW"
+] as const;
+
+export type AppointmentAuditAction = (typeof appointmentAuditActions)[number];
+
+export interface AppointmentAuditInput {
+  actorUserId: string;
+  actorAuthUserId: string;
+  requestId: string;
+  appointmentId: string;
+  branchId: string;
+  action: AppointmentAuditAction;
+  status: string;
+  relatedAppointmentId?: string | null;
+}
+
 export interface AuditEventService {
   recordStaffAccountCreated(input: StaffAccountCreatedAuditInput): Promise<void>;
   recordStaffUserInvited(input: StaffProvisioningAuditInput): Promise<void>;
@@ -91,6 +116,7 @@ export interface AuditEventService {
   recordAttachmentDownloadUrlIssued(input: AttachmentAuditInput): Promise<void>;
   recordAttachmentMetadataUpdated(input: AttachmentAuditInput): Promise<void>;
   recordAttachmentDeleted(input: AttachmentAuditInput): Promise<void>;
+  recordAppointmentAction(input: AppointmentAuditInput): Promise<void>;
 }
 
 export interface AuditEventServiceOptions {
@@ -421,6 +447,26 @@ export function createAuditEventService(
         branchId: input.branchId,
         outcome: "SUCCESS",
         metadata: { patientId: input.patientId, treatmentId: input.treatmentId ?? null }
+      });
+    },
+
+    async recordAppointmentAction(input) {
+      if (!appointmentAuditActions.includes(input.action)) throw new AuditEventError();
+      const status = input.status.trim();
+      if (!/^[a-z_]{3,40}$/.test(status)) throw new AuditEventError();
+      await insertHttpSecurityEvent({
+        actorUserId: input.actorUserId,
+        actorAuthUserId: input.actorAuthUserId,
+        requestId: input.requestId,
+        action: input.action,
+        targetType: "APPOINTMENT",
+        targetId: input.appointmentId,
+        branchId: input.branchId,
+        outcome: "SUCCESS",
+        metadata: {
+          status,
+          relatedAppointmentId: input.relatedAppointmentId ? requireUuid(input.relatedAppointmentId) : null
+        }
       });
     }
   };
