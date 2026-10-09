@@ -31,7 +31,8 @@
     "test:auth": "node --import tsx --test \"src/auth/*.pgtest.ts\" \"src/access/accessMiddleware.pgtest.ts\" \"src/routes/auth.test.js\" \"src/routes/staffAccounts.test.js\"",
     "start": "node --env-file=.env src/index.js",
     "start:hosted": "node --import tsx src/hostedIndex.js",
-    "test:staging": "node --import tsx --test \"src/config/*.pgtest.ts\""
+    "test:staging": "node --import tsx --test \"src/config/*.pgtest.ts\"",
+    "test:notifications": "node --import tsx --test \"src/notifications/*.pgtest.ts\""
   },
   "dependencies": {
     "cors": "^2.8.5",

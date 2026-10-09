@@ -154,3 +154,28 @@ The durable row stores only patient UUID, appointment UUID, branch UUID, request
 Dedupe keys include the channel, domain, event, appointment UUID, request UUID, and patient UUID. Repeating the same intent is therefore idempotent.
 
 Patient in-app notification creation remains deferred until Phase 14 establishes a secure patient-to-application-user ownership relationship. Phase 13B must not infer that relationship by matching email, name, phone number, or other profile fields.
+
+
+## Phase 13C Transactional Email Delivery
+
+Phase 13C adds the provider-neutral delivery engine without selecting or enabling a real email provider.
+
+The implementation includes:
+
+- generic appointment email templates that do not include procedure, notes, diagnosis, financial details, or other unnecessary clinical content;
+- a provider contract that accepts a server-only from address, recipient address, subject/text content, and the durable queue dedupe key as a provider idempotency key;
+- transactional queue claiming with `FOR UPDATE SKIP LOCKED`;
+- one active processing lease per claimed job;
+- bounded exponential retry/backoff;
+- safe `pending -> processing -> sent/failed/abandoned` state handling;
+- recovery of expired processing leases after process restarts;
+- optimistic finalization using the current `last_attempt_at` claim timestamp so a stale worker cannot overwrite a newer claim;
+- safe internal failure codes only; raw provider response bodies are never persisted;
+- recipient email resolution only at dispatch time from the referenced patient/app-user record;
+- a bounded non-overlapping worker loop suitable for hosted use once a real provider adapter is approved.
+
+The delivery service treats missing recipient email, unsupported templates, invalid provider message identifiers, and explicitly permanent provider rejection as terminal/abandoned conditions. Retryable provider failures use bounded exponential backoff until the configured maximum attempt count.
+
+The provider adapter is responsible for honoring the supplied idempotency key where the selected provider supports provider-side idempotency. This protects the unavoidable boundary where a provider may accept an email immediately before the application process loses its database connection or restarts.
+
+No provider SDK, provider API key, real sender identity, hosted worker activation, or real-email verification is included yet. By user decision, provider selection/configuration, hosted worker activation, and real-email staging verification are deferred until after Phase 13D and remain separate approval gates. The existing staging `pending` delivery record is intentionally left untouched until a provider is selected and explicitly enabled.

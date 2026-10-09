@@ -1,7 +1,7 @@
 PHASE 13 — NOTIFICATIONS
 
 STATUS
-Approved for implementation in reviewed subphases. Phase 13A notification data/foundation is implemented, locally validated, and staging-synchronized through migration 0012. Phase 13B appointment notification integration is implemented and locally validated; no real email is sent. Phase 13C–13D remain pending. Do not configure a real email provider, send real email, or advance to later subphases without the applicable approval gate. Senior-developer review is automatic.
+Approved for implementation in reviewed subphases. Phase 13A notification data/foundation is implemented, locally validated, and staging-synchronized through migration 0012. Phase 13B appointment notification integration is implemented and staging-validated. Phase 13C transactional email delivery engine is implemented and locally validated with fake-provider and real PostgreSQL concurrency/recovery coverage; no real provider is selected/configured/enabled and no real email is sent. Phase 13D remains pending. By user decision, real provider selection/configuration, hosted worker activation, and real-email staging verification are deferred until after 13D and remain separate approval gates. Senior-developer review is automatic.
 
 PROJECT
 /home/johnr/projects/dental-record-system
