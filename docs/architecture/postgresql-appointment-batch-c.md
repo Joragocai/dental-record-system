@@ -122,9 +122,9 @@ branch at migration time.
 
 ## Phase 12 Handoff
 
-Phase 12 Appointment Redesign is now approved under
-`docs/codex-prompts/12-Appointment-Redesign.txt`. It must extend this Batch C
-foundation through a new ordered migration rather than editing migration 0004.
+Phase 12 Appointment Redesign is complete and staging validated under
+`docs/codex-prompts/12-Appointment-Redesign.txt`. It extended this Batch C
+foundation through ordered migration 0011 rather than editing migration 0004.
 
 The approved Phase 12 direction is:
 
@@ -145,10 +145,10 @@ remain Phase 14.
 
 ## Known Limitations
 
-- active Appointment runtime still uses SQLite until the Phase 12 replacement is implemented and verified
-- no protected V2 Appointment service/API/UI cutover exists yet
+- the preserved local V1 runtime continues to use SQLite, while hosted staging uses the protected PostgreSQL V2 Appointment service/API/UI validated in Phase 12
 - migration 0011 extends the Batch C schema to the approved V2 machine-status set and adds appointment history/provider/duration foundations
-- Phase 12B now adds a separate TypeScript PostgreSQL appointment repository/domain service with explicit workflow transitions, branch/provider validation, append-only history + audit writes, and transaction-scoped Dentist/date conflict serialization across branches
-- Phase 12C now provides authenticated, branch-RBAC-protected V2 appointment and calendar route mounting for hosted mode only; the local V1 appointment route remains isolated, and the Phase 12C hosted code remains undeployed until its separate approval gate
+- Phase 12B provides the TypeScript PostgreSQL appointment repository/domain service with explicit workflow transitions, branch/provider validation, append-only history + audit writes, and transaction-scoped Dentist/date conflict serialization across branches
+- Phase 12C provides authenticated, branch-RBAC-protected V2 appointment and calendar routes in hosted mode, while the local V1 appointment route remains isolated
+- Phase 12D provides the authenticated day/week/mobile-agenda scheduling UI; coordinated Render + Vercel + Supabase fictional-data staging validation passed
 - no Treatment linkage exists because V1 does not persist one
 - real-data migration still depends on the reviewed production migration plan and downstream V2 runtime work
