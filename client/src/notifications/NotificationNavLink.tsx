@@ -1,41 +1,31 @@
-import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.js";
-import { getUnreadNotificationCount } from "./notificationApi.js";
+import { useLiveNotifications } from "./NotificationLiveProvider.js";
 
 export default function NotificationNavLink({ className = "button-secondary" }: { className?: string }) {
-  const auth = useAuth();
-  const requestOptions = useMemo(() => {
-    const accessToken = auth.providerSession?.accessToken;
-    if (!accessToken || !auth.apiBaseUrl) return null;
-    return { accessToken, apiBaseUrl: auth.apiBaseUrl };
-  }, [auth.providerSession?.accessToken, auth.apiBaseUrl]);
-  const [unread, setUnread] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!requestOptions) return;
-    let active = true;
-    void getUnreadNotificationCount(requestOptions)
-      .then((count) => {
-        if (active) setUnread(count);
-      })
-      .catch(() => {
-        if (active) setUnread(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [requestOptions]);
+  const { unreadCount } = useLiveNotifications();
 
   return (
     <Link className={`${className} inline-flex items-center gap-2`} to="/notifications">
+      <svg
+        aria-hidden="true"
+        className="h-4 w-4 shrink-0"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" />
+        <path d="M10 20a2 2 0 0 0 4 0" />
+      </svg>
       <span>Notifications</span>
-      {unread !== null && unread > 0 ? (
+      {unreadCount !== null && unreadCount > 0 ? (
         <span
           className="inline-flex min-w-5 items-center justify-center rounded-full bg-clinic-700 px-1.5 py-0.5 text-xs font-bold text-white"
-          aria-label={`${unread} unread notifications`}
+          aria-label={`${unreadCount} unread notifications`}
         >
-          {unread > 99 ? "99+" : unread}
+          {unreadCount > 99 ? "99+" : unreadCount}
         </span>
       ) : null}
     </Link>

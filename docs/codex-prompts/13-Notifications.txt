@@ -1,7 +1,7 @@
 PHASE 13 — NOTIFICATIONS
 
 STATUS
-Approved for implementation in reviewed subphases. Phase 13A notification data/foundation is implemented, locally validated, and staging-synchronized through migration 0012. Phase 13B appointment notification integration is implemented and staging-validated. Phase 13C transactional email delivery engine is implemented and locally validated with fake-provider and real PostgreSQL concurrency/recovery coverage; no real provider is selected/configured/enabled and no real email is sent. Phase 13D recipient-owned in-app notification API/UI is implemented and locally validated, including cross-user isolation, unread/read state, minimized HTTP payloads, hosted-route protection, and responsive notification-center navigation. By user decision, real provider selection/configuration, hosted worker activation, real-email staging verification, and 13D staging deployment/validation remain separate approval gates. Patient appointment in-app notification creation remains deferred until Phase 14 establishes secure patient-to-app-user ownership. Senior-developer review is automatic.
+Approved for implementation in reviewed subphases. Phase 13A notification data/foundation is implemented, locally validated, and staging-synchronized through migration 0012. Phase 13B appointment notification integration is implemented and staging-validated. Phase 13C transactional email delivery engine is implemented and locally validated with fake-provider and real PostgreSQL concurrency/recovery coverage; no real provider is selected/configured/enabled and no real email is sent. Phase 13D recipient-owned API/UI is deployed to Render/Vercel and locally validated for cross-user isolation, unread/read state, minimized HTTP payloads, hosted-route protection, and responsive navigation. The fictional staging owner has confirmed the hosted list/unread interface and mark-read; PostgreSQL verifies the stored read timestamp, zero unread, and untouched pending email intent. Live repeated-read, mark-all, and second-user access checks remain outstanding. A client-only active-app unread bell/notification toast extension is implemented and locally tested but is not committed or deployed. By user decision, real provider selection/configuration, hosted worker activation, real-email staging verification, remaining 13D staging validation, and deployment of the new frontend extension remain separate approval gates. Patient appointment in-app notification creation remains deferred until Phase 14 establishes secure patient-to-app-user ownership. Senior-developer review is automatic.
 
 PROJECT
 /home/johnr/projects/dental-record-system
@@ -70,6 +70,7 @@ SUBPHASES
 13D — In-App Notification API / UI
 - Add authenticated recipient-owned notification list/unread-count/mark-read/mark-all-read endpoints.
 - Add a responsive notification center in the hosted UI.
+- Locally extend the signed-in UI with a 30-second active-tab unread-badge refresh and a generic, dismissible toast for newly arrived recipient-owned unread notifications. Do not replay historic notifications on login, enable browser push, or display clinical details in the toast. Hosted validation and deployment remain gated.
 - Never expose other users' notifications.
 - Patient portal-specific notification ownership/experience remains Phase 14.
 

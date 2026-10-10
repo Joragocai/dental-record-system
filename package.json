@@ -47,7 +47,8 @@
     "build": "npm run build --workspace client",
     "start": "npm run start --workspace server",
     "start:hosted": "npm run start:hosted --workspace server",
-    "test:staging": "npm run test:staging --workspace server && node --test client/stagingBuildGuard.test.js"
+    "test:staging": "npm run test:staging --workspace server && node --test client/stagingBuildGuard.test.js && npm run test:notifications:client",
+    "test:notifications:client": "node --import tsx --test client/src/notifications/*.test.js"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

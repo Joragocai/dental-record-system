@@ -7,6 +7,7 @@ import ActivateAccountPage from "./pages/ActivateAccountPage";
 import AuthAccountPage from "./pages/AuthAccountPage";
 import AppointmentSchedulerPage from "./pages/AppointmentSchedulerPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import NotificationLiveProvider from "./notifications/NotificationLiveProvider";
 import ProtectedAuthRoute from "./components/ProtectedAuthRoute";
 
 // Legacy clinical screens are only loaded in a local-development build.
@@ -26,15 +27,17 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/activate-account" element={<ActivateAccountPage />} />
-      <Route path="/auth/account" element={<ProtectedAuthRoute><AuthAccountPage /></ProtectedAuthRoute>} />
-      <Route path="/appointments" element={<ProtectedAuthRoute><AppointmentSchedulerPage /></ProtectedAuthRoute>} />
-      <Route path="/notifications" element={<ProtectedAuthRoute><NotificationsPage /></ProtectedAuthRoute>} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+    <NotificationLiveProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/activate-account" element={<ActivateAccountPage />} />
+        <Route path="/auth/account" element={<ProtectedAuthRoute><AuthAccountPage /></ProtectedAuthRoute>} />
+        <Route path="/appointments" element={<ProtectedAuthRoute><AppointmentSchedulerPage /></ProtectedAuthRoute>} />
+        <Route path="/notifications" element={<ProtectedAuthRoute><NotificationsPage /></ProtectedAuthRoute>} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </NotificationLiveProvider>
   );
 }

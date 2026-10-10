@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
+import { useLiveNotifications } from "../notifications/NotificationLiveProvider.js";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -20,43 +21,63 @@ function formatTimestamp(value: string): string {
 
 export default function NotificationsPage() {
   const auth = useAuth();
+  const { refresh: refreshNotificationCount, afterRead } = useLiveNotifications();
+  const recipientId = auth.verifiedIdentity?.id ?? null;
   const requestOptions = useMemo(() => {
     const accessToken = auth.providerSession?.accessToken;
     if (!accessToken || !auth.apiBaseUrl) return null;
     return { accessToken, apiBaseUrl: auth.apiBaseUrl };
   }, [auth.providerSession?.accessToken, auth.apiBaseUrl]);
   const [items, setItems] = useState<InAppNotification[]>([]);
+  const [itemsRecipientId, setItemsRecipientId] = useState<string | null>(null);
+  const recipientRef = useRef(recipientId);
+  recipientRef.current = recipientId;
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const requestVersion = useRef(0);
 
   const load = useCallback(async () => {
-    if (!requestOptions) return;
+    if (!requestOptions || !recipientId) return;
+    const scopedRecipient = recipientId;
+    const version = ++requestVersion.current;
     setLoading(true);
     setFeedback("");
     try {
-      setItems(await listNotifications(requestOptions));
+      const nextItems = await listNotifications(requestOptions);
+      if (version !== requestVersion.current || recipientRef.current !== scopedRecipient) return;
+      setItemsRecipientId(scopedRecipient);
+      setItems(nextItems);
+      refreshNotificationCount();
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Unable to load notifications.");
+      if (version === requestVersion.current && recipientRef.current === scopedRecipient) {
+        setFeedback(error instanceof Error ? error.message : "Unable to load notifications.");
+      }
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current && recipientRef.current === scopedRecipient) setLoading(false);
     }
-  }, [requestOptions]);
+  }, [requestOptions, recipientId, refreshNotificationCount]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const unreadCount = items.filter((item) => item.readAt === null).length;
+  const visibleItems = recipientId !== null && recipientId === itemsRecipientId ? items : [];
+  const scopeLoading = loading || itemsRecipientId !== recipientId;
+  const unreadCount = visibleItems.filter((item) => item.readAt === null).length;
 
   async function markRead(item: InAppNotification) {
-    if (!requestOptions || item.readAt || submitting) return;
+    if (!requestOptions || !recipientId || item.readAt || scopeLoading || submitting) return;
+    const scopedRecipient = recipientId;
+    requestVersion.current += 1;
     setSubmitting(true);
     setFeedback("");
     try {
       await markNotificationRead(item.id, requestOptions);
+      if (recipientRef.current !== scopedRecipient) return;
       const now = new Date().toISOString();
       setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, readAt: now } : entry));
+      afterRead();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Unable to mark the notification as read.");
     } finally {
@@ -65,13 +86,17 @@ export default function NotificationsPage() {
   }
 
   async function markAllRead() {
-    if (!requestOptions || unreadCount === 0 || submitting) return;
+    if (!requestOptions || !recipientId || unreadCount === 0 || scopeLoading || submitting) return;
+    const scopedRecipient = recipientId;
+    requestVersion.current += 1;
     setSubmitting(true);
     setFeedback("");
     try {
       await markAllNotificationsRead(requestOptions);
+      if (recipientRef.current !== scopedRecipient) return;
       const now = new Date().toISOString();
       setItems((current) => current.map((entry) => entry.readAt ? entry : { ...entry, readAt: now }));
+      afterRead();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Unable to mark notifications as read.");
     } finally {
@@ -94,7 +119,7 @@ export default function NotificationsPage() {
             <button
               className="button-primary"
               type="button"
-              disabled={unreadCount === 0 || submitting}
+              disabled={unreadCount === 0 || scopeLoading || submitting}
               onClick={() => void markAllRead()}
             >
               Mark all read
@@ -121,7 +146,7 @@ export default function NotificationsPage() {
             </button>
           </div>
 
-          {loading ? (
+          {scopeLoading ? (
             <p className="mt-6 text-sm text-slate-500">Loading notifications...</p>
           ) : items.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
@@ -129,7 +154,7 @@ export default function NotificationsPage() {
             </div>
           ) : (
             <ul className="mt-5 space-y-3">
-              {items.map((item) => (
+              {visibleItems.map((item) => (
                 <li
                   key={item.id}
                   className={`rounded-2xl border p-4 ${item.readAt ? "border-slate-200 bg-white" : "border-clinic-200 bg-clinic-50"}`}
@@ -149,7 +174,7 @@ export default function NotificationsPage() {
                       <button
                         type="button"
                         className="button-secondary shrink-0"
-                        disabled={submitting}
+                        disabled={submitting || scopeLoading}
                         onClick={() => void markRead(item)}
                       >
                         Mark read

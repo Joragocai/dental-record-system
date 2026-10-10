@@ -216,3 +216,19 @@ The hosted client adds:
 The notification runtime uses a lazy PostgreSQL pool capped at one connection to avoid recreating the staging connection-pressure problem previously addressed in Phase 12.
 
 Phase 13D requires no new migration. Migration 0012 remains the notification schema foundation. Local validation covers recipient isolation, durable read state, route authentication, response minimization, hosted route protection, client API helpers, typecheck/build, and existing regressions.
+
+### Phase 13D staging status and active-app enhancement
+
+The original 13D API/UI is deployed on Render/Vercel. A fictional owner viewed the notification center, confirmed one unread notification, and marked it read. Read-only staging PostgreSQL inspection confirmed the notification was preserved with its original `read_at` populated, the owner's unread count became zero, and the Phase 13B pending email intent remained untouched. Hosted repeated mark-read, actual mark-all mutation, and cross-user tests are not yet complete; a second fictional user and authenticated request context were not available for a live isolation test. Phase 13D staging validation must not be declared fully passed.
+
+The separately approved **local-only** frontend enhancement adds:
+
+- one persistent notification status provider around hosted routes (no legacy V1 changes);
+- recipient-owned list and exact unread-count requests every 30 seconds while the signed-in browser tab is active, plus a refresh on refocus;
+- a bell badge shared by appointment and account navigation;
+- a generic, dismissible seven-second toast for newly observed unread IDs at or after the previously observed timestamp boundary, without notification body, clinical details, service worker, push subscription, or browser permission;
+- no toast for notifications already present in the first successful poll;
+- an account-scoped controller which invalidates stale reads on identity changes, preserves the baseline across token rotations, coalesces focus/visibility polling, and clears toasts after notification read actions; shared unread-count refresh after notification-list refresh;
+- no backend route, migration, email adapter, notification producer, or storage change.
+
+Local validation now includes controller lifecycle tests covering recipient-switch invalidation, token rotation, deduplicated polling, same-millisecond notifications, read dismissal, and cleanup, plus typecheck/build and staging regressions. It has not been committed, pushed, or deployed, and must receive separate approval and hosted validation before being treated as staged. It does not cause appointment emails to become staff in-app notifications: in-app rows still require correct, explicit application-user ownership.
