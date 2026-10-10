@@ -1,5 +1,5 @@
 PHASE 16 — ROLE DASHBOARD
-STATUS: DRAFT PENDING USER REVIEW — INSPECTION/SPECIFICATION ONLY, NO IMPLEMENTATION APPROVED
+STATUS: 16A IMPLEMENTED AND LOCALLY TESTED — HOSTED QA PENDING; NO COMMIT, PUSH, DEPLOYMENT OR 16B–16F APPROVED
 Authority: README.md Sections 6, 7, 8, 12, 14, 16.3, Task Phases 16/19, and AGENTS.md.
 Deployment: Vercel client, Render protected Express API, Supabase PostgreSQL/Auth/private Storage. Never depend on the legacy SQLite endpoints in staging.
 
@@ -29,7 +29,7 @@ ARCHITECTURAL RULES
 9. Preserve audit of sensitive read actions, limit list sizes, implement pagination as needed, avoid cross-user caching and stale permission state after role revocation.
 10. Functional workflow change, RBAC expansion, finance accounting/tax policy change, backup/restore implementation, or deployment requires separate approval.
 
-16A — SECURE DASHBOARD FOUNDATION (FIRST IMPLEMENTATION SLICE; PENDING APPROVAL)
+16A — SECURE DASHBOARD FOUNDATION (LOCALLY IMPLEMENTED, NOT DEPLOYED)
 - Decide minimal protected GET /api/dashboard/context contract: display name, safe role presentation, authorized branch choices, eligible widget/action keys, optional safe environment state. All derived from backend auth and authorization; exclude secrets and raw clinical/finance data.
 - Consider using already verified /api/auth/session plus a narrow context endpoint rather than introducing broad reusable access tokens. Recheck account/role/branch state server-side.
 - Add a V2 protected /dashboard route, role-aware navigation and empty/loading/denied states; safe route selection for a patient-only account and a system administrator.
@@ -65,7 +65,7 @@ ARCHITECTURAL RULES
 
 API / WIDGET AVAILABILITY GATE
 Existing V2 route families to confirm against actual route-level middleware: /api/appointments, /api/patient-appointment-reviews, /api/me/*, /api/finance-operations/*, /api/finance/*, /api/notifications, /api/audit-events, /api/staff-accounts, /api/health, /api/ready. Some are only accessible to specifically authorized roles and may not offer list/aggregate projections.
-Proposed /api/dashboard/context is NEW and not authorized until 16A. README's aspirational /api/dashboard/summary|schedule|collectibles|financial-summary endpoints are not evidence of a completed secure V2 implementation. Use only implemented, audited domain reads or add a minimal separately reviewed server-side projection.
+GET /api/dashboard/context is implemented locally in 16A with server-derived navigation only; it is not yet deployed. README's aspirational /api/dashboard/summary|schedule|collectibles|financial-summary endpoints are not evidence of a completed secure V2 implementation. Use only implemented, audited domain reads or add a minimal separately reviewed server-side projection.
 Migration: NONE anticipated for the role navigation/context foundation. New data persistence requires a justified additive migration with separate approval.
 
 VALIDATION GATES
@@ -84,4 +84,4 @@ OPEN DECISIONS REQUIRING SCOPE REVIEW
 - Which missing V2 read-only list/count endpoints merit separate narrowly permissioned additions; avoid implementing large aggregates merely for dashboard cosmetics.
 - Whether any role should default to one assigned branch or require explicit branch selection. Prefer explicit selection for multi-branch staff, not implicit data joining.
 - Exact accounting labels approved for limited daily finance figures; no official receipt statements.
-No Phase 16 feature source code, migrations, Git finalization or deployment are authorized by this draft.
+Phase 16A local implementation was approved separately. No Phase 16B–16F code, migrations, Git finalization or deployment are authorized by this draft.

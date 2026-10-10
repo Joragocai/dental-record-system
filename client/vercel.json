@@ -26,6 +26,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/dashboard",
+      "destination": "/index.html"
+    },
+    {
       "source": "/clinic-finance",
       "destination": "/index.html"
     },

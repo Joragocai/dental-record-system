@@ -77,7 +77,8 @@ if (isHosted) {
     { createPaymentRouter, createRefundRouter },
     { createFinanceOperationsRouter },
     { createDailyFinanceRouter },
-    { createPatientFinanceRouter }
+    { createPatientFinanceRouter },
+    { createDashboardV2Router }
   ] = await Promise.all([
     import("./routes/appointmentsV2.js"),
     import("./routes/notifications.js"),
@@ -96,7 +97,8 @@ if (isHosted) {
     import("./routes/payments.js"),
     import("./routes/financeOperations.js"),
     import("./routes/dailyFinance.js"),
-    import("./routes/patientFinance.js")
+    import("./routes/patientFinance.js"),
+    import("./routes/roleDashboardRouter.js")
   ]);
   const hostedAccessBoundary = createAccessBoundary();
   const appointmentRuntime = createAppointmentRuntime();
@@ -118,6 +120,7 @@ if (isHosted) {
   app.use("/api/refunds", createRefundRouter(undefined, hostedAccessBoundary));
   app.use("/api/finance-operations", createFinanceOperationsRouter(undefined, hostedAccessBoundary));
   app.use("/api/finance", createDailyFinanceRouter(undefined, hostedAccessBoundary));
+  app.use("/api/dashboard", createDashboardV2Router(undefined, hostedAccessBoundary));
 }
 
 // Never import legacy SQLite-backed routes in hosted environments. Merely importing
