@@ -75,7 +75,7 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
     const permissions = await pool.query<{ code: string; scope: string }>(
       "SELECT code, scope FROM permissions ORDER BY code ASC"
     );
-    assert.equal(permissions.rows.length, 30);
+    assert.equal(permissions.rows.length, 37);
     assert.equal(permissions.rows.find((row) => row.code === "patient.read")?.scope, "BRANCH");
     assert.equal(permissions.rows.find((row) => row.code === "staff_account.create")?.scope, "GLOBAL");
 
@@ -88,7 +88,7 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
     );
 
     const grantsFor = (role: string) => roleMapping.rows.filter((row) => row.role_code === role).map((row) => row.permission_code);
-    assert.deepEqual(grantsFor("PATIENT"), []);
+    assert.deepEqual(grantsFor("PATIENT"), ["portal.appointments.read", "portal.appointments.request", "portal.documents.read", "portal.profile.read", "portal.profile.update", "portal.treatments.read"]);
     assert.deepEqual(grantsFor("PERSONNEL").filter((code) => code.startsWith("attachment.")), [
       "attachment.create",
       "attachment.download",

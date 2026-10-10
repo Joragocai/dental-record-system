@@ -616,6 +616,7 @@ export default function AppointmentSchedulerPage() {
             <p className="mt-1 text-sm text-slate-500">Asia/Manila clinic scheduling · protected V2 workflow</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Link className="button-secondary" to="/clinic-patient-requests">Patient change requests</Link><Link className="button-secondary" to="/clinic-finance">Daily finance</Link>
             <NotificationNavLink />
             <Link className="button-secondary" to="/auth/account">Account</Link>
             {capabilities.create && selectedBranchId ? (

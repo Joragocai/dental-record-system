@@ -16,7 +16,7 @@ test("Vercel serves only the approved hosted authentication SPA routes", () => {
     return rewrite.source;
   });
   assert.deepEqual(sources, [
-    "/login", "/forgot-password", "/reset-password", "/activate-account", "/auth/account", "/appointments", "/notifications"
+    "/login", "/forgot-password", "/reset-password", "/activate-account", "/activate-patient-account", "/auth/account", "/clinic-finance", "/patient-finance", "/patient-documents", "/clinic-patient-requests", "/patient-appointments", "/patient-portal", "/appointments", "/notifications"
   ]);
   assert.equal(file.includes("SUPABASE_SECRET_KEY"), false);
   assert.equal(file.includes("DATABASE_URL"), false);

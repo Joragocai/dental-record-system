@@ -1,0 +1,26 @@
+# Finance / Collectibles — Phase 15 architectural foundation
+
+Status: Phase 15A–15E locally developed and isolated PostgreSQL finance integration tests passing; no finance migrations deployed to staging. Hosted cross-user QA, clinic accounting policy and complete security certification remain outstanding.
+
+## Design rules
+- `treatments` retains clinically migrated legacy amounts; those figures are not a receivables or payments ledger. Do not backfill invoices, treat old balance as authoritative or double-collect historically paid treatments without explicit reconciliation.
+- `invoices` represent branch-scoped billings. During 15A, only `draft` status is created; no legal invoice/receipt number or financial posting is issued. Invoice items contain server-snapshotted treatment prices/discounts; totals come from exact integer cents.
+- Financial storage uses PostgreSQL `NUMERIC(12,2)`, atomic inserts and checks for nonnegative totals, correct discount arithmetic and matched linked patient/branch/treatment. The one-treatment-per-invoice constraint is conservative until an audited void/reissue workflow exists.
+- Full payment, allocation, refund, adjustment, reversal, expense, payable and closing entities belong to later additive migrations 15B–15E after controlled review; do not make up historic records.
+- Operational finance is staff BRANCH scoped, Clinic Administrator receives separate GLOBAL financial oversight, System Administrator cannot read/modify finance, Patient only eventual owned balance/payment projections after the ledger works.
+- Do not expose `/api/me/balance` or `/api/me/payments` until validated ledger posting and patient account ownership are joined safely.
+- Store audit event and draft invoice in one PostgreSQL transaction. Transaction rollback must remove both when audit fails.
+- Manual clinic policies for numbering, tax, official receipts, accounting approval, rounding variants, opening balance migration and data retention are in the deferred manual intervention register. Policy uncertainty must never produce a fictitious payment or zero balance.
+
+## Verified local PostgreSQL checkpoint (2026-10-10)
+- Safely applied migrations 0001–0020 in the disposable local `dental_test_sandbox`; verified no Supabase staging or production database touched.
+- Added `server/src/postgres/access/financeIntegrity.pgtest.ts` with nine passing real-PostgreSQL tests (parent plus eight cases). Verified invoice draft/finalization, payment allocation and refund, competing payments, idempotency, reversal, supplier payables, cash closing/dual approval, immutable history, and atomic rollback when audit insertion fails.
+- Fixed deferred payment allocation trigger in unapplied migration 0018 and supplier payment reconciliation trigger in unapplied migration 0019 to avoid invalid `NEW` field access at transaction commit.
+- Local database was cleared after tests (0 public tables). TypeScript, production build, staging regressions passed. Formal hosted, accountant-policy and Phase 19 release gates remain.
+
+## Implementation sequence
+15A: migration 0016, cent arithmetic and discount validation, protected draft invoice API + tests.
+15B: internal finalization/void locally implemented via unapplied migration 0017, locked internal reference counter, validated totals, append-only status events, and DB financial immutability triggers. No official invoice/receipt issuance, paid allocations, partial refund, or accounting adjustments yet.
+15C: locally implemented migration 0018 and `/api/payments`, `/api/payments/:paymentId`, `/api/payments/:paymentId/reverse`, `/api/refunds` with staff-scoped payment allocations, refund limits, internal no-receipt intent, status/audit history, ledger-derived invoice balances and reversible collection posting. Migration remains unapplied; real PostgreSQL and hosted security validations remain mandatory.
+15D: locally implemented additive migration 0019 and protected finance operations routes for branch-scoped receivables, due-date aging, follow-up records, supplier master, expense submissions, Clinic Administrator approvals, approved supplier bills, and idempotent partial/full payable payments. Unpaid expenses are not booked as cash paid, and supplier payment records remain immutable. Branch and finance role isolation, audit transactions, and real PostgreSQL proof remain outstanding.
+15E: local migration 0020 and protected `/api/finance` endpoints provide branch-scoped daily ledger summaries and audited non-personal CSV, explicitly incomplete direct expense payment figures, cash opening authorization, actual cash count/attested closing and independent Clinic Administrator decision. `daily_closings` snapshots and `daily_closing_events` are locked from ordinary changes. `/api/me/balance` and `/api/me/payments` are patient-OWN only, excluding historical non-invoiced treatments with an explicit UI caveat. React `/clinic-finance` and `/patient-finance` pages are implemented locally. Business timezone, comprehensive cash movement accounting, clinic policies, SOC and hosted QA remain open.

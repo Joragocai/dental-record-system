@@ -64,13 +64,39 @@ if (isHosted) {
     { createNotificationsRouter },
     { createAccessBoundary },
     { createAppointmentRuntime },
-    { createInAppNotificationRuntime }
+    { createInAppNotificationRuntime },
+    { createPatientEnrollmentRouter },
+    { createPatientActivationRouter },
+    { createPortalRecordsRouter },
+    { createTreatmentPublicationRouter },
+    { createPortalAppointmentRouter },
+    { createPortalAppointmentReviewRouter },
+    { createPortalPrivacyRouter },
+    { createPortalDocumentPublicationRouter },
+    { createInvoiceRouter },
+    { createPaymentRouter, createRefundRouter },
+    { createFinanceOperationsRouter },
+    { createDailyFinanceRouter },
+    { createPatientFinanceRouter }
   ] = await Promise.all([
     import("./routes/appointmentsV2.js"),
     import("./routes/notifications.js"),
     import("./access/accessMiddleware.js"),
     import("./appointments/appointmentRuntime.ts"),
-    import("./notifications/inAppNotificationRuntime.ts")
+    import("./notifications/inAppNotificationRuntime.ts"),
+    import("./routes/patientEnrollment.js"),
+    import("./routes/patientActivation.js"),
+    import("./routes/portalRecords.js"),
+    import("./routes/treatmentPublication.js"),
+    import("./routes/portalAppointments.js"),
+    import("./routes/portalAppointmentReview.js"),
+    import("./routes/portalPrivacy.js"),
+    import("./routes/portalDocumentPublication.js"),
+    import("./routes/invoices.js"),
+    import("./routes/payments.js"),
+    import("./routes/financeOperations.js"),
+    import("./routes/dailyFinance.js"),
+    import("./routes/patientFinance.js")
   ]);
   const hostedAccessBoundary = createAccessBoundary();
   const appointmentRuntime = createAppointmentRuntime();
@@ -78,6 +104,20 @@ if (isHosted) {
   app.use("/api/appointments", createAppointmentsRouter(undefined, hostedAccessBoundary, appointmentRuntime));
   app.use("/api/calendar", createAppointmentCalendarRouter(undefined, hostedAccessBoundary, appointmentRuntime));
   app.use("/api/notifications", createNotificationsRouter(undefined, hostedAccessBoundary, notificationRuntime));
+  app.use("/api/patient-enrollments", createPatientEnrollmentRouter(undefined, hostedAccessBoundary));
+  app.use("/api/patient-portal", createPatientActivationRouter());
+  app.use("/api/me", createPortalRecordsRouter(undefined, hostedAccessBoundary));
+  app.use("/api/me", createPortalAppointmentRouter(undefined, hostedAccessBoundary));
+  app.use("/api/me", createPortalPrivacyRouter(undefined, hostedAccessBoundary));
+  app.use("/api/me", createPatientFinanceRouter(undefined, hostedAccessBoundary));
+  app.use("/api/patient-appointment-reviews", createPortalAppointmentReviewRouter(undefined, hostedAccessBoundary));
+  app.use("/api/portal-treatments", createTreatmentPublicationRouter(undefined, hostedAccessBoundary));
+  app.use("/api/portal-documents", createPortalDocumentPublicationRouter(undefined, hostedAccessBoundary));
+  app.use("/api/invoices", createInvoiceRouter(undefined, hostedAccessBoundary));
+  app.use("/api/payments", createPaymentRouter(undefined, hostedAccessBoundary));
+  app.use("/api/refunds", createRefundRouter(undefined, hostedAccessBoundary));
+  app.use("/api/finance-operations", createFinanceOperationsRouter(undefined, hostedAccessBoundary));
+  app.use("/api/finance", createDailyFinanceRouter(undefined, hostedAccessBoundary));
 }
 
 // Never import legacy SQLite-backed routes in hosted environments. Merely importing

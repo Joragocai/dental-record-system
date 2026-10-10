@@ -1,0 +1,88 @@
+PHASE 14 — PATIENT PORTAL
+
+STATUS
+14A LOCAL FOUNDATION PARTIALLY IMPLEMENTED (October 10, 2026). Migration 0013 is written locally but NOT applied to staging. A fail-closed patient-account lookup and dedicated OWN ownership resolver with fictional User A/B unit tests are present. A protected staff-only pending-enrollment API and transactional enrollment service now create PATIENT-only pending app_user/link rows with verification attestations and append-only audit, after server-side email/adult/role checks. Patient-specific invitation-state repository/service and trusted Supabase confirmed-email verification are implemented locally. A protected hosted-only POST /api/patient-portal/activate backend route now uses the authenticated bearer identity and a fresh Supabase /auth/v1/user confirmation check, then transactionally activates the matched pending patient user/link with append-only audit. A staff-authenticated patient invitation endpoint (`POST /api/patient-enrollments/:userId/invite`) now exists with role, branch, approving-operator and record-email validation; the separate patient activation page (`/activate-patient-account`) is wired to the trusted backend activation API. The invitation redirects to this dedicated page using the existing clinic-approved origin, but Supabase allowlist confirmation is still a hosting gate. No real invitation has been issued. The new fictional unit tests and existing staging/typecheck/build regressions pass; independent hosted/real PostgreSQL review remains outstanding. Phase 14B patient-safe record APIs and a responsive patient portal page are implemented locally using default-hidden treatment publication, but 0014 is unapplied and isolated PostgreSQL integration/security verification remains outstanding. No staging migration, deployment or hosted data change has occurred. The manual Supabase Auth redirect/migration/fictional-QA gate is documented in `docs/deployment/patient-portal-staging-gate.md`; routine hosted QA can be scheduled for Phase 19, but critical database/authorization test gaps cannot be marked passed. Start with 14A after review/approval of the trust-boundary and account-invitation design. The approved README.md remains the source of truth.
+
+PROJECT
+/home/johnr/projects/dental-record-system
+
+BRANCH
+refactor/v2-cloud-migration
+
+GOAL
+Give each securely linked patient limited access to their own clinic records and self-service appointment requests, while preserving the existing clinic-wide patient identity, Phase 12 appointment workflow, Phase 13 notifications, private attachments, append-only audit events, and role/branch protections.
+
+AUTHORITATIVE REFERENCES
+- README.md sections 6, 7.2–7.4, 8, 10, 13–14, the Phase 14 task description, and the phase registry.
+- AGENTS.md.
+- docs/architecture/patient-portal-foundation.md (proposed Phase 14 trust-boundary design).
+- docs/architecture/authorization-rbac-foundation.md.
+- docs/architecture/staff-provisioning-activation.md.
+- docs/architecture/clinic-branch-operating-model.md.
+- docs/architecture/patient-cutover-readiness.md.
+- docs/architecture/notification-foundation.md.
+- docs/deployment/staging.md.
+
+EXISTING BASELINE / REUSE
+- Supabase Auth bearer verification, app_users identity/status/roles, and protected Express middleware.
+- PostgreSQL patients.id UUID and immutable readable patient_code, with clinic-wide patient identity; patients.branch_id is registration origin, NOT exclusive ownership.
+- Patient domain read/write repositories, Phase 12 appointment/calendar domains, Phase 13 notification tables, private uploaded attachments with is_patient_visible, and append-only audit trail.
+- Managed account invitation/recovery concepts from staff provisioning; DO NOT broaden its current PERSONNEL/DENTIST-only invitation/activation rules to PATIENT without a separate reviewed patient policy.
+- Phase 13D has passed automated notification tests and owner-only staging checks. Hosted repeated-read/read-all and two-user authorization remain deferred to Phase 19; this is not a hosted PASS. Phase 13C real email provider/worker remains intentionally inactive.
+
+SECURITY NON-NEGOTIABLES
+1. No public self-registration or self-claiming a patient using email, phone, patient code, birthday, or provider user metadata alone.
+2. A clinic-authorized and auditable verification/approval step must explicitly choose the existing patients.id to be linked before the managed Supabase Auth invitation. Define a documented patient-identity verification procedure before 14A write implementation.
+3. A normal patient has only the PATIENT role. No routine staff/Clinic Administrator/System Administrator roles or branch grants; patient ownership is clinic-wide and is NOT inferred from patients.branch_id.
+4. Every /api/me handler authenticates, resolves an active app_user, validates an active verified patient-account link, authorizes the OWN operation on the backend, and scopes SQL by that resolved patient UUID. Never trust patientId, recipientUserId, provider role claims, or staff-settable client fields as ownership proof.
+5. Existing generic OWN checks stay fail-closed until a specifically tested patient-own evaluator is introduced. Do not change requirePermission/requireBranchPermission to allow arbitrary OWN grants.
+6. Wrong-account and unlinked-record access must not leak record existence, contact details, source IDs, clinical data, or private object paths; use indistinguishable not-found/denied semantics when appropriate. Do not expose staff notes, internal treatment notes, draft/unpublished records, financial internals, or audit event metadata to patients.
+7. All account creation/linking, invitation, activation, revocation, sensitive reads, and appointment requests must have bounded request-correlated append-only audit records with no passwords, tokens, secrets, or unnecessary clinical details.
+8. Server-only Supabase privileged credentials; TLS verification, staging isolation, branch RBAC, private Storage, and disabled email worker must not be weakened.
+9. Use fictional A/B linked patients in an isolated throwaway TEST_DATABASE_URL for integration tests. Never manufacture an active Supabase staging identity by directly inserting into PostgreSQL. Hosted two-identity QA remains a distinct Phase 19 gate.
+
+PROPOSED SUBPHASES
+
+14A — Verified Patient Identity, Linking, and OWN Authorization Foundation
+- Review/approve minimal patient invitation eligibility and clinic-side identity verification (authorized Dentist/Personnel with appropriately constrained patient access, with recorded clinic approval as required). No Clinic Administrator clinical access merely by administrative role.
+- Add a new ordered migration after 0012, only when implementation is approved. Model an explicit one-patient-to-one-app-user link (README conceptual patient_accounts) with unique patient_id and app_user_id, foreign keys, pending/activated/revoked state or equivalent fail-closed fields, and timestamps. A pending link confers NO patient data access. Do not edit applied migrations.
+- Implement transactionally safe creation of a pending PATIENT-only app_user and pending link for an explicitly verified patient record. Reject duplicate links, conflicting emails, role mixing, unapproved status, and idempotency conflicts.
+- Reuse the established server-side managed Supabase invitation adapter concepts, but add a patient-specific policy/service and activation route; verify provider UUID, verified email, intended approved app_user/patient link, and account state. Activation is only by the intended invited identity. Treat provider/database split-brain with safe reconciliation and audit; no implicit linking by email.
+- Add a dedicated OWN authorization resolver/service that derives patient_id exclusively from trusted application-user identity and active approved link. Keep generic unimplemented OWN grants denied everywhere else. Define explicit minimal PATIENT OWN permissions; System Administrator receives no patient data access.
+- Unit and real PostgreSQL integration tests (against an approved separate TEST_DATABASE_URL) for two fictional patients and users, unique constraints, races, pending/suspended/revoked users, provider mismatch, wrong patient object IDs, cross-user denials, audit, and safe errors. Do not use real staging identities to bypass Auth.
+- Deliver a reviewed minimal backend-owned patient-session/ownership capability before exposing patient records; no premature general patient lookup or clinic-wide patient routes.
+
+14B — Patient-Visible Profile, Records, and Publication (LOCAL IMPLEMENTATION IN REVIEW; MIGRATION 0014 UNAPPLIED)
+- Implemented locally: `/api/me/patient-profile`, `/api/me/treatments` and `/api/me/appointments` through a dedicated Phase 14A OWN resolver, with whitelisted patient-safe fields, append-only audited reads, and explicit patient ID query scoping. No internal medical, staff note, or financial columns are returned. Hosted QA is deferred to Phase 19.
+- Patient may update only explicitly allowed contact/demographic fields after reviewed validation and audit; exclude clinical, staff-controlled, role, ownership, finance, and verified email/link fields unless a separate re-verification flow is designed.
+- Implemented locally: migration `0014_patient_portal_publication.sql` adds default-hidden treatment publication fields and patient-only `portal.profile.update` plus Dentist-only `treatment.publish`; backend publication API is `POST /api/portal-treatments/:treatmentId/publish`. Migration 0014 remains unapplied and requires isolated PostgreSQL testing before staging approval. Exclude internal notes, unapproved drafts, diagnosis details not approved for patient view, and financial details pending Phase 15.
+- Add own patient appointment history summaries without staff notes and with preserved statuses/lineage. Verify cross-account isolation with fictional A/B identities.
+- Implemented locally: `/patient-portal` responsive React page and a dedicated Vercel SPA rewrite. It shows only patient-safe profile/published summaries and appointment history, with honest unavailable financial content and no fallback to the legacy V1 API.
+
+14C — Patient Appointment Self-Service (LOCAL PATIENT AND CLINIC REVIEW WORKFLOWS IMPLEMENTED; ISOLATED POSTGRESQL QA OUTSTANDING)
+- Implemented locally: `/api/me/appointment-requests`, `/api/me/appointments/:appointmentId/cancel-request`, and `/api/me/appointments/:appointmentId/reschedule-request`. New appointment requests write Phase 12 `requested` appointments with history; change requests use migration 0015's separate pending-intent table, fingerprinted idempotency and serialized transactional writes. Clinic-side pending review/approval/rejection is locally implemented at `/api/patient-appointment-reviews` and `/clinic-patient-requests`; approval uses the existing Phase 12 transaction-safe workflow, Dentist availability, appointment history and notifications. Full real-PostgreSQL validation and hosted QA are NOT passed yet.
+- Derive patient identity from the backend OWN resolver. Appointment branch is the actual requested service location; a patient's registration branch does not restrict future visits.
+- Patient cannot confirm, check in, start, complete, or no-show. `/patient-appointments` locally offers a patient-owned request UI using the backend branch and appointment lists, without direct appointment state mutation. All hosted/manual and PostgreSQL security QA remains in the consolidated Phase 19 guide.
+- Implemented locally: patient cancellation/rescheduling remain pending REQUESTS until a clinic-authorized staff review. Rejected requests never modify appointments; approved requests use Phase 12 transitions inside the same database transaction as the review-state change and append-only decision audit.  Use a separately reviewed durable intent/request model if necessary; do not invent a Phase 12 appointment status or bypass existing history/transaction/schedule safeguards.
+- Make duplicate submissions safe and preserve histories, request IDs, approval decisions, notifications, and clinic policy cutoffs (policy values must be approved before enforcing them).
+- Phase 13B patient email intent mapping remains durable with worker off; Phase 13 in-app notifications for patients may be created only after explicit 14A app-user ownership, never via email/name matching.
+
+14D — Portal Documents, Privacy, Hardening, and Finance Integration Gate (LOCAL IMPLEMENTATION; HOSTED QA AND FINANCE GATE DEFERRED)
+- Implemented locally: `/api/me/documents` lists only uploaded, not-deleted, explicitly patient-visible attachments for the active linked patient; `/api/me/documents/:documentId/download-url` issues audited private signed links after refreshing and locking authorization. A Dentist-only branch-scoped `/api/portal-documents/:documentId/patient-visibility` endpoint publishes or hides uploaded documents. No reuse of patient grants to invoke staff attachment routes or public buckets.
+- Implemented locally: protected `/patient-documents` UI with document listing, secure sign-out, limited privacy guidance, and reversible patient self-deactivation via `/api/me/account/deactivate`. Clinical records remain intact, and self-deactivation denies future backend patient access; a signed download URL already issued can remain usable until its short expiry. Clinic-reviewed policy, browser accessibility and hosted security QA remain outstanding.
+- The README requires /api/me/balance and /api/me/payments, but Phase 15 financial ledgers/allocations do not yet exist. Do NOT fabricate zero balances, compute authoritative finances from old treatment fields, expose raw internal financial details, or mark these routes complete. Implement patient-safe finance projections when Phase 15 lands, with an explicit integration/regression gate; until then show an honest unavailable state or omit the section.
+- Patient identity deactivation/revocation, provider recovery, account unlink/relink (when specifically approved) and retention rules need reviewed lifecycle coverage.
+
+VALIDATION / ACCEPTANCE GATES
+- No Phase 14 patient record endpoint is externally activated before 14A ownership checks and tests pass.
+- Verify active verified ownership, pending/revoked denial, authentication failure, wrong-user IDOR, branch-independent clinic-wide patient identity, publication default denial, private file visibility, request/decision separation, and append-only audit.
+- Use server route tests and isolated PostgreSQL integration tests with fictional User A and User B; validate schema unique constraints, cross-user authorization, timeout/error safety, concurrency, and idempotency. Add TypeScript, build, staging isolation, and relevant Phase 07/08/09/10/12/13 regressions.
+- Staging migrations, provider invitations, two-identity live QA, hosted deployments, Git commits, and push each remain separate approval gates. Vercel automatically redeploys from pushed GitHub commits; do not request unnecessary manual redeployment.
+- Phase 19 must revisit live cross-user 13D checks plus real Supabase-hosted patient A/B sessions, staff-vs-patient denial, private document IDOR, recovery, and appointment request approval flows. Unit/integration fixtures do not replace these tests.
+- Do not declare the full Phase 14 portal complete until the required Phase 15 patient balance/payment integration gate is met, or explicitly document an approved narrower release scope.
+
+OUT OF SCOPE WITHOUT FURTHER APPROVAL
+- Public patient registration, self-claim using demographics, guardians/dependents/multi-patient account linking, impersonation, SMS, replacing Supabase Auth invitations/recovery, finance ledger construction in Phase 14, production/real patient data, broad V1 route cutover, staff clinical access expansion, and activating the transactional email worker.
+
+START GATE
+Produce a focused Phase 14A implementation plan and reviewed permission/identity-verification decisions first. Obtain approval before implementing or applying schema changes; no staged account creation, migration, commit, push, or deployment is authorized by this specification alone.

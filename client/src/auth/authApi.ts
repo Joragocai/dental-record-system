@@ -52,6 +52,11 @@ export async function activateBackendStaffAccount(options: AuthenticatedFetchOpt
   }
 }
 
+export async function activateBackendPatientAccount(options: AuthenticatedFetchOptions): Promise<void> {
+  const result = await authenticatedV2Fetch('/patient-portal/activate', {method:'POST'}, options);
+  if (!result.ok) throw new Error('Patient activation failed. Contact the clinic.');
+}
+
 export async function verifyBackendSession(options: AuthenticatedFetchOptions): Promise<VerifiedBackendIdentity> {
   const response = await authenticatedV2Fetch("/auth/session", { method: "GET" }, options);
 

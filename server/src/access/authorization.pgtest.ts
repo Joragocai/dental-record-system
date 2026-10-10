@@ -18,7 +18,14 @@ const branchA = "44444444-4444-4444-8444-444444444444";
 const branchB = "55555555-5555-4555-8555-555555555555";
 
 const grantsByRole: Record<ApplicationRoleCode, PermissionGrant[]> = {
-  PATIENT: [],
+  PATIENT: [
+    { code: "portal.appointments.read", scope: "OWN" },
+    { code: "portal.appointments.request", scope: "OWN" },
+    { code: "portal.documents.read", scope: "OWN" },
+    { code: "portal.profile.read", scope: "OWN" },
+    { code: "portal.profile.update", scope: "OWN" },
+    { code: "portal.treatments.read", scope: "OWN" }
+  ],
   PERSONNEL: [
     { code: "appointment.cancel", scope: "BRANCH" },
     { code: "appointment.check_in", scope: "BRANCH" },
@@ -63,6 +70,7 @@ const grantsByRole: Record<ApplicationRoleCode, PermissionGrant[]> = {
     { code: "patient.list", scope: "BRANCH" },
     { code: "patient.read", scope: "BRANCH" },
     { code: "treatment.finalize", scope: "BRANCH" },
+    { code: "treatment.publish", scope: "BRANCH" },
     { code: "treatment.internal_notes.read", scope: "BRANCH" },
     { code: "treatment.read", scope: "BRANCH" }
   ],

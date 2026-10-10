@@ -9,7 +9,7 @@ import {
   type ReactNode
 } from "react";
 import { readBrowserAuthenticationConfig } from "../auth/authConfig.js";
-import { activateBackendStaffAccount, verifyBackendSession } from "../auth/authApi.js";
+import { activateBackendPatientAccount, activateBackendStaffAccount, verifyBackendSession } from "../auth/authApi.js";
 import { createSupabaseBrowserAuthProvider } from "../auth/supabaseAuthProvider.js";
 import type {
   BrowserAuthEvent,
@@ -33,6 +33,7 @@ interface AuthContextValue {
   requestPasswordRecovery(email: string): Promise<void>;
   updateRecoveredPassword(password: string): Promise<void>;
   completeInvitedAccount(password: string): Promise<void>;
+  completeInvitedPatientAccount(password: string): Promise<void>;
   clearError(): void;
 }
 
@@ -201,6 +202,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [configResult, getProvider]
   );
 
+  const completeInvitedPatientAccount = useCallback(async (password: string) => {
+    setError(null);
+    if (!configResult.config) throw new Error(configResult.reason ?? "Authentication is not configured.");
+    const provider = getProvider();
+    const invitation = await provider.getSession();
+    if (!invitation) throw new Error("Open the patient invitation link before activating.");
+    await provider.updatePassword(password);
+    const updated = await provider.getSession();
+    if (!updated || updated.user.id !== invitation.user.id) {
+      throw new Error("The invitation identity could not be verified.");
+    }
+    await activateBackendPatientAccount({
+      accessToken: updated.accessToken,
+      apiBaseUrl: configResult.config.apiBaseUrl
+    });
+    await provider.signOut();
+    setProviderSession(null);
+    setVerifiedIdentity(null);
+    setRecoveringPassword(false);
+  }, [configResult, getProvider]);
+
   const updateRecoveredPassword = useCallback(
     async (password: string) => {
       setError(null);
@@ -229,6 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     requestPasswordRecovery,
     updateRecoveredPassword,
     completeInvitedAccount,
+    completeInvitedPatientAccount,
     clearError: () => setError(null)
   };
 

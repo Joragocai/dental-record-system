@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { activateBackendStaffAccount, authenticatedV2Fetch, verifyBackendSession } from "./authApi.ts";
+import { activateBackendPatientAccount, activateBackendStaffAccount, authenticatedV2Fetch, verifyBackendSession } from "./authApi.ts";
 
 test("authenticatedV2Fetch attaches bearer token only to the explicit V2 request", async () => {
   let capturedUrl = "";
@@ -46,6 +46,19 @@ test("activateBackendStaffAccount posts only to the protected activation endpoin
   assert.equal(capturedAuthorization, "Bearer fictional-invite-token");
 });
 
+test("patient account activation sends only a bearer-authenticated backend request",async()=>{
+ let url="";let token="";
+ await activateBackendPatientAccount({
+  accessToken:"fictional-patient-token",
+  apiBaseUrl:"http://127.0.0.1:3002/api",
+  fetchImpl:async(input,init)=>{
+   url=String(input);token=new Headers(init?.headers).get("authorization")??"";
+   return new Response(JSON.stringify({activated:true}),{status:200});
+  }
+ });
+ assert.equal(url,"http://127.0.0.1:3002/api/patient-portal/activate");
+ assert.equal(token,"Bearer fictional-patient-token");
+});
 test("verifyBackendSession maps only the minimal verified backend identity", async () => {
   const identity = await verifyBackendSession({
     accessToken: "fictional-access-token",
