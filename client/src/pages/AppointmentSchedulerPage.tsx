@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
+import NotificationNavLink from "../notifications/NotificationNavLink.js";
 import {
   cancelAppointment,
   checkAppointmentAvailability,
@@ -615,6 +616,7 @@ export default function AppointmentSchedulerPage() {
             <p className="mt-1 text-sm text-slate-500">Asia/Manila clinic scheduling · protected V2 workflow</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <NotificationNavLink />
             <Link className="button-secondary" to="/auth/account">Account</Link>
             {capabilities.create && selectedBranchId ? (
               <button type="button" className="button-primary" onClick={openCreate}>

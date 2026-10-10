@@ -24,6 +24,10 @@
     {
       "source": "/appointments",
       "destination": "/index.html"
+    },
+    {
+      "source": "/notifications",
+      "destination": "/index.html"
     }
   ]
 }

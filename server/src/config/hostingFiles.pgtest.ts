@@ -16,18 +16,20 @@ test("Vercel serves only the approved hosted authentication SPA routes", () => {
     return rewrite.source;
   });
   assert.deepEqual(sources, [
-    "/login", "/forgot-password", "/reset-password", "/activate-account", "/auth/account", "/appointments"
+    "/login", "/forgot-password", "/reset-password", "/activate-account", "/auth/account", "/appointments", "/notifications"
   ]);
   assert.equal(file.includes("SUPABASE_SECRET_KEY"), false);
   assert.equal(file.includes("DATABASE_URL"), false);
 });
 
-test("hosted appointment and calendar routes share one access boundary and one appointment runtime", () => {
+test("hosted appointment, calendar, and notification routes share one access boundary", () => {
   const file = readFileSync(path.join(repositoryRoot, "server/src/app.js"), "utf8");
-  assert.equal((file.match(/const appointmentAccessBoundary = createAccessBoundary\(\);/g) ?? []).length, 1);
+  assert.equal((file.match(/const hostedAccessBoundary = createAccessBoundary\(\);/g) ?? []).length, 1);
   assert.equal((file.match(/const appointmentRuntime = createAppointmentRuntime\(\);/g) ?? []).length, 1);
-  assert.ok(file.includes("createAppointmentsRouter(undefined, appointmentAccessBoundary, appointmentRuntime)"));
-  assert.ok(file.includes("createAppointmentCalendarRouter(undefined, appointmentAccessBoundary, appointmentRuntime)"));
+  assert.ok(file.includes("createAppointmentsRouter(undefined, hostedAccessBoundary, appointmentRuntime)"));
+  assert.ok(file.includes("createAppointmentCalendarRouter(undefined, hostedAccessBoundary, appointmentRuntime)"));
+  assert.ok(file.includes("const notificationRuntime = createInAppNotificationRuntime();"));
+  assert.ok(file.includes("createNotificationsRouter(undefined, hostedAccessBoundary, notificationRuntime)"));
 });
 
 test("Render staging blueprint remains manual, isolated, and secret-free", () => {

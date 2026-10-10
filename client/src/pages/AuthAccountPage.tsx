@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import AuthPanel from "../components/AuthPanel.js";
+import NotificationNavLink from "../notifications/NotificationNavLink.js";
 import { useAuth } from "../context/AuthContext.js";
 
 export default function AuthAccountPage() {
@@ -29,10 +30,11 @@ export default function AuthAccountPage() {
           The backend enforces role and branch permissions on protected routes. Appointment scheduling is available only when your account has the required appointment permissions and branch assignment.
         </div>
       </dl>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <button className="button-primary w-full" type="button" onClick={() => navigate("/appointments")}>
           Open appointment schedule
         </button>
+        <NotificationNavLink className="button-secondary w-full justify-center" />
         <button className="button-secondary w-full" type="button" onClick={() => void handleLogout()}>
           Sign out
         </button>

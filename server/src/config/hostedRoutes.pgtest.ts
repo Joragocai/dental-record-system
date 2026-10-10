@@ -23,7 +23,7 @@ test("staging serves only safe health and protected V2 routes", async () => {
       assert.equal(response.status, 404, `${path} must not be reachable in staging`);
     }
 
-    for (const path of ["/api/appointments", "/api/calendar"]) {
+    for (const path of ["/api/appointments", "/api/calendar", "/api/notifications"]) {
       const response = await fetch(`${base}${path}?branchId=44444444-4444-4444-8444-444444444444`);
       assert.equal(response.status, 401, `${path} must require authentication in staging`);
     }

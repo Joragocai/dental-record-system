@@ -179,3 +179,40 @@ The delivery service treats missing recipient email, unsupported templates, inva
 The provider adapter is responsible for honoring the supplied idempotency key where the selected provider supports provider-side idempotency. This protects the unavoidable boundary where a provider may accept an email immediately before the application process loses its database connection or restarts.
 
 No provider SDK, provider API key, real sender identity, hosted worker activation, or real-email verification is included yet. By user decision, provider selection/configuration, hosted worker activation, and real-email staging verification are deferred until after Phase 13D and remain separate approval gates. The existing staging `pending` delivery record is intentionally left untouched until a provider is selected and explicitly enabled.
+
+
+## Phase 13D In-App Notification API / UI
+
+Phase 13D adds the authenticated notification center for application users without introducing broad notification RBAC grants.
+
+Security model:
+
+- authentication is required;
+- the backend resolves the active `app_users` record from the authenticated Supabase identity;
+- the client never supplies a recipient user UUID;
+- list, unread-count, mark-read, and mark-all-read queries always scope by the resolved application-user UUID;
+- attempting to mark another user's notification returns the same not-found response as a nonexistent notification;
+- no role, branch, Clinic Administrator, or System Administrator grant can broaden notification ownership;
+- patient appointment in-app notification creation remains deferred until Phase 14 establishes an explicit patient-to-application-user ownership link.
+
+Protected hosted endpoints:
+
+- `GET /api/notifications?limit=...`
+- `GET /api/notifications/unread-count`
+- `PATCH /api/notifications/:notificationId/read`
+- `POST /api/notifications/read-all`
+
+The HTTP list response intentionally exposes only the notification ID, category, event type, safe title/body, read timestamp, and creation timestamp. Internal request IDs, branch IDs, source IDs, and other correlation metadata stay server-side.
+
+The hosted client adds:
+
+- `/notifications` as a protected Vercel SPA route;
+- a responsive notification-history page;
+- unread/read visual state;
+- mark-read and mark-all-read actions;
+- unread-count badges from the appointment and account screens;
+- fail-closed client response validation for malformed notification/count/read payloads.
+
+The notification runtime uses a lazy PostgreSQL pool capped at one connection to avoid recreating the staging connection-pressure problem previously addressed in Phase 12.
+
+Phase 13D requires no new migration. Migration 0012 remains the notification schema foundation. Local validation covers recipient isolation, durable read state, route authentication, response minimization, hosted route protection, client API helpers, typecheck/build, and existing regressions.

@@ -6,6 +6,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ActivateAccountPage from "./pages/ActivateAccountPage";
 import AuthAccountPage from "./pages/AuthAccountPage";
 import AppointmentSchedulerPage from "./pages/AppointmentSchedulerPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import ProtectedAuthRoute from "./components/ProtectedAuthRoute";
 
 // Legacy clinical screens are only loaded in a local-development build.
@@ -32,6 +33,7 @@ export default function App() {
       <Route path="/activate-account" element={<ActivateAccountPage />} />
       <Route path="/auth/account" element={<ProtectedAuthRoute><AuthAccountPage /></ProtectedAuthRoute>} />
       <Route path="/appointments" element={<ProtectedAuthRoute><AppointmentSchedulerPage /></ProtectedAuthRoute>} />
+      <Route path="/notifications" element={<ProtectedAuthRoute><NotificationsPage /></ProtectedAuthRoute>} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
