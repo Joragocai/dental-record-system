@@ -18,7 +18,35 @@
       "destination": "/index.html"
     },
     {
+      "source": "/activate-patient-account",
+      "destination": "/index.html"
+    },
+    {
       "source": "/auth/account",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/clinic-finance",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient-finance",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient-documents",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/clinic-patient-requests",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient-appointments",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient-portal",
       "destination": "/index.html"
     },
     {
