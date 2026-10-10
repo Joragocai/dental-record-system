@@ -15,6 +15,10 @@ export function isStagingDemoEnabled(environment: string | undefined, production
   return environment === "staging" && productionBuild;
 }
 
+export function mayPreviewStagingRoles(roles: readonly string[]): boolean {
+  return roles.length === 2 && roles.includes("DENTIST") && roles.includes("CLINIC_ADMINISTRATOR");
+}
+
 export function demoTiles(role: DemoRoleName): readonly string[] {
   return demoRoleCards[role].tiles;
 }

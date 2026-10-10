@@ -4,6 +4,7 @@ import { authenticatedV2Fetch } from "../auth/authApi.js";
 import { useAuth } from "../context/AuthContext.js";
 import { parseLandingContext, landingSections, type LandingContext } from "../dashboard/roleLandingSections.js";
 import StagingDemoRoleSwitcher from "./StagingDemoRoleSwitcher.js";
+import { mayPreviewStagingRoles } from "../dashboard/stagingDemoRoles.js";
 
 export default function RoleDashboardPage() {
   const auth = useAuth();
@@ -75,7 +76,7 @@ export default function RoleDashboardPage() {
           {context.branchIds.length > 1 && <p className="mt-2 text-sm text-amber-700">You have access to multiple branches. Select the correct branch inside each clinical or operational module.</p>}
           {context.branchIds.length === 0 && context.roles.some((r) => r === "PERSONNEL" || r === "DENTIST") && <p className="mt-2 text-sm text-amber-700">No operational branch is currently assigned.</p>}
         </div>
-        <StagingDemoRoleSwitcher />
+        {mayPreviewStagingRoles(context.roles) && <StagingDemoRoleSwitcher />}
         {landingSections(context).map((section) => <section key={section.title} className="space-y-3">
           <h3 className="font-semibold text-lg">{section.title}</h3>
           <div className="grid gap-3 sm:grid-cols-2">{section.links.map((link) => <Link key={link.key} to={link.path} className="rounded-xl border border-slate-200 bg-white p-5 font-medium shadow-sm hover:border-slate-400 focus-visible:outline-2 focus-visible:outline-blue-600">{link.label} →</Link>)}</div>
