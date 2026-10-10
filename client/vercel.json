@@ -34,6 +34,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/dentist-dashboard",
+      "destination": "/index.html"
+    },
+    {
       "source": "/clinic-finance",
       "destination": "/index.html"
     },

@@ -95,7 +95,7 @@ test("owner-dentist union honors each explicitly granted permission", () => {
     roles: ["DENTIST", "CLINIC_ADMINISTRATOR"],
     permissions: [{ code: "appointment.list", scope: "BRANCH" }, { code: "finance.daily.read", scope: "BRANCH" }]
   }));
-  assert.deepEqual(projected.links.map((l) => l.key), ["appointments", "clinic-finance"]);
+  assert.deepEqual(projected.links.map((l) => l.key), ["dentist-dashboard", "appointments", "clinic-finance"]);
   assert.deepEqual(projected.roles, ["CLINIC_ADMINISTRATOR", "DENTIST"]);
 });
 
@@ -120,6 +120,45 @@ test("admin-only and technical roles never receive clinic shortcuts via unrelate
   })).links, []);
 });
 
+test("Dentist workspace and publication capabilities require exact dentist role and branch grants", () => {
+  const permissions: AuthorizationContext["permissions"] = [
+    { code: "appointment.list", scope: "BRANCH" },
+    { code: "appointment.patient_lookup", scope: "BRANCH" },
+    { code: "treatment.publish", scope: "BRANCH" },
+    { code: "attachment.update", scope: "BRANCH" },
+    { code: "appointment.reschedule", scope: "BRANCH" }
+  ];
+  const dentist = projectDashboardContext(context({roles:["DENTIST"],permissions}));
+  assert.deepEqual(dentist.dentist, {
+    userId: context().userId,
+    patientLookup: true,
+    requestReview: true,
+    treatmentPublish: true,
+    documentVisibility: true
+  });
+  assert.equal(dentist.links.some((item) => item.key === "dentist-dashboard"), true);
+  assert.equal(dentist.personnel, undefined);
+  assert.equal(projectDashboardContext(context({roles:["DENTIST"], branchIds:[], permissions})).links.some((item)=>item.key === "dentist-dashboard"), false);
+  assert.equal(projectDashboardContext(context({roles:["DENTIST"],permissions:[
+    {code:"appointment.list",scope:"GLOBAL"}]})).links.some((item)=>item.key === "dentist-dashboard"), false);
+  assert.equal(projectDashboardContext(context({roles:["PERSONNEL"],permissions})).dentist, undefined);
+  assert.equal(projectDashboardContext(context({roles:["CLINIC_ADMINISTRATOR"],permissions})).dentist, undefined);
+  const technical = projectDashboardContext(context({roles:["SYSTEM_ADMINISTRATOR","DENTIST"],permissions}));
+  assert.equal(technical.dentist, undefined);
+  assert.deepEqual(technical.links, []);
+});
+test("Dentist and Clinic Administrator union never becomes a sixth role", () => {
+  const union = projectDashboardContext(context({roles:["DENTIST","CLINIC_ADMINISTRATOR"],permissions:[
+    {code:"appointment.list",scope:"BRANCH"},
+    {code:"treatment.publish",scope:"BRANCH"},
+    {code:"finance.admin.read",scope:"GLOBAL"}
+  ]}));
+  assert.deepEqual(union.roles, ["CLINIC_ADMINISTRATOR","DENTIST"]);
+  assert.equal(union.dentist?.treatmentPublish, true);
+  assert.equal(union.dentist?.userId, context().userId);
+  assert.equal(union.links.some((item) => item.key === "dentist-dashboard"), true);
+  assert.equal(union.links.some((item) => item.key === "personnel-dashboard"), false);
+});
 test("inactive, unassigned and unexpected roles fail closed", () => {
   assert.throws(() => projectDashboardContext(context({ status: "deactivated" })));
   assert.throws(() => projectDashboardContext(context({ roles: [] })));

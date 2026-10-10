@@ -19,6 +19,7 @@ const localLegacyMode =
 const LegacyApp = localLegacyMode ? lazy(() => import("./LegacyApp.jsx")) : null;
 const RoleDashboardPage=lazy(()=>import("./pages/RoleDashboardPage"));
 const PersonnelDashboardPage=lazy(()=>import("./pages/PersonnelDashboardPage"));
+const DentistDashboardPage=lazy(()=>import("./pages/DentistDashboardPage"));
 const PatientPortalPage=lazy(()=>import("./pages/PatientPortalPage"));
 const PatientAppointmentRequestsPage=lazy(()=>import("./pages/PatientAppointmentRequestsPage"));
 const ClinicPatientRequestReviewPage=lazy(()=>import("./pages/ClinicPatientRequestReviewPage"));
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/auth/account" element={<ProtectedAuthRoute><AuthAccountPage /></ProtectedAuthRoute>} />
         <Route path="/dashboard" element={<ProtectedAuthRoute><RoleDashboardPage /></ProtectedAuthRoute>} />
         <Route path="/personnel-dashboard" element={<ProtectedAuthRoute><PersonnelDashboardPage /></ProtectedAuthRoute>} />
+        <Route path="/dentist-dashboard" element={<ProtectedAuthRoute><DentistDashboardPage /></ProtectedAuthRoute>} />
         <Route path="/appointments" element={<ProtectedAuthRoute><AppointmentSchedulerPage /></ProtectedAuthRoute>} />
         <Route path="/notifications" element={<ProtectedAuthRoute><NotificationsPage /></ProtectedAuthRoute>} />
         <Route path="*" element={<Navigate to="/login" replace />} />

@@ -14,8 +14,17 @@ export interface PersonnelDashboardCapabilities {
   expenseCreate: boolean;
 }
 
+export interface DentistDashboardCapabilities {
+  userId: string;
+  patientLookup: boolean;
+  requestReview: boolean;
+  treatmentPublish: boolean;
+  documentVisibility: boolean;
+}
+
 export interface DashboardContext {
   personnel?: PersonnelDashboardCapabilities;
+  dentist?: DentistDashboardCapabilities;
   displayName: string;
   roles: AuthorizationContext["roles"];
   branchIds: string[];
@@ -23,6 +32,7 @@ export interface DashboardContext {
 }
 
 const links = [
+  { key: "dentist-dashboard", label: "Dentist workspace", path: "/dentist-dashboard", permission: "appointment.list", scope: "BRANCH" },
   { key: "personnel-dashboard", label: "Personnel workspace", path: "/personnel-dashboard", permission: "appointment.list", scope: "BRANCH" },
   { key: "patient-portal", label: "My dental records", path: "/patient-portal", permission: "portal.profile.read", scope: "OWN" },
   { key: "patient-appointments", label: "My appointment requests", path: "/patient-appointments", permission: "portal.appointments.request", scope: "OWN" },
@@ -51,8 +61,19 @@ export function projectDashboardContext(context: AuthorizationContext): Dashboar
         expenseCreate: hasPersonnelGrant("finance.expense.create")
       }
     : undefined;
+  const dentist: DentistDashboardCapabilities | undefined =
+    context.roles.includes("DENTIST") && !context.roles.includes("SYSTEM_ADMINISTRATOR")
+      ? {
+          userId: context.userId,
+          patientLookup: hasPersonnelGrant("appointment.patient_lookup"),
+          requestReview: hasPersonnelGrant("appointment.cancel") || hasPersonnelGrant("appointment.reschedule"),
+          treatmentPublish: hasPersonnelGrant("treatment.publish"),
+          documentVisibility: hasPersonnelGrant("attachment.update")
+        }
+      : undefined;
   return {
     ...(personnel ? { personnel } : {}),
+    ...(dentist ? { dentist } : {}),
     displayName: context.displayName,
     roles: [...new Set(context.roles)].sort(),
     branchIds,
@@ -63,6 +84,7 @@ export function projectDashboardContext(context: AuthorizationContext): Dashboar
       const isRequestReview = link.key === "clinic-patient-requests";
       if (isRequestReview && !context.roles.some((role) => role === "PERSONNEL" || role === "DENTIST")) return false;
       if (link.key === "personnel-dashboard" && !context.roles.includes("PERSONNEL")) return false;
+      if (link.key === "dentist-dashboard" && !context.roles.includes("DENTIST")) return false;
       return context.permissions.some((grant) =>
         (grant.code === link.permission || (isRequestReview && grant.code === "appointment.cancel")) &&
         grant.scope === link.scope &&

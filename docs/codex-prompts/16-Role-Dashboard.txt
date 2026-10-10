@@ -1,5 +1,5 @@
 PHASE 16 — ROLE DASHBOARD
-STATUS: 16A COMMITTED LOCALLY; 16B PERSONNEL WORKSPACE LOCALLY VALIDATED, HOSTED QA PENDING; NO PUSH, DEPLOYMENT OR 16C–16F APPROVED
+STATUS: 16A–16B COMMITTED LOCALLY; 16C DENTIST WORKSPACE IMPLEMENTED LOCALLY, SECURITY/REGRESSION REVIEW AND HOSTED QA PENDING; NO COMMIT, PUSH, DEPLOYMENT OR 16D–16F APPROVED
 Authority: README.md Sections 6, 7, 8, 12, 14, 16.3, Task Phases 16/19, and AGENTS.md.
 Deployment: Vercel client, Render protected Express API, Supabase PostgreSQL/Auth/private Storage. Never depend on the legacy SQLite endpoints in staging.
 
@@ -41,7 +41,7 @@ ARCHITECTURAL RULES
 - Quick links: patient lookup when authorized, scheduler, request review, branch-scoped receivables, daily collections and expense creation. Verify exact endpoints' permission and branch semantics before wiring.
 - Do not expose internal dentist notes or comprehensive clinic finance/audit views; handle staff assigned to multiple branches. Implement any new aggregate endpoint only after reviewing its SQL filtering, pagination and auth.
 
-16C — DENTIST
+16C — DENTIST (IMPLEMENTED LOCALLY; HOSTED QA PENDING)
 - Next and today's appointment summaries through protected branch scheduling API; approved clinical patient navigation/medical alerts only where safe approved V2 patient/treatment APIs exist.
 - Dentist-only publication shortcuts for treatment/documents; never imply pending tasks exist if no protected listing API supports the state.
 - Future recently viewed, outstanding notes and full treatment follow-up widgets should remain unavailable until protected read APIs and audit are established. No standalone unrestricted clinical summary endpoint.
@@ -84,4 +84,4 @@ OPEN DECISIONS REQUIRING SCOPE REVIEW
 - Which missing V2 read-only list/count endpoints merit separate narrowly permissioned additions; avoid implementing large aggregates merely for dashboard cosmetics.
 - Whether any role should default to one assigned branch or require explicit branch selection. Prefer explicit selection for multi-branch staff, not implicit data joining.
 - Exact accounting labels approved for limited daily finance figures; no official receipt statements.
-Phase 16A local implementation was approved separately. No Phase 16B–16F code, migrations, Git finalization or deployment are authorized by this draft.
+Phases 16A and 16B are committed locally. Phase 16C local implementation was separately approved and uses server-verified Dentist identity, assigned branches, self-filtered appointment summaries, and minimal safe schedule details. The clinical record editor, publication entry and hosted multi-user QA remain deferred. Phase 16C is uncommitted; no 16D–16F code, migration, Git finalization, push or deployment is authorized.
