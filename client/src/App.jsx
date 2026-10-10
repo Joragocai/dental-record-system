@@ -18,6 +18,7 @@ const localLegacyMode =
   (!import.meta.env.VITE_APP_ENV || import.meta.env.VITE_APP_ENV === "local");
 const LegacyApp = localLegacyMode ? lazy(() => import("./LegacyApp.jsx")) : null;
 const RoleDashboardPage=lazy(()=>import("./pages/RoleDashboardPage"));
+const PersonnelDashboardPage=lazy(()=>import("./pages/PersonnelDashboardPage"));
 const PatientPortalPage=lazy(()=>import("./pages/PatientPortalPage"));
 const PatientAppointmentRequestsPage=lazy(()=>import("./pages/PatientAppointmentRequestsPage"));
 const ClinicPatientRequestReviewPage=lazy(()=>import("./pages/ClinicPatientRequestReviewPage"));
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/clinic-patient-requests" element={<ProtectedAuthRoute><ClinicPatientRequestReviewPage /></ProtectedAuthRoute>} />
         <Route path="/auth/account" element={<ProtectedAuthRoute><AuthAccountPage /></ProtectedAuthRoute>} />
         <Route path="/dashboard" element={<ProtectedAuthRoute><RoleDashboardPage /></ProtectedAuthRoute>} />
+        <Route path="/personnel-dashboard" element={<ProtectedAuthRoute><PersonnelDashboardPage /></ProtectedAuthRoute>} />
         <Route path="/appointments" element={<ProtectedAuthRoute><AppointmentSchedulerPage /></ProtectedAuthRoute>} />
         <Route path="/notifications" element={<ProtectedAuthRoute><NotificationsPage /></ProtectedAuthRoute>} />
         <Route path="*" element={<Navigate to="/login" replace />} />

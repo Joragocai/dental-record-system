@@ -1,5 +1,5 @@
 PHASE 16 — ROLE DASHBOARD
-STATUS: 16A IMPLEMENTED AND LOCALLY TESTED — HOSTED QA PENDING; NO COMMIT, PUSH, DEPLOYMENT OR 16B–16F APPROVED
+STATUS: 16A COMMITTED LOCALLY; 16B PERSONNEL WORKSPACE LOCALLY VALIDATED, HOSTED QA PENDING; NO PUSH, DEPLOYMENT OR 16C–16F APPROVED
 Authority: README.md Sections 6, 7, 8, 12, 14, 16.3, Task Phases 16/19, and AGENTS.md.
 Deployment: Vercel client, Render protected Express API, Supabase PostgreSQL/Auth/private Storage. Never depend on the legacy SQLite endpoints in staging.
 
@@ -36,7 +36,7 @@ ARCHITECTURAL RULES
 - Unit/HTTP tests: anonymous 401, disabled accounts denied, role/branch changes, mixed-role union, unsupported permissions denied, technical-only leakage denial, no legacy API bundle/routes.
 - Keep Phase 17 full sidebar/mobile-bottom-navigation and accessibility expansion separate; build only minimal responsive navigation required for working dashboards.
 
-16B — PERSONNEL
+16B — PERSONNEL (LOCAL IMPLEMENTATION; NO HOSTED VALIDATION)
 - Show assigned-branch appointments, check-in/confirmed counts and pending clinic appointment requests only through protected appointment/review APIs.
 - Quick links: patient lookup when authorized, scheduler, request review, branch-scoped receivables, daily collections and expense creation. Verify exact endpoints' permission and branch semantics before wiring.
 - Do not expose internal dentist notes or comprehensive clinic finance/audit views; handle staff assigned to multiple branches. Implement any new aggregate endpoint only after reviewing its SQL filtering, pagination and auth.

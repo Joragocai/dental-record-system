@@ -49,7 +49,10 @@ test("dashboard returns only minimal branch-scoped navigation with no cache", as
   const response = await requestWithBoundary(boundary());
   assert.equal(response.status, 200);
   assert.equal(response.cache, "no-store");
-  assert.deepEqual(response.body.links, [{ key: "appointments", label: "Clinic appointments", path: "/appointments" }]);
+  assert.deepEqual(response.body.links, [
+    { key: "personnel-dashboard", label: "Personnel workspace", path: "/personnel-dashboard" },
+    { key: "appointments", label: "Clinic appointments", path: "/appointments" }
+  ]);
   assert.equal(JSON.stringify(response.body).includes("email"), false);
   assert.equal(JSON.stringify(response.body).includes("permissions"), false);
 });

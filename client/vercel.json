@@ -30,6 +30,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/personnel-dashboard",
+      "destination": "/index.html"
+    },
+    {
       "source": "/clinic-finance",
       "destination": "/index.html"
     },

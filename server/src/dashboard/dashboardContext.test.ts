@@ -18,7 +18,7 @@ function context(overrides: Partial<AuthorizationContext> = {}): AuthorizationCo
 }
 
 test("branch access requires assigned branch and exact permitted grant", () => {
-  assert.deepEqual(projectDashboardContext(context()).links.map((l) => l.key), ["appointments"]);
+  assert.deepEqual(projectDashboardContext(context()).links.map((l) => l.key), ["personnel-dashboard", "appointments"]);
   assert.deepEqual(projectDashboardContext(context({ branchIds: [] })).links, []);
   assert.deepEqual(projectDashboardContext(context({ permissions: [] })).links, []);
   assert.deepEqual(projectDashboardContext(context({ permissions: [{ code: "appointment.list", scope: "OWN" }] })).links, []);
@@ -33,6 +33,41 @@ test("patient-request review shortcut matches actual cancel/reschedule authoriza
   assert.deepEqual(projectDashboardContext(context({ branchIds: [], permissions: cancellation.permissions })).links, []);
   assert.deepEqual(projectDashboardContext(context({ roles: ["CLINIC_ADMINISTRATOR"], permissions: cancellation.permissions })).links, []);
   assert.deepEqual(projectDashboardContext(context({ permissions: [{ code: "appointment.cancel", scope: "GLOBAL" }] })).links, []);
+});
+
+test("Personnel finance/action capabilities require exact branch grants", () => {
+  const branchGrants = context({ permissions: [
+    { code: "appointment.list", scope: "BRANCH" },
+    { code: "appointment.patient_lookup", scope: "BRANCH" },
+    { code: "appointment.cancel", scope: "BRANCH" },
+    { code: "finance.daily.read", scope: "BRANCH" },
+    { code: "finance.receivables.read", scope: "BRANCH" },
+    { code: "finance.expense.create", scope: "BRANCH" }
+  ] });
+  assert.deepEqual(projectDashboardContext(branchGrants).personnel, {
+    patientLookup: true, requestReview: true, dailyFinanceRead: true,
+    receivablesRead: true, expenseCreate: true
+  });
+  assert.deepEqual(projectDashboardContext(context({ ...branchGrants, branchIds: [] })).personnel, {
+    patientLookup: false, requestReview: false, dailyFinanceRead: false,
+    receivablesRead: false, expenseCreate: false
+  });
+  const globalOnly = context({ permissions: [
+    { code: "appointment.patient_lookup", scope: "GLOBAL" },
+    { code: "finance.daily.read", scope: "GLOBAL" },
+    { code: "finance.receivables.read", scope: "GLOBAL" },
+    { code: "finance.expense.create", scope: "GLOBAL" }
+  ] });
+  assert.deepEqual(projectDashboardContext(globalOnly).personnel, {
+    patientLookup: false, requestReview: false, dailyFinanceRead: false,
+    receivablesRead: false, expenseCreate: false
+  });
+  assert.equal(projectDashboardContext(context({
+    ...branchGrants, roles: ["SYSTEM_ADMINISTRATOR"]
+  })).personnel, undefined);
+  assert.equal(projectDashboardContext(context({
+    ...branchGrants, roles: ["CLINIC_ADMINISTRATOR"]
+  })).personnel, undefined);
 });
 
 test("patient OWN projection does not expose clinic shortcuts", () => {
@@ -58,10 +93,31 @@ test("admin does not inherit dentist authority and technical-only role has no cl
 test("owner-dentist union honors each explicitly granted permission", () => {
   const projected = projectDashboardContext(context({
     roles: ["DENTIST", "CLINIC_ADMINISTRATOR"],
-    permissions: [{ code: "appointment.list", scope: "BRANCH" }, { code: "finance.daily.read", scope: "GLOBAL" }]
+    permissions: [{ code: "appointment.list", scope: "BRANCH" }, { code: "finance.daily.read", scope: "BRANCH" }]
   }));
   assert.deepEqual(projected.links.map((l) => l.key), ["appointments", "clinic-finance"]);
   assert.deepEqual(projected.roles, ["CLINIC_ADMINISTRATOR", "DENTIST"]);
+});
+
+test("admin-only and technical roles never receive clinic shortcuts via unrelated grants", () => {
+  const overGranted = context({ permissions: [
+    { code: "appointment.list", scope: "BRANCH" },
+    { code: "finance.daily.read", scope: "BRANCH" },
+    { code: "finance.daily.read", scope: "GLOBAL" }
+  ] });
+  assert.deepEqual(projectDashboardContext(context({
+    ...overGranted, roles: ["CLINIC_ADMINISTRATOR"]
+  })).links, []);
+  assert.deepEqual(projectDashboardContext(context({
+    ...overGranted, roles: ["SYSTEM_ADMINISTRATOR", "PERSONNEL"]
+  })).links, []);
+  assert.equal(projectDashboardContext(context({
+    ...overGranted, roles: ["SYSTEM_ADMINISTRATOR", "PERSONNEL"]
+  })).personnel, undefined);
+  assert.deepEqual(projectDashboardContext(context({
+    roles: ["DENTIST", "CLINIC_ADMINISTRATOR"],
+    permissions: [{ code: "finance.daily.read", scope: "GLOBAL" }]
+  })).links, []);
 });
 
 test("inactive, unassigned and unexpected roles fail closed", () => {

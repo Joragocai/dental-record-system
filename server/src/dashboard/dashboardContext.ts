@@ -6,7 +6,16 @@ export interface DashboardLink {
   path: string;
 }
 
+export interface PersonnelDashboardCapabilities {
+  patientLookup: boolean;
+  requestReview: boolean;
+  dailyFinanceRead: boolean;
+  receivablesRead: boolean;
+  expenseCreate: boolean;
+}
+
 export interface DashboardContext {
+  personnel?: PersonnelDashboardCapabilities;
   displayName: string;
   roles: AuthorizationContext["roles"];
   branchIds: string[];
@@ -14,6 +23,7 @@ export interface DashboardContext {
 }
 
 const links = [
+  { key: "personnel-dashboard", label: "Personnel workspace", path: "/personnel-dashboard", permission: "appointment.list", scope: "BRANCH" },
   { key: "patient-portal", label: "My dental records", path: "/patient-portal", permission: "portal.profile.read", scope: "OWN" },
   { key: "patient-appointments", label: "My appointment requests", path: "/patient-appointments", permission: "portal.appointments.request", scope: "OWN" },
   { key: "patient-documents", label: "My documents and privacy", path: "/patient-documents", permission: "portal.documents.read", scope: "OWN" },
@@ -30,16 +40,32 @@ export function projectDashboardContext(context: AuthorizationContext): Dashboar
   const validRoles = new Set(["PATIENT", "PERSONNEL", "DENTIST", "CLINIC_ADMINISTRATOR", "SYSTEM_ADMINISTRATOR"]);
   if (context.roles.some((role) => !validRoles.has(role))) throw new Error("Unrecognized dashboard role.");
   const branchIds = [...new Set(context.branchIds)].sort();
+  const hasPersonnelGrant = (code: string) =>
+    branchIds.length > 0 && context.permissions.some((grant) => grant.code === code && grant.scope === "BRANCH");
+  const personnel: PersonnelDashboardCapabilities | undefined = context.roles.includes("PERSONNEL") && !context.roles.includes("SYSTEM_ADMINISTRATOR")
+    ? {
+        patientLookup: hasPersonnelGrant("appointment.patient_lookup"),
+        requestReview: hasPersonnelGrant("appointment.cancel") || hasPersonnelGrant("appointment.reschedule"),
+        dailyFinanceRead: hasPersonnelGrant("finance.daily.read"),
+        receivablesRead: hasPersonnelGrant("finance.receivables.read"),
+        expenseCreate: hasPersonnelGrant("finance.expense.create")
+      }
+    : undefined;
   return {
+    ...(personnel ? { personnel } : {}),
     displayName: context.displayName,
     roles: [...new Set(context.roles)].sort(),
     branchIds,
     links: links.filter((link) => {
+      if (context.roles.includes("SYSTEM_ADMINISTRATOR")) return false;
+      const operational = context.roles.includes("PERSONNEL") || context.roles.includes("DENTIST");
+      if ((link.key === "appointments" || link.key === "clinic-finance") && !operational) return false;
       const isRequestReview = link.key === "clinic-patient-requests";
       if (isRequestReview && !context.roles.some((role) => role === "PERSONNEL" || role === "DENTIST")) return false;
+      if (link.key === "personnel-dashboard" && !context.roles.includes("PERSONNEL")) return false;
       return context.permissions.some((grant) =>
         (grant.code === link.permission || (isRequestReview && grant.code === "appointment.cancel")) &&
-        (grant.scope === link.scope || (!isRequestReview && link.scope === "BRANCH" && grant.scope === "GLOBAL")) &&
+        grant.scope === link.scope &&
         (grant.scope !== "BRANCH" || branchIds.length > 0)
       );
     }).map(({ key, label, path }) => ({ key, label, path }))
