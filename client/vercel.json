@@ -38,6 +38,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/clinic-administrator-dashboard",
+      "destination": "/index.html"
+    },
+    {
       "source": "/clinic-finance",
       "destination": "/index.html"
     },

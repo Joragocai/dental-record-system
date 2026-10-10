@@ -80,10 +80,13 @@ test("patient OWN projection does not expose clinic shortcuts", () => {
 });
 
 test("admin does not inherit dentist authority and technical-only role has no clinic links", () => {
-  assert.deepEqual(projectDashboardContext(context({
+  const administrator = projectDashboardContext(context({
     roles: ["CLINIC_ADMINISTRATOR"], branchIds: [],
     permissions: [{ code: "finance.admin.read", scope: "GLOBAL" }]
-  })).links, []);
+  }));
+  assert.deepEqual(administrator.links.map(link=>link.key), ["clinic-administrator-dashboard"]);
+  assert.equal(administrator.dentist, undefined);
+  assert.equal(administrator.personnel, undefined);
   assert.deepEqual(projectDashboardContext(context({
     roles: ["SYSTEM_ADMINISTRATOR"], branchIds: [],
     permissions: [{ code: "user.read", scope: "GLOBAL" }, { code: "role_definition.configure", scope: "GLOBAL" }]
@@ -158,6 +161,39 @@ test("Dentist and Clinic Administrator union never becomes a sixth role", () => 
   assert.equal(union.dentist?.userId, context().userId);
   assert.equal(union.links.some((item) => item.key === "dentist-dashboard"), true);
   assert.equal(union.links.some((item) => item.key === "personnel-dashboard"), false);
+});
+test("Clinic Administrator dashboard grants are GLOBAL and never imply Dentist clinical privileges", () => {
+  const grants: AuthorizationContext["permissions"] = [
+    {code:"audit.read",scope:"GLOBAL"},
+    {code:"staff_account.create",scope:"GLOBAL"},
+    {code:"role_assignment.approve",scope:"GLOBAL"},
+    {code:"finance.admin.read",scope:"GLOBAL"},
+    {code:"finance.expense.approve",scope:"GLOBAL"},
+    {code:"finance.payable.approve",scope:"GLOBAL"},
+    {code:"finance.closing.approve",scope:"GLOBAL"}
+  ];
+  const onlyAdmin=projectDashboardContext(context({roles:["CLINIC_ADMINISTRATOR"],branchIds:[],permissions:grants}));
+  assert.deepEqual(onlyAdmin.links.map(link=>link.key),["clinic-administrator-dashboard"]);
+  assert.deepEqual(onlyAdmin.clinicAdministrator,{
+    auditRead:true,staffCreate:true,roleApprove:true,financialOversight:true,
+    expenseApprove:true,payableApprove:true,closingApprove:true
+  });
+  assert.equal(onlyAdmin.dentist,undefined);
+  const limited=projectDashboardContext(context({roles:["CLINIC_ADMINISTRATOR"],permissions:[
+    {code:"finance.expense.approve",scope:"GLOBAL"}]}));
+  assert.deepEqual(limited.links.map(link=>link.key),["clinic-administrator-dashboard"]);
+  assert.equal(limited.clinicAdministrator?.auditRead,false);
+  const wrongScope=projectDashboardContext(context({roles:["CLINIC_ADMINISTRATOR"],permissions:[
+    {code:"audit.read",scope:"BRANCH"}]}));
+  assert.deepEqual(wrongScope.links,[]);
+  const technical=projectDashboardContext(context({roles:["SYSTEM_ADMINISTRATOR","CLINIC_ADMINISTRATOR"],permissions:grants}));
+  assert.deepEqual(technical.links,[]);
+  assert.equal(technical.clinicAdministrator,undefined);
+  const combined=projectDashboardContext(context({roles:["DENTIST","CLINIC_ADMINISTRATOR"],permissions:[
+    ...grants,{code:"appointment.list",scope:"BRANCH"}]}));
+  assert.equal(combined.links.some(link=>link.key==="clinic-administrator-dashboard"),true);
+  assert.equal(combined.links.some(link=>link.key==="dentist-dashboard"),true);
+  assert.deepEqual(combined.roles,["CLINIC_ADMINISTRATOR","DENTIST"]);
 });
 test("inactive, unassigned and unexpected roles fail closed", () => {
   assert.throws(() => projectDashboardContext(context({ status: "deactivated" })));

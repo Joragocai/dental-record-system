@@ -22,7 +22,18 @@ export interface DentistDashboardCapabilities {
   documentVisibility: boolean;
 }
 
+export interface ClinicAdministratorCapabilities {
+  auditRead: boolean;
+  staffCreate: boolean;
+  roleApprove: boolean;
+  financialOversight: boolean;
+  expenseApprove: boolean;
+  payableApprove: boolean;
+  closingApprove: boolean;
+}
+
 export interface DashboardContext {
+  clinicAdministrator?: ClinicAdministratorCapabilities;
   personnel?: PersonnelDashboardCapabilities;
   dentist?: DentistDashboardCapabilities;
   displayName: string;
@@ -32,6 +43,7 @@ export interface DashboardContext {
 }
 
 const links = [
+  { key: "clinic-administrator-dashboard", label: "Clinic administration", path: "/clinic-administrator-dashboard", permission: "audit.read", scope: "GLOBAL" },
   { key: "dentist-dashboard", label: "Dentist workspace", path: "/dentist-dashboard", permission: "appointment.list", scope: "BRANCH" },
   { key: "personnel-dashboard", label: "Personnel workspace", path: "/personnel-dashboard", permission: "appointment.list", scope: "BRANCH" },
   { key: "patient-portal", label: "My dental records", path: "/patient-portal", permission: "portal.profile.read", scope: "OWN" },
@@ -71,7 +83,21 @@ export function projectDashboardContext(context: AuthorizationContext): Dashboar
           documentVisibility: hasPersonnelGrant("attachment.update")
         }
       : undefined;
+  const admin = context.roles.includes("CLINIC_ADMINISTRATOR") && !context.roles.includes("SYSTEM_ADMINISTRATOR");
+  const hasAdminGrant = (code: string) => admin &&
+    context.permissions.some((grant) => grant.code === code && grant.scope === "GLOBAL");
+  const clinicAdministrator: ClinicAdministratorCapabilities | undefined = admin
+    ? {
+        auditRead: hasAdminGrant("audit.read"),
+        staffCreate: hasAdminGrant("staff_account.create"),
+        roleApprove: hasAdminGrant("role_assignment.approve"),
+        financialOversight: hasAdminGrant("finance.admin.read"),
+        expenseApprove: hasAdminGrant("finance.expense.approve"),
+        payableApprove: hasAdminGrant("finance.payable.approve"),
+        closingApprove: hasAdminGrant("finance.closing.approve")
+      } : undefined;
   return {
+    ...(clinicAdministrator ? { clinicAdministrator } : {}),
     ...(personnel ? { personnel } : {}),
     ...(dentist ? { dentist } : {}),
     displayName: context.displayName,
@@ -85,6 +111,7 @@ export function projectDashboardContext(context: AuthorizationContext): Dashboar
       if (isRequestReview && !context.roles.some((role) => role === "PERSONNEL" || role === "DENTIST")) return false;
       if (link.key === "personnel-dashboard" && !context.roles.includes("PERSONNEL")) return false;
       if (link.key === "dentist-dashboard" && !context.roles.includes("DENTIST")) return false;
+      if (link.key === "clinic-administrator-dashboard") return Boolean(clinicAdministrator && Object.values(clinicAdministrator).some(Boolean));
       return context.permissions.some((grant) =>
         (grant.code === link.permission || (isRequestReview && grant.code === "appointment.cancel")) &&
         grant.scope === link.scope &&
