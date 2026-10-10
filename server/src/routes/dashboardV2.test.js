@@ -24,9 +24,9 @@ function boundary({ roles = ["PERSONNEL"], branchIds = ["10000000-0000-4000-8000
     }
   };
 }
-async function requestWithBoundary(access, header = "Bearer valid-token") {
+async function requestWithBoundary(access, header = "Bearer valid-token", patientRepository = null) {
   const app = express();
-  app.use("/api/dashboard", createDashboardV2Router(auth, access));
+  app.use("/api/dashboard", createDashboardV2Router(auth, access, patientRepository));
   app.use((error, _req, res, _next) => res.status(error?.status ?? 500).json({ message: "Access unavailable." }));
   const server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -64,6 +64,37 @@ test("technical admin has no clinical or finance navigation", async () => {
   assert.equal(response.status, 200);
   assert.deepEqual(response.body.links, [{key:"system-administrator-dashboard",label:"System administration",path:"/system-administrator-dashboard"}]);
   assert.equal(JSON.stringify(response.body).includes("patient"),false);
+});
+test("Patient dashboard links require active verified OWN identity and omit raw patient data", async () => {
+ const settings={roles:["PATIENT"],branchIds:[],permissions:[
+  {code:"portal.profile.read",scope:"OWN"},
+  {code:"portal.appointments.request",scope:"OWN"},
+  {code:"portal.balance.read",scope:"OWN"}
+ ]};
+ const patient={async getByUserId(){return {appUserId:"user",patientId:"10000000-0000-4000-8000-000000000003",status:"active"};}};
+ const allowed=await requestWithBoundary(boundary(settings),"Bearer valid-token",patient);
+ assert.equal(allowed.status,200);
+ assert.deepEqual(allowed.body.links.map(x=>x.key),["patient-portal","patient-appointments","patient-finance"]);
+ assert.equal(JSON.stringify(allowed.body).includes("patientId"),false);
+ assert.deepEqual(allowed.body.branchIds,[]);
+ for(const state of ["pending","revoked"]){
+  const denied=await requestWithBoundary(boundary(settings),"Bearer valid-token",{
+   async getByUserId(){return {appUserId:"user",patientId:"10000000-0000-4000-8000-000000000003",status:state};}
+  });
+  assert.equal(denied.status,403);
+ }
+});
+test("Owner-Dentist HTTP context retains separate clinical and administrative links", async () => {
+ const result=await requestWithBoundary(boundary({
+  roles:["DENTIST","CLINIC_ADMINISTRATOR"],permissions:[
+    {code:"appointment.list",scope:"BRANCH"},
+    {code:"audit.read",scope:"GLOBAL"}
+  ]
+ }));
+ assert.equal(result.status,200);
+ assert.deepEqual(result.body.roles,["CLINIC_ADMINISTRATOR","DENTIST"]);
+ assert.deepEqual(result.body.links.map(x=>x.key),["clinic-administrator-dashboard","dentist-dashboard","appointments"]);
+ assert.equal(result.body.links.some(x=>x.key.startsWith("patient-")),false);
 });
 test("branch and permission revocation are reflected on the next request", async () => {
   assert.deepEqual((await requestWithBoundary(boundary({ branchIds: [] }))).body.links, []);

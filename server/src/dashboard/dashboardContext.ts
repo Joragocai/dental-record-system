@@ -68,7 +68,9 @@ export function projectDashboardContext(context: AuthorizationContext): Dashboar
   }
   const validRoles = new Set(["PATIENT", "PERSONNEL", "DENTIST", "CLINIC_ADMINISTRATOR", "SYSTEM_ADMINISTRATOR"]);
   if (context.roles.some((role) => !validRoles.has(role))) throw new Error("Unrecognized dashboard role.");
-  const branchIds = context.roles.includes("SYSTEM_ADMINISTRATOR")
+  if (context.roles.includes("PATIENT") && context.roles.length !== 1) throw new Error("Patient roles may not be combined.");
+  const patientOnly = context.roles.length === 1 && context.roles[0] === "PATIENT";
+  const branchIds = context.roles.includes("SYSTEM_ADMINISTRATOR") || patientOnly
     ? []
     : [...new Set(context.branchIds)].sort();
   const hasPersonnelGrant = (code: string) =>
@@ -121,6 +123,8 @@ export function projectDashboardContext(context: AuthorizationContext): Dashboar
     links: links.filter((link) => {
       if (link.key === "system-administrator-dashboard") return Boolean(systemAdministrator && Object.values(systemAdministrator).some(Boolean));
       if (context.roles.includes("SYSTEM_ADMINISTRATOR")) return false;
+      if (link.scope === "OWN" && !patientOnly) return false;
+      if (patientOnly && link.scope !== "OWN") return false;
       const operational = context.roles.includes("PERSONNEL") || context.roles.includes("DENTIST");
       if ((link.key === "appointments" || link.key === "clinic-finance") && !operational) return false;
       const isRequestReview = link.key === "clinic-patient-requests";

@@ -79,6 +79,18 @@ test("patient OWN projection does not expose clinic shortcuts", () => {
   assert.deepEqual(projected.branchIds, []);
 });
 
+test("Patient dashboard never projects OWN navigation to mixed-role accounts", () => {
+ const granted: AuthorizationContext["permissions"] = [
+  { code:"portal.profile.read", scope:"OWN" },
+  { code:"portal.balance.read", scope:"OWN" },
+  { code:"appointment.list", scope:"BRANCH" }
+ ];
+ const safe=projectDashboardContext(context({roles:["PATIENT"],branchIds:[],permissions:granted}));
+ assert.deepEqual(safe.links.map(x=>x.key),["patient-portal","patient-finance"]);
+ for(const roles of [["PATIENT","DENTIST"],["PATIENT","CLINIC_ADMINISTRATOR"]] as AuthorizationContext["roles"][]){
+  assert.throws(()=>projectDashboardContext(context({roles,branchIds:["10000000-0000-4000-8000-000000000003"],permissions:granted})));
+ }
+});
 test("admin does not inherit dentist authority and technical-only role has no clinic links", () => {
   const administrator = projectDashboardContext(context({
     roles: ["CLINIC_ADMINISTRATOR"], branchIds: [],
