@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
+import { resetDisposableTestTables } from "../disposableTestReset.js";
 import test from "node:test";
 import { buildPgFoundationConfig, summarizeDatabaseUrl } from "../config.js";
-import { migrationTableName, runPendingMigrations } from "../migrations.js";
+import { runPendingMigrations } from "../migrations.js";
 import { createPgPoolManager } from "../pool.js";
 import { assertSafeTestDatabaseTarget, getPgIntegrationReadiness } from "../testSafety.js";
 import { createApplicationUserRepository } from "../../repositories/applicationUserRepository.js";
@@ -18,34 +19,8 @@ function buildTestDatabaseConfig() {
   return { ...config, ...summary, databaseUrl: config.testDatabaseUrl };
 }
 
-const resetTables = [
-  "email_delivery_logs",
-  "notification_preferences",
-  "notifications",
-  "audit_events",
-  "attachments",
-  "role_permissions",
-  "permissions",
-  "user_branches",
-  "user_roles",
-  "app_users",
-  "roles",
-  "legacy_appointment_identity_map",
-  "appointment_history",
-  "appointments",
-  "legacy_treatment_identity_map",
-  "treatments",
-  "treatment_code_counters",
-  "legacy_patient_identity_map",
-  "patients",
-  "patient_code_counters",
-  "branches",
-  "drs_v2_foundation_probe",
-  migrationTableName
-] as const;
-
 async function resetKnownTables(pool: ReturnType<typeof createPgPoolManager>): Promise<void> {
-  for (const tableName of resetTables) await pool.query(`DROP TABLE IF EXISTS ${tableName} CASCADE`);
+  await resetDisposableTestTables(pool);
 }
 
 function isAuthorizationError(error: unknown, code: AuthorizationError["code"]): boolean {
@@ -75,7 +50,10 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
     const permissions = await pool.query<{ code: string; scope: string }>(
       "SELECT code, scope FROM permissions ORDER BY code ASC"
     );
-    assert.equal(permissions.rows.length, 37);
+    // Current migrations 0001-0020 define 64 distinct permissions; fail on an unexpected grant catalog change.
+    assert.equal(permissions.rows.length, 64);
+    assert.equal(new Set(permissions.rows.map((row) => row.code)).size, permissions.rows.length);
+    assert.equal(permissions.rows.every((row) => ["OWN", "BRANCH", "GLOBAL"].includes(row.scope)), true);
     assert.equal(permissions.rows.find((row) => row.code === "patient.read")?.scope, "BRANCH");
     assert.equal(permissions.rows.find((row) => row.code === "staff_account.create")?.scope, "GLOBAL");
 
@@ -88,7 +66,7 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
     );
 
     const grantsFor = (role: string) => roleMapping.rows.filter((row) => row.role_code === role).map((row) => row.permission_code);
-    assert.deepEqual(grantsFor("PATIENT"), ["portal.appointments.read", "portal.appointments.request", "portal.documents.read", "portal.profile.read", "portal.profile.update", "portal.treatments.read"]);
+    assert.deepEqual(grantsFor("PATIENT"), ["portal.appointments.read", "portal.appointments.request", "portal.balance.read", "portal.documents.read", "portal.payments.read", "portal.profile.read", "portal.profile.update", "portal.treatments.read"]);
     assert.deepEqual(grantsFor("PERSONNEL").filter((code) => code.startsWith("attachment.")), [
       "attachment.create",
       "attachment.download",
@@ -131,12 +109,16 @@ test("Phase 08E PostgreSQL authorization foundation preserves grants, role separ
     assert.deepEqual(grantsFor("PATIENT").filter((code) => code.startsWith("appointment.")), []);
     assert.deepEqual(grantsFor("CLINIC_ADMINISTRATOR").filter((code) => code.startsWith("appointment.")), []);
     assert.deepEqual(grantsFor("SYSTEM_ADMINISTRATOR").filter((code) => code.startsWith("appointment.")), []);
-    assert.deepEqual(grantsFor("CLINIC_ADMINISTRATOR"), [
+    assert.deepEqual(grantsFor("CLINIC_ADMINISTRATOR").filter((code) => !code.startsWith("finance.")), [
       "audit.export",
       "audit.read",
       "role_assignment.approve",
       "staff_account.create",
       "user.read"
+    ]);
+    assert.deepEqual(grantsFor("CLINIC_ADMINISTRATOR").filter((code) => code.startsWith("finance.")), [
+      "finance.admin.read", "finance.closing.approve", "finance.expense.approve",
+      "finance.opening.record", "finance.payable.approve"
     ]);
     assert.deepEqual(grantsFor("SYSTEM_ADMINISTRATOR"), ["role_definition.configure", "user.read"]);
     assert.equal(grantsFor("SYSTEM_ADMINISTRATOR").some((code) => code.startsWith("patient.") || code.startsWith("treatment.")), false);

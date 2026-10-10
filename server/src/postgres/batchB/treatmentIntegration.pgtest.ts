@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
+import { resetDisposableTestTables } from "../disposableTestReset.js";
 import test from "node:test";
 import { buildPgFoundationConfig, summarizeDatabaseUrl } from "../config.js";
-import { migrationTableName, runPendingMigrations } from "../migrations.js";
+import { runPendingMigrations } from "../migrations.js";
 import { createPgPoolManager } from "../pool.js";
 import { assertSafeTestDatabaseTarget, getPgIntegrationReadiness } from "../testSafety.js";
 import { insertBranch } from "../batchA/branches.js";
@@ -28,25 +29,8 @@ function buildTestDatabaseConfig() {
   };
 }
 
-const batchBTestResetTables = [
-  "email_delivery_logs",
-  "notification_preferences",
-  "notifications",
-  "legacy_treatment_identity_map",
-  "treatments",
-  "treatment_code_counters",
-  "legacy_patient_identity_map",
-  "patients",
-  "patient_code_counters",
-  "branches",
-  "drs_v2_foundation_probe",
-  migrationTableName
-] as const;
-
 async function resetKnownBatchBTestTables(pool: ReturnType<typeof createPgPoolManager>): Promise<void> {
-  for (const tableName of batchBTestResetTables) {
-    await pool.query(`DROP TABLE IF EXISTS ${tableName} CASCADE`);
-  }
+  await resetDisposableTestTables(pool);
 }
 
 async function getCount(pool: ReturnType<typeof createPgPoolManager>, tableName: string): Promise<number> {
@@ -133,6 +117,10 @@ test("Batch B PostgreSQL integration preserves fictional treatment parity and re
     assert.equal(mapRows.rows.length, 1);
     assertSingleLegacyTreatmentMapRow(mapRows.rows[0], migrated.treatment.id, legacyTreatment);
   } finally {
-    await pool.shutdown();
+    try {
+      await resetKnownBatchBTestTables(pool);
+    } finally {
+      await pool.shutdown();
+    }
   }
 });

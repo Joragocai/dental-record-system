@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
+import { resetDisposableTestTables } from "../disposableTestReset.js";
 import test from "node:test";
 import { buildPgFoundationConfig, summarizeDatabaseUrl } from "../config.js";
-import { migrationTableName, runPendingMigrations } from "../migrations.js";
+import { runPendingMigrations } from "../migrations.js";
 import { createPgPoolManager } from "../pool.js";
 import { assertSafeTestDatabaseTarget, getPgIntegrationReadiness } from "../testSafety.js";
 import { insertBranch } from "./branches.js";
@@ -31,22 +32,8 @@ function buildTestDatabaseConfig() {
   };
 }
 
-const batchATestResetTables = [
-  "email_delivery_logs",
-  "notification_preferences",
-  "notifications",
-  "legacy_patient_identity_map",
-  "patients",
-  "patient_code_counters",
-  "branches",
-  "drs_v2_foundation_probe",
-  migrationTableName
-] as const;
-
 async function resetKnownBatchATestTables(pool: ReturnType<typeof createPgPoolManager>): Promise<void> {
-  for (const tableName of batchATestResetTables) {
-    await pool.query(`DROP TABLE IF EXISTS ${tableName} CASCADE`);
-  }
+  await resetDisposableTestTables(pool);
 }
 
 async function getCount(pool: ReturnType<typeof createPgPoolManager>, tableName: string): Promise<number> {
@@ -127,7 +114,11 @@ test("Batch A PostgreSQL integration preserves fictional patient parity", async 
     assert.equal(mapRows.rows[0]?.legacy_patient_code, legacyPatient.patient_id);
     assert.equal(mapRows.rows[0]?.patient_id, persisted.id);
   } finally {
-    await pool.shutdown();
+    try {
+      await resetKnownBatchATestTables(pool);
+    } finally {
+      await pool.shutdown();
+    }
   }
 });
 
@@ -203,7 +194,11 @@ test("Phase 07A Patient read path preserves list, search, identity, branch, DATE
     assert.equal(byCode.id, secondMigrated.patient.id);
     assert.equal(byCode.patientCode, secondLegacyPatient.patient_id);
   } finally {
-    await pool.shutdown();
+    try {
+      await resetKnownBatchATestTables(pool);
+    } finally {
+      await pool.shutdown();
+    }
   }
 });
 
@@ -278,7 +273,11 @@ test("Phase 07B Patient write path creates, updates, validates branch, and rolls
     assert.equal(Number(counterResult.rows[0]?.count ?? 0), 0);
     assert.equal(await getCount(pool, "patients"), 1);
   } finally {
-    await pool.shutdown();
+    try {
+      await resetKnownBatchATestTables(pool);
+    } finally {
+      await pool.shutdown();
+    }
   }
 });
 
@@ -323,6 +322,10 @@ test("Phase 07C concurrent Patient creates allocate distinct annual codes and UU
     ]);
     assert.equal(await getCount(pool, "patients"), 5);
   } finally {
-    await pool.shutdown();
+    try {
+      await resetKnownBatchATestTables(pool);
+    } finally {
+      await pool.shutdown();
+    }
   }
 });

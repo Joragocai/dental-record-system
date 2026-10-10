@@ -1,0 +1,87 @@
+PHASE 16 — ROLE DASHBOARD
+STATUS: DRAFT PENDING USER REVIEW — INSPECTION/SPECIFICATION ONLY, NO IMPLEMENTATION APPROVED
+Authority: README.md Sections 6, 7, 8, 12, 14, 16.3, Task Phases 16/19, and AGENTS.md.
+Deployment: Vercel client, Render protected Express API, Supabase PostgreSQL/Auth/private Storage. Never depend on the legacy SQLite endpoints in staging.
+
+GOAL
+Build a safe, authenticated, permission-driven landing experience for five distinct roles, supporting one Dentist + Clinic Administrator account without combining backend role definitions. Show only real authorized information backed by verified V2 endpoints. Separate provider authentication from server-owned app roles, current branch memberships and OWN-linked patient identity. No dashboard visibility is itself an authorization grant.
+
+EXISTING COMPONENTS TO REUSE / INSPECT
+- client/src/App.jsx: hosted secure route tree, ProtectedAuthRoute and lazy V2 pages. LegacyApp is local-development only.
+- client/src/context/AuthContext.tsx and client/src/auth/*: backend-verified session and bearer requests; a minimal session identity does NOT imply complete permissions.
+- client/src/pages/AuthAccountPage.tsx: placeholder account landing with links; may be adapted only after backend-trusted dashboard context.
+- client/src/appointments/appointmentApi.ts, AppointmentSchedulerPage.tsx, ClinicPatientRequestReviewPage.tsx: protected schedule/review modules.
+- client/src/pages/ClinicFinanceDailyPage.tsx, PatientFinancePage.tsx: existing authorized finance screens. Ledger remains internal/incomplete.
+- client/src/pages/PatientPortalPage.tsx, PatientAppointmentRequestsPage.tsx, PatientDocumentsPrivacyPage.tsx: OWN-scoped portal modules.
+- client/src/notifications/*: authenticated notifications with existing user-scoped API.
+- server/src access/auth middleware, authorization repositories/services and protected appointment, portal, finance, notification, account, audit APIs.
+- client/src/pages/DashboardPage.jsx, client/src/components/Layout.jsx, server/src/routes/dashboard.js and server/src/services/dashboardService.js are LOCAL SQLITE LEGACY REFERENCES ONLY; DO NOT COPY THEIR API CALLS, ACCESS MODEL, OR EXPOSE THEM IN HOSTED MODE.
+
+ARCHITECTURAL RULES
+1. Implement new V2 dashboard page and services in TS/TSX, additive and focused. Keep the legacy branch untouched.
+2. Secure default landing route must require a verified backend session; handle loading, 401/403, inactive account, no role and missing branches explicitly.
+3. Derive role codes, permission codes/scopes and branch IDs on the server from current application authorization data. Do not trust client JWT custom claims or user-chosen roles/branch IDs as grants. Do not expose complete privileged policy/grant catalogs unless necessary; prefer a minimal server-provided navigation/action capability projection.
+4. Distinguish GLOBAL clinic authority, BRANCH operations and OWN patient access. No universal dashboard aggregation of unrestricted records.
+5. Users with multiple roles receive an authorized union of permitted cards but retain per-widget permission/branch checks; explicit denials and privileged safeguards override role union.
+6. System Administrator is technical only: no patient names/clinical notes/attachments/finance or indirect leaks through error logs/metadata. Clinic Administrator does not inherit dentist clinical authority.
+7. Never return actual patient records in dashboard context; fetch data only from specific protected APIs. Use approved statuses and clinic local dates/timezone for schedule queries.
+8. No fake metrics, fabricated zeros, unchecked summaries, insecure placeholders, or calls to old anonymous V1 routes. Unsupported widgets are omitted or marked unavailable without counts.
+9. Preserve audit of sensitive read actions, limit list sizes, implement pagination as needed, avoid cross-user caching and stale permission state after role revocation.
+10. Functional workflow change, RBAC expansion, finance accounting/tax policy change, backup/restore implementation, or deployment requires separate approval.
+
+16A — SECURE DASHBOARD FOUNDATION (FIRST IMPLEMENTATION SLICE; PENDING APPROVAL)
+- Decide minimal protected GET /api/dashboard/context contract: display name, safe role presentation, authorized branch choices, eligible widget/action keys, optional safe environment state. All derived from backend auth and authorization; exclude secrets and raw clinical/finance data.
+- Consider using already verified /api/auth/session plus a narrow context endpoint rather than introducing broad reusable access tokens. Recheck account/role/branch state server-side.
+- Add a V2 protected /dashboard route, role-aware navigation and empty/loading/denied states; safe route selection for a patient-only account and a system administrator.
+- Unit/HTTP tests: anonymous 401, disabled accounts denied, role/branch changes, mixed-role union, unsupported permissions denied, technical-only leakage denial, no legacy API bundle/routes.
+- Keep Phase 17 full sidebar/mobile-bottom-navigation and accessibility expansion separate; build only minimal responsive navigation required for working dashboards.
+
+16B — PERSONNEL
+- Show assigned-branch appointments, check-in/confirmed counts and pending clinic appointment requests only through protected appointment/review APIs.
+- Quick links: patient lookup when authorized, scheduler, request review, branch-scoped receivables, daily collections and expense creation. Verify exact endpoints' permission and branch semantics before wiring.
+- Do not expose internal dentist notes or comprehensive clinic finance/audit views; handle staff assigned to multiple branches. Implement any new aggregate endpoint only after reviewing its SQL filtering, pagination and auth.
+
+16C — DENTIST
+- Next and today's appointment summaries through protected branch scheduling API; approved clinical patient navigation/medical alerts only where safe approved V2 patient/treatment APIs exist.
+- Dentist-only publication shortcuts for treatment/documents; never imply pending tasks exist if no protected listing API supports the state.
+- Future recently viewed, outstanding notes and full treatment follow-up widgets should remain unavailable until protected read APIs and audit are established. No standalone unrestricted clinical summary endpoint.
+
+16D — CLINIC ADMINISTRATOR
+- Authorized account management and clinic-wide approval links; protected finance oversight, receivables/payables, closing reviews and audit module shortcuts as implemented.
+- Do not treat Clinic Administrator as Dentist: no clinical records, clinical publication or branch clinical scheduling by admin-only role.
+- Backup/restore approval, data-export approval and operational security-alert counts are deferred until dedicated reviewed protected APIs exist.
+- Internal finance figures must be labeled limited and non-statutory; no real collections or receipts authorized.
+
+16E — SYSTEM ADMINISTRATOR
+- Show non-sensitive /api/health and /api/ready status as applicable; server-side protected technical status/context for user-authorized troubleshooting without environment secrets, connection strings, credentials, audit patient details, record counts or exception payloads.
+- Technical account-support actions only after clinic approval; no ordinary account or financial browsing. Backend access controls remain source of truth.
+- Backup/restore metrics, storage/DB diagnostics, deployment/migration alerts, error telemetry and scoped support-access workflows remain unavailable until APIs are implemented and authorized. Do not present guessed health or success flags.
+
+16F — PATIENT AND OWNER-DENTIST
+- Patient-only landing uses existing OWN-scoped portal, upcoming appointment, request/cancellation/reschedule, published treatment/document, balance/payment and notification APIs. Pending/unverified link must fail closed.
+- Owner-Dentist account is single identity with two roles: combined business and dental widgets, each calling its protected API. Never create a sixth backend role or bypass role-specific read restrictions.
+- Test cross-patient IDOR, unpublished treatment/attachment absence, branch-independent OWN patient access, cross-branch Personnel denial, dentist clinical actions, Clinic Administrator no clinical privilege, System Administrator no business data, and role changes mid-session.
+- Staging fictional multi-user manual/E2E QA deferred to Phase 19; log in docs/deployment/patient-portal-staging-gate.md.
+
+API / WIDGET AVAILABILITY GATE
+Existing V2 route families to confirm against actual route-level middleware: /api/appointments, /api/patient-appointment-reviews, /api/me/*, /api/finance-operations/*, /api/finance/*, /api/notifications, /api/audit-events, /api/staff-accounts, /api/health, /api/ready. Some are only accessible to specifically authorized roles and may not offer list/aggregate projections.
+Proposed /api/dashboard/context is NEW and not authorized until 16A. README's aspirational /api/dashboard/summary|schedule|collectibles|financial-summary endpoints are not evidence of a completed secure V2 implementation. Use only implemented, audited domain reads or add a minimal separately reviewed server-side projection.
+Migration: NONE anticipated for the role navigation/context foundation. New data persistence requires a justified additive migration with separate approval.
+
+VALIDATION GATES
+- Before implementation: complete isolated local PostgreSQL RBAC, patient OWN/publication, appointment, finance and audit suites; ensure the disposable test target is guarded and test runners do not reset concurrently. Typecheck/build/staging-isolation regressions must pass.
+- For 16A–F: focused backend HTTP authorization tests and client UI tests with fictional five-role and dual-role contexts; no data leaking via 403, loading transitions, cached pages, exports or raw error responses.
+- Confirm unauthorized direct endpoint access is denied even where shortcut is hidden.
+- Verify server-provided branch IDs with assigned memberships; never use patient registration branch as patient ownership.
+- Manual Phase 19 QA remains the consolidated staging register; Supabase Auth patient activation redirect allowlisting unverified until independently checked.
+- Automatic senior developer security/architecture/diff review after each approved implementation change; no commit/push/deployment without user approval. Vercel auto-deploys after push.
+
+RECOMMENDED ORDER
+16A minimal secure context+landing first; 16B and 16C reuse appointment domain; 16D permission-bound business overview; 16E independent technical-only view; 16F OWN/patient + dual-role integration. If 16A lacks a verified backend context, stop; do not restore legacy V1 endpoints.
+
+OPEN DECISIONS REQUIRING SCOPE REVIEW
+- Whether to use a small new /api/dashboard/context or an existing backend verified-session extension, based on least exposure and current session contract.
+- Which missing V2 read-only list/count endpoints merit separate narrowly permissioned additions; avoid implementing large aggregates merely for dashboard cosmetics.
+- Whether any role should default to one assigned branch or require explicit branch selection. Prefer explicit selection for multi-branch staff, not implicit data joining.
+- Exact accounting labels approved for limited daily finance figures; no official receipt statements.
+No Phase 16 feature source code, migrations, Git finalization or deployment are authorized by this draft.

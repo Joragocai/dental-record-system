@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
+import { resetDisposableTestTables } from "../disposableTestReset.js";
 import test from "node:test";
 import { buildPgFoundationConfig, summarizeDatabaseUrl } from "../config.js";
-import { migrationTableName, runPendingMigrations } from "../migrations.js";
+import { runPendingMigrations } from "../migrations.js";
 import { createPgPoolManager } from "../pool.js";
 import { assertSafeTestDatabaseTarget, getPgIntegrationReadiness } from "../testSafety.js";
 import { createApplicationUserRepository } from "../../repositories/applicationUserRepository.js";
@@ -16,36 +17,8 @@ function buildTestDatabaseConfig() {
   return { ...config, ...summary, databaseUrl: config.testDatabaseUrl };
 }
 
-const resetTables = [
-  "email_delivery_logs",
-  "notification_preferences",
-  "notifications",
-  "audit_events",
-  "attachments",
-  "role_permissions",
-  "permissions",
-  "user_branches",
-  "user_roles",
-  "app_users",
-  "roles",
-  "legacy_appointment_identity_map",
-  "appointment_history",
-  "appointments",
-  "legacy_treatment_identity_map",
-  "treatments",
-  "treatment_code_counters",
-  "legacy_patient_identity_map",
-  "patients",
-  "patient_code_counters",
-  "branches",
-  "drs_v2_foundation_probe",
-  migrationTableName
-] as const;
-
 async function resetKnownTables(pool: ReturnType<typeof createPgPoolManager>): Promise<void> {
-  for (const tableName of resetTables) {
-    await pool.query(`DROP TABLE IF EXISTS ${tableName} CASCADE`);
-  }
+  await resetDisposableTestTables(pool);
 }
 
 function assertApplicationUserError(error: unknown, code: ApplicationUserError["code"]): boolean {

@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
+import { resetDisposableTestTables } from "../disposableTestReset.js";
 import test from "node:test";
 import { insertBranch } from "../batchA/branches.js";
 import { buildFictionalLegacyPatientRow, fictionalBranch, fictionalBranchMappings } from "../batchA/patientFixtures.js";
 import { migrateLegacyPatient } from "../batchA/patientMigration.js";
 import { buildPgFoundationConfig, summarizeDatabaseUrl } from "../config.js";
-import { migrationTableName, runPendingMigrations } from "../migrations.js";
+import { runPendingMigrations } from "../migrations.js";
 import { createPgPoolManager } from "../pool.js";
 import { assertSafeTestDatabaseTarget, getPgIntegrationReadiness } from "../testSafety.js";
 import { buildFictionalLegacyAppointmentRow } from "./appointmentFixtures.js";
@@ -27,28 +28,8 @@ function buildTestDatabaseConfig() {
   };
 }
 
-const batchCTestResetTables = [
-  "email_delivery_logs",
-  "notification_preferences",
-  "notifications",
-  "legacy_appointment_identity_map",
-  "appointment_history",
-  "appointments",
-  "legacy_treatment_identity_map",
-  "treatments",
-  "treatment_code_counters",
-  "legacy_patient_identity_map",
-  "patients",
-  "patient_code_counters",
-  "branches",
-  "drs_v2_foundation_probe",
-  migrationTableName
-] as const;
-
 async function resetKnownBatchCTestTables(pool: ReturnType<typeof createPgPoolManager>): Promise<void> {
-  for (const tableName of batchCTestResetTables) {
-    await pool.query(`DROP TABLE IF EXISTS ${tableName} CASCADE`);
-  }
+  await resetDisposableTestTables(pool);
 }
 
 async function getCount(pool: ReturnType<typeof createPgPoolManager>, tableName: string): Promise<number> {
@@ -128,7 +109,11 @@ test("Batch C PostgreSQL integration preserves fictional appointment parity and 
     assert.equal(appointmentCountAfterRerun, sourceAppointmentRowCount);
     assert.equal(mappingCountAfterRerun, sourceAppointmentRowCount);
   } finally {
-    await pool.shutdown();
+    try {
+      await resetKnownBatchCTestTables(pool);
+    } finally {
+      await pool.shutdown();
+    }
   }
 });
 
@@ -166,6 +151,10 @@ test("Batch C PostgreSQL integration enforces branch FK on appointments", async 
     );
     assert.equal(await getCount(pool, "appointments"), 0);
   } finally {
-    await pool.shutdown();
+    try {
+      await resetKnownBatchCTestTables(pool);
+    } finally {
+      await pool.shutdown();
+    }
   }
 });

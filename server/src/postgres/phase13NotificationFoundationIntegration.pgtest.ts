@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
+import { resetDisposableTestTables } from "./disposableTestReset.js";
 import test from "node:test";
 import { buildPgFoundationConfig, summarizeDatabaseUrl } from "./config.js";
 import {
   listMigrationFiles,
-  migrationTableName,
   runPendingMigrationsFromList
 } from "./migrations.js";
 import { createPgPoolManager } from "./pool.js";
@@ -17,34 +17,8 @@ function buildTestDatabaseConfig() {
   return { ...config, ...summary, databaseUrl: config.testDatabaseUrl };
 }
 
-const resetTables = [
-  "email_delivery_logs",
-  "notification_preferences",
-  "notifications",
-  "audit_events",
-  "attachments",
-  "role_permissions",
-  "permissions",
-  "user_branches",
-  "user_roles",
-  "appointment_history",
-  "legacy_appointment_identity_map",
-  "appointments",
-  "app_users",
-  "roles",
-  "legacy_treatment_identity_map",
-  "treatments",
-  "treatment_code_counters",
-  "legacy_patient_identity_map",
-  "patients",
-  "patient_code_counters",
-  "branches",
-  "drs_v2_foundation_probe",
-  migrationTableName
-] as const;
-
 async function resetKnownTables(pool: ReturnType<typeof createPgPoolManager>): Promise<void> {
-  for (const tableName of resetTables) await pool.query(`DROP TABLE IF EXISTS ${tableName} CASCADE`);
+  await resetDisposableTestTables(pool);
 }
 
 test("Phase 13A migration establishes privacy-conscious notification and email delivery foundations", async (t) => {
@@ -59,8 +33,8 @@ test("Phase 13A migration establishes privacy-conscious notification and email d
 
   try {
     const migrations = await listMigrationFiles();
-    assert.equal(migrations.at(-1)?.name, "0012_notification_foundation.sql");
-    await runPendingMigrationsFromList(pool, migrations);
+    assert.equal(migrations[11]?.name, "0012_notification_foundation.sql");
+    await runPendingMigrationsFromList(pool, migrations.slice(0, 12));
 
     const branchId = "91000000-0000-4000-8000-000000000001";
     const userId = "92000000-0000-4000-8000-000000000001";
