@@ -5,7 +5,7 @@ import {authenticatedV2Fetch} from "../auth/authApi.js";
 interface Branch {id:string;branchName:string}
 interface Daily {
  servicesBilled:string;outstandingReceivables:string;newPayables:string;outstandingPayables:string;
- cashCollected:string;digitalCollected:string;cashReversals:string;cashRefunds:string;
+ cashCollected:string;digitalCollected:string;cashReversals:string;digitalReversals:string;cashRefunds:string;
  digitalRefunds:string;cashSupplierPayments:string;digitalSupplierPayments:string;
  expensesPaidStatus:string;
 }
@@ -53,7 +53,7 @@ export default function ClinicFinanceDailyPage(){
  ["Services billed",snapshot.servicesBilled],["Outstanding receivables",snapshot.outstandingReceivables],
  ["New approved payables",snapshot.newPayables],["Outstanding payables",snapshot.outstandingPayables],
  ["Cash collected",snapshot.cashCollected],["Digital/bank collections",snapshot.digitalCollected],
- ["Cash payment reversals",snapshot.cashReversals],["Cash refunds",snapshot.cashRefunds],
+ ["Cash payment reversals",snapshot.cashReversals],["Digital payment reversals",snapshot.digitalReversals],["Cash refunds",snapshot.cashRefunds],
  ["Digital refunds",snapshot.digitalRefunds],["Cash supplier payments",snapshot.cashSupplierPayments],
  ["Digital supplier payments",snapshot.digitalSupplierPayments]
  ]:[];

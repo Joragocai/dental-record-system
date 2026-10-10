@@ -18,7 +18,7 @@ function fake(config:{opening?:boolean;submittedBy?:string;diff?:string; cash?:s
  statements.push(sql);let rows:Record<string,unknown>[]=[];
  if(sql.includes("AS billed"))rows=[{billed:"100.00",receivables:"40.00",new_payables:"20.00",payables:"10.00",
  cash_receipts:config.cash??"30.00",cash_reversals:"0.00",cash_refunds:"5.00",cash_supplier_payments:"10.00",
- digital_collections:"20.00",digital_refunds:"0.00",digital_supplier_payments:"0.00"}];
+ digital_collections:"20.00",digital_reversals:"0.00",digital_refunds:"0.00",digital_supplier_payments:"0.00"}];
  if(sql.startsWith("SELECT opening_cash"))rows=config.opening===false?[]:[{opening_cash:"100.00"}];
  if(sql.startsWith("SELECT id,branch_id,status,submitted_by"))rows=[{id:CLOSE,branch_id:BRANCH,status:"submitted",submitted_by:config.submittedBy??USER}];
  return {rows:rows as R[],rowCount:sql.startsWith("INSERT")||sql.startsWith("UPDATE")?1:rows.length,fields:[],command:"",oid:0};
@@ -31,6 +31,18 @@ test("summary separates billing, cash, digital payments and unknown direct expen
  assert.equal(x.servicesBilled,"100.00");assert.equal(x.cashCollected,"30.00");
  assert.equal(x.digitalCollected,"20.00");assert.equal(x.expensesPaid,null);
  assert.equal(x.expensesPaidStatus,"not_integrated");
+});
+test("report SQL accounts for Manila-day receipt, cash and digital reversal events separately",async()=>{
+ const f=fake();await f.svc.summary(actor(),BRANCH,"2026-10-10");
+ const sql=f.statements.find(s=>s.includes("AS billed"))??"";
+ assert.match(sql,/payment_date AT TIME ZONE \$3::text/);
+ assert.match(sql,/reversed_at AT TIME ZONE \$3::text/);
+ assert.match(sql,/AS digital_reversals/);
+ assert.match(sql,/status IN \(\x27posted\x27,\x27reversed\x27\)/);
+ const f2=fake();const x=await f2.svc.export({...actor(),permissions:[...actor().permissions,{code:"finance.report.export",scope:"BRANCH"}]},CORRELATION,BRANCH,"2026-10-10");
+ assert.ok(x.csv.startsWith("Metric,PHP\r\n"));
+ assert.ok(x.csv.includes("\r\nDigital Payment Reversals,"));
+ assert.ok(!x.csv.includes("\\n"));
 });
 test("closing computes opening plus cash receipts minus refunds and disbursements",async()=>{
  const f=fake();const x=await f.svc.submit(actor(),CORRELATION,{branchId:BRANCH,businessDate:"2026-10-10",actualCash:"115.00",cashMovementsAttested:true});

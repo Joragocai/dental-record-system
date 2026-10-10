@@ -1,7 +1,7 @@
 # Phase 14 manual intervention register — deferred staging and Phase 19 QA
 
-Status: deferred until a separate user-approved staging/QA gate. Last reviewed October 10, 2026.
-No staging migration, production data, real identity, invitation, Git commit/push, or deployment is authorized by this guide.
+Status: isolated staging migrations 0013-0020 completed October 10, 2026 with checksums verified. Application push/deployment, Supabase patient redirect allowlisting, fictional hosted QA and clinic financial policies remain separate gates.
+The user separately approved the completed staging migrations. No additional migration, production data, real identity, invitation, Git commit/push, or deployment is authorized by this guide.
 
 ## Isolated PostgreSQL test database (required before security certification)
 
@@ -70,7 +70,7 @@ The test runner checks: the environment is `test`, the two URLs are different, t
 ## Local Git checkpoint review (2026-10-10)
 - Senior review corrected treatment portal publication authorization to use the treatment's actual `treatments.branch_id`, not the patient's registration branch, in `portalRecordsRepository.ts`. Publication audit now targets the treatment ID and branch. Added assertions in `portalPublication.pgtest.ts`.
 - After that correction: patient tests 39/39, finance unit tests 22/22, targeted portal route/repository checks 7/7, TypeScript, production build, hosted staging regression tests and `git diff --check` pass.
-- Prior isolated PostgreSQL finance test 9/9 and migrations 0001–0020 remain the verified local foundation. The disposable `dental_test_sandbox` database was rechecked at 0 public tables. No staging migration, Git commit/push or deployment occurred in this review.
+- Prior isolated PostgreSQL finance test 9/9 and migrations 0001–0020 remain the verified local foundation. The disposable `dental_test_sandbox` database was rechecked at 0 public tables. Migrations 0013-0020 were subsequently applied to isolated staging; no Git push or application deployment occurred.
 - Remaining independent gates: hosted multi-user checks and clinic finance/accounting approval; direct expense payments and historical reconciliation still incomplete. The local checkpoint is NOT a production certification.
 
 ## Failure handling

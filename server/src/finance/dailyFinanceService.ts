@@ -5,6 +5,7 @@ import {AuthorizationError} from "../services/authorizationErrors.js";
 import {FinanceInputError,cents,peso} from "./invoiceMoney.js";
 import {FinanceConflictError} from "./invoiceLifecycleService.js";
 import {createAuditEventRepository} from "../repositories/auditEventRepository.js";
+import {defaultClinicTimezone} from "../postgres/batchA/patientCodeAllocation.js";
 const uid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const validId=(v:unknown)=>{if(typeof v!=="string"||!uid.test(v))throw new FinanceInputError();return v};
 const day=(v:unknown)=>{if(typeof v!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(v))throw new FinanceInputError();const t=new Date(v+"T00:00:00Z");if(Number.isNaN(t.getTime())||t.toISOString().slice(0,10)!==v)throw new FinanceInputError();return v};
@@ -16,23 +17,27 @@ const totalsQuery=`SELECT
  (SELECT COALESCE(SUM(balance_due),0)::text FROM invoices WHERE branch_id=$1 AND status='finalized') AS receivables,
  (SELECT COALESCE(SUM(original_amount),0)::text FROM accounts_payable WHERE branch_id=$1 AND bill_date=$2 AND approval_status='approved') AS new_payables,
  (SELECT COALESCE(SUM(outstanding_amount),0)::text FROM accounts_payable WHERE branch_id=$1 AND approval_status='approved') AS payables,
- (SELECT COALESCE(SUM(amount),0)::text FROM payments WHERE branch_id=$1 AND payment_date::date=$2 AND payment_method='Cash') AS cash_receipts,
- (SELECT COALESCE(SUM(amount),0)::text FROM payments WHERE branch_id=$1 AND reversed_at::date=$2 AND status='reversed' AND payment_method='Cash') AS cash_reversals,
- (SELECT COALESCE(SUM(amount),0)::text FROM payments WHERE branch_id=$1 AND payment_date::date=$2 AND payment_method<>'Cash') AS digital_collections,
- (SELECT COALESCE(SUM(r.amount),0)::text FROM refunds r JOIN payments p ON p.id=r.payment_id WHERE p.branch_id=$1 AND r.recorded_at::date=$2 AND r.refund_method='Cash') AS cash_refunds,
- (SELECT COALESCE(SUM(r.amount),0)::text FROM refunds r JOIN payments p ON p.id=r.payment_id WHERE p.branch_id=$1 AND r.recorded_at::date=$2 AND r.refund_method<>'Cash') AS digital_refunds,
- (SELECT COALESCE(SUM(pp.amount),0)::text FROM payable_payments pp WHERE pp.branch_id=$1 AND pp.recorded_at::date=$2 AND pp.payment_method='Cash') AS cash_supplier_payments,
- (SELECT COALESCE(SUM(pp.amount),0)::text FROM payable_payments pp WHERE pp.branch_id=$1 AND pp.recorded_at::date=$2 AND pp.payment_method<>'Cash') AS digital_supplier_payments`;
-type Totals=Record<"billed"|"receivables"|"new_payables"|"payables"|"cash_receipts"|"cash_reversals"|"digital_collections"|"cash_refunds"|"digital_refunds"|"cash_supplier_payments"|"digital_supplier_payments",string>;
-export function createDailyFinanceService(pool:PgPoolManager){
+ (SELECT COALESCE(SUM(amount),0)::text FROM payments WHERE branch_id=$1 AND (payment_date AT TIME ZONE $3::text)::date=$2 AND payment_method='Cash' AND status IN ('posted','reversed')) AS cash_receipts,
+ (SELECT COALESCE(SUM(amount),0)::text FROM payments WHERE branch_id=$1 AND (reversed_at AT TIME ZONE $3::text)::date=$2 AND status='reversed' AND payment_method='Cash') AS cash_reversals,
+ (SELECT COALESCE(SUM(amount),0)::text FROM payments WHERE branch_id=$1 AND (payment_date AT TIME ZONE $3::text)::date=$2 AND payment_method<>'Cash' AND status IN ('posted','reversed')) AS digital_collections,
+ (SELECT COALESCE(SUM(amount),0)::text FROM payments WHERE branch_id=$1 AND (reversed_at AT TIME ZONE $3::text)::date=$2 AND status='reversed' AND payment_method<>'Cash') AS digital_reversals,
+ (SELECT COALESCE(SUM(r.amount),0)::text FROM refunds r JOIN payments p ON p.id=r.payment_id WHERE p.branch_id=$1 AND (r.recorded_at AT TIME ZONE $3::text)::date=$2 AND r.refund_method='Cash') AS cash_refunds,
+ (SELECT COALESCE(SUM(r.amount),0)::text FROM refunds r JOIN payments p ON p.id=r.payment_id WHERE p.branch_id=$1 AND (r.recorded_at AT TIME ZONE $3::text)::date=$2 AND r.refund_method<>'Cash') AS digital_refunds,
+ (SELECT COALESCE(SUM(pp.amount),0)::text FROM payable_payments pp WHERE pp.branch_id=$1 AND (pp.recorded_at AT TIME ZONE $3::text)::date=$2 AND pp.payment_method='Cash') AS cash_supplier_payments,
+ (SELECT COALESCE(SUM(pp.amount),0)::text FROM payable_payments pp WHERE pp.branch_id=$1 AND (pp.recorded_at AT TIME ZONE $3::text)::date=$2 AND pp.payment_method<>'Cash') AS digital_supplier_payments`;
+type Totals=Record<"billed"|"receivables"|"new_payables"|"payables"|"cash_receipts"|"cash_reversals"|"digital_collections"|"digital_reversals"|"cash_refunds"|"digital_refunds"|"cash_supplier_payments"|"digital_supplier_payments",string>;
+export function createDailyFinanceService(pool:PgPoolManager,timeZone=process.env.CLINIC_TIMEZONE || defaultClinicTimezone){
+ // A historical receipt remains on its original date even when reversed later;
+ // its offsetting reversal belongs only to the reversal date, not the original date.
+ try{new Intl.DateTimeFormat("en-US",{timeZone});}catch{throw new Error("Invalid clinic financial reporting time zone.");}
  async function summary(db:PgQueryExecutor,branch:string,businessDate:string){
-  const result=await db.query<Totals>(totalsQuery,[branch,businessDate]);
+  const result=await db.query<Totals>(totalsQuery,[branch,businessDate,timeZone]);
   const row=result.rows[0];if(!row)throw new FinanceConflictError();
   const val=(key:keyof Totals)=>cents(row[key]);
-  return {businessDate,branchId:branch,servicesBilled:peso(val("billed")),outstandingReceivables:peso(val("receivables")),
+  return {businessDate,branchId:branch,businessTimeZone:timeZone,servicesBilled:peso(val("billed")),outstandingReceivables:peso(val("receivables")),
    newPayables:peso(val("new_payables")),outstandingPayables:peso(val("payables")),
    cashCollected:peso(val("cash_receipts")),digitalCollected:peso(val("digital_collections")),
-   cashReversals:peso(val("cash_reversals")),cashRefunds:peso(val("cash_refunds")),
+   cashReversals:peso(val("cash_reversals")),digitalReversals:peso(val("digital_reversals")),cashRefunds:peso(val("cash_refunds")),
    digitalRefunds:peso(val("digital_refunds")),cashSupplierPayments:peso(val("cash_supplier_payments")),
    digitalSupplierPayments:peso(val("digital_supplier_payments")),
    expensesPaid:null,expensesPaidStatus:"not_integrated" as const,
@@ -57,11 +62,11 @@ export function createDailyFinanceService(pool:PgPoolManager){
      ["New Approved Payables",snapshot.newPayables],
      ["Outstanding Payables",snapshot.outstandingPayables],
      ["Cash Receipts",snapshot.cashCollected],["Digital Collections",snapshot.digitalCollected],
-     ["Cash Payment Reversals",snapshot.cashReversals],["Cash Refunds",snapshot.cashRefunds],
+     ["Cash Payment Reversals",snapshot.cashReversals],["Digital Payment Reversals",snapshot.digitalReversals],["Cash Refunds",snapshot.cashRefunds],
      ["Digital Refunds",snapshot.digitalRefunds],["Cash Supplier Payments",snapshot.cashSupplierPayments],
      ["Digital Supplier Payments",snapshot.digitalSupplierPayments]
     ];
-    const csv="Metric,PHP\\n"+fields.map(([k,v])=>k+","+v).join("\\n")+"\\n";
+    const csv=["Metric,PHP",...fields.map(([k,v])=>k+","+v)].join("\r\n")+"\r\n";
     await audit(db,c,rid,crypto.randomUUID(),branch,"FINANCE_DAILY_REPORT_EXPORTED");
     return {csv,filename:"internal-finance-"+d+".csv",complete:false,
       warning:"Direct expense payments and unintegrated historical records are excluded."};

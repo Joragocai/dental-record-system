@@ -1,5 +1,5 @@
 PHASE 15 — FINANCE / COLLECTIBLES
-STATUS: 15A approved for LOCAL build-first implementation only. No hosted migration, billing issuance, financial posting or production readiness.
+STATUS: 15A approved for LOCAL build-first implementation only. Migrations 0016-0020 applied to isolated staging; no application deployment, official issuance, real financial posting or production readiness.
 PROJECT: /home/johnr/projects/dental-record-system
 BRANCH: refactor/v2-cloud-migration
 AUTHORITY: README.md sections 2.3, 6, 9, 12, 14.8, 15, 18, 19 and phase registry; AGENTS.md.
@@ -15,14 +15,14 @@ SUBPHASES
 - Money as exact integer cent arithmetic with NUMERIC(12,2) storage, no binary floating point for financial totals.
 - Narrow finance.invoice.draft/read BRANCH grants for clinical/operational staff; finance.admin.read GLOBAL for Clinic Administrator but no admin billing route yet; System Administrator and PATIENT no broad financial grants.
 - POST /api/invoices draft and GET /api/invoices/:invoiceId protected, transactional append-only audit; no financial posting, receipt number, invoice finalization, payables or patient balance exposure.
-- Migration 0016 appended, unapplied. Unit/route/staging regressions + isolated real PostgreSQL tests pending safe TEST_DATABASE_URL.
+- Migration 0016 is applied to isolated staging. Unit/route/staging regressions + isolated real PostgreSQL tests pending safe TEST_DATABASE_URL.
 
 15B — Internal finalization and audited void (LOCAL IMPLEMENTATION COMPLETE; NO OFFICIAL ISSUANCE; ADJUSTMENTS/REAL DB TESTS OUTSTANDING)
 - Locally implemented `0017_internal_invoice_lifecycle.sql`, internal `INT-YYYY-NNNNNN` reference allocation, branch-scoped POST `/api/invoices/:invoiceId/finalize` and `/api/invoices/:invoiceId/void`, mandatory void reason, database immutability triggers, status events and audit. No statutory invoice/official receipt number is issued; clinic/accountant numbering and tax policies still require approval.
 - Immutable finalized financial documents; reversal and correction only through audited compensating actions.
 - Enforce sums of items, serial collisions, safe concurrent finalization, and finalized-row mutation prevention.
 
-15C — Payments / allocations / reversals / refunds (LOCAL IMPLEMENTATION; UNAPPLIED MIGRATION AND ISOLATED POSTGRESQL GATES)
+15C — Payments / allocations / reversals / refunds (LOCAL IMPLEMENTATION; STAGING-APPLIED MIGRATION; HOSTED SECURITY GATES)
 - Local migration `0018_payment_allocation_refund_ledger.sql` and backend transaction services/routes implement multi-invoice allocation, invoice row locking, idempotency, immutable ledger events, controlled reversal, allocation-bound refunds and append-only audits. Receipt numbers intentionally remain NULL: these are internal simulated/test records, NOT official receipts. Real PostgreSQL concurrency, trigger behavior, refund rollback and legal/accountant sign-off remain outstanding.
 - Payment methods Cash, GCash, transfer, cards, cheque and Other, cash-vs-digital separate.
 - No official receipt issuance without clinic/accountant policy; do not mutate finalized payments.
@@ -43,4 +43,4 @@ SECURITY AND RELEASE GATES
 - Test safe transaction rollback, duplicates, cross-branch/mixed-role denials, cent math, no negative balances, audits.
 - Keep all manual intervention in docs/deployment/patient-portal-staging-gate.md; live QA deferred to Phase 19.
 - 15A completion does not imply full Phase 15 completion, staged availability or readiness to collect actual money.
-- No Git commit, push, staging migration, deployment, provider action or real patient/financial data without approval.
+- Staging migrations 0013-0020 were separately approved and applied October 10, 2026; any additional database change, Git commit/push, deployment, provider action or real patient/financial data still requires approval.
