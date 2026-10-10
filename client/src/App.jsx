@@ -21,6 +21,7 @@ const RoleDashboardPage=lazy(()=>import("./pages/RoleDashboardPage"));
 const PersonnelDashboardPage=lazy(()=>import("./pages/PersonnelDashboardPage"));
 const DentistDashboardPage=lazy(()=>import("./pages/DentistDashboardPage"));
 const ClinicAdministratorDashboardPage=lazy(()=>import("./pages/ClinicAdministratorDashboardPage"));
+const SystemAdministratorDashboardPage=lazy(()=>import("./pages/SystemAdministratorDashboardPage"));
 const PatientPortalPage=lazy(()=>import("./pages/PatientPortalPage"));
 const PatientAppointmentRequestsPage=lazy(()=>import("./pages/PatientAppointmentRequestsPage"));
 const ClinicPatientRequestReviewPage=lazy(()=>import("./pages/ClinicPatientRequestReviewPage"));
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/personnel-dashboard" element={<ProtectedAuthRoute><PersonnelDashboardPage /></ProtectedAuthRoute>} />
         <Route path="/dentist-dashboard" element={<ProtectedAuthRoute><DentistDashboardPage /></ProtectedAuthRoute>} />
         <Route path="/clinic-administrator-dashboard" element={<ProtectedAuthRoute><ClinicAdministratorDashboardPage /></ProtectedAuthRoute>} />
+        <Route path="/system-administrator-dashboard" element={<ProtectedAuthRoute><SystemAdministratorDashboardPage /></ProtectedAuthRoute>} />
         <Route path="/appointments" element={<ProtectedAuthRoute><AppointmentSchedulerPage /></ProtectedAuthRoute>} />
         <Route path="/notifications" element={<ProtectedAuthRoute><NotificationsPage /></ProtectedAuthRoute>} />
         <Route path="*" element={<Navigate to="/login" replace />} />

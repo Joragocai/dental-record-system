@@ -62,7 +62,8 @@ test("technical admin has no clinical or finance navigation", async () => {
     permissions: [{ code: "user.read", scope: "GLOBAL" }]
   }));
   assert.equal(response.status, 200);
-  assert.deepEqual(response.body.links, []);
+  assert.deepEqual(response.body.links, [{key:"system-administrator-dashboard",label:"System administration",path:"/system-administrator-dashboard"}]);
+  assert.equal(JSON.stringify(response.body).includes("patient"),false);
 });
 test("branch and permission revocation are reflected on the next request", async () => {
   assert.deepEqual((await requestWithBoundary(boundary({ branchIds: [] }))).body.links, []);

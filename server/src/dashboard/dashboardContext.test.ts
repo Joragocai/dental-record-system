@@ -90,7 +90,7 @@ test("admin does not inherit dentist authority and technical-only role has no cl
   assert.deepEqual(projectDashboardContext(context({
     roles: ["SYSTEM_ADMINISTRATOR"], branchIds: [],
     permissions: [{ code: "user.read", scope: "GLOBAL" }, { code: "role_definition.configure", scope: "GLOBAL" }]
-  })).links, []);
+  })).links.map(link=>link.key), ["system-administrator-dashboard"]);
 });
 
 test("owner-dentist union honors each explicitly granted permission", () => {
@@ -194,6 +194,36 @@ test("Clinic Administrator dashboard grants are GLOBAL and never imply Dentist c
   assert.equal(combined.links.some(link=>link.key==="clinic-administrator-dashboard"),true);
   assert.equal(combined.links.some(link=>link.key==="dentist-dashboard"),true);
   assert.deepEqual(combined.roles,["CLINIC_ADMINISTRATOR","DENTIST"]);
+});
+test("technical-only dashboard projection never inherits clinical or financial privileges", () => {
+  const technical = projectDashboardContext(context({
+    roles: ["SYSTEM_ADMINISTRATOR"], branchIds: [],
+    permissions: [
+      {code:"user.read",scope:"GLOBAL"},
+      {code:"role_definition.configure",scope:"GLOBAL"},
+      {code:"appointment.list",scope:"BRANCH"},
+      {code:"finance.daily.read",scope:"BRANCH"}
+    ]
+  }));
+  assert.deepEqual(technical.links.map(link=>link.key), ["system-administrator-dashboard"]);
+  assert.deepEqual(technical.systemAdministrator,{technicalAccountRead:true,roleDefinitionsConfigure:true});
+  assert.equal(technical.personnel,undefined);
+  assert.equal(technical.dentist,undefined);
+  assert.equal(technical.clinicAdministrator,undefined);
+  const accidentallyAssigned=projectDashboardContext(context({
+    roles:["SYSTEM_ADMINISTRATOR"],
+    branchIds:["10000000-0000-4000-8000-000000000003"],
+    permissions:[{code:"user.read",scope:"GLOBAL"}]
+  }));
+  assert.deepEqual(accidentallyAssigned.branchIds,[]);
+  assert.deepEqual(accidentallyAssigned.links.map(link=>link.key),["system-administrator-dashboard"]);
+  assert.deepEqual(projectDashboardContext(context({
+    roles:["SYSTEM_ADMINISTRATOR"],permissions:[{code:"user.read",scope:"BRANCH"}]
+  })).links,[]);
+  assert.equal(projectDashboardContext(context({
+    roles:["SYSTEM_ADMINISTRATOR","DENTIST"],
+    permissions:[{code:"user.read",scope:"GLOBAL"},{code:"appointment.list",scope:"BRANCH"}]
+  })).systemAdministrator,undefined);
 });
 test("inactive, unassigned and unexpected roles fail closed", () => {
   assert.throws(() => projectDashboardContext(context({ status: "deactivated" })));

@@ -42,6 +42,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/system-administrator-dashboard",
+      "destination": "/index.html"
+    },
+    {
       "source": "/clinic-finance",
       "destination": "/index.html"
     },

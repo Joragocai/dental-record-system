@@ -1,5 +1,5 @@
 PHASE 16 — ROLE DASHBOARD
-STATUS: 16A–16C COMMITTED LOCALLY; 16D CLINIC ADMINISTRATOR WORKSPACE IMPLEMENTED LOCALLY, REVIEW AND HOSTED QA PENDING; NO COMMIT, PUSH, DEPLOYMENT OR 16E–16F APPROVED
+STATUS: 16A–16D COMMITTED LOCALLY; 16E TECHNICAL-ONLY SYSTEM ADMINISTRATOR DASHBOARD IMPLEMENTED LOCALLY PENDING FINAL REVIEW AND HOSTED QA; NO COMMIT, PUSH, DEPLOYMENT OR 16F APPROVED
 Authority: README.md Sections 6, 7, 8, 12, 14, 16.3, Task Phases 16/19, and AGENTS.md.
 Deployment: Vercel client, Render protected Express API, Supabase PostgreSQL/Auth/private Storage. Never depend on the legacy SQLite endpoints in staging.
 
@@ -52,7 +52,7 @@ ARCHITECTURAL RULES
 - Backup/restore approval, data-export approval and operational security-alert counts are deferred until dedicated reviewed protected APIs exist.
 - Internal finance figures must be labeled limited and non-statutory; no real collections or receipts authorized.
 
-16E — SYSTEM ADMINISTRATOR
+16E — SYSTEM ADMINISTRATOR (IMPLEMENTED LOCALLY; HOSTED QA PENDING)
 - Show non-sensitive /api/health and /api/ready status as applicable; server-side protected technical status/context for user-authorized troubleshooting without environment secrets, connection strings, credentials, audit patient details, record counts or exception payloads.
 - Technical account-support actions only after clinic approval; no ordinary account or financial browsing. Backend access controls remain source of truth.
 - Backup/restore metrics, storage/DB diagnostics, deployment/migration alerts, error telemetry and scoped support-access workflows remain unavailable until APIs are implemented and authorized. Do not present guessed health or success flags.
@@ -84,4 +84,4 @@ OPEN DECISIONS REQUIRING SCOPE REVIEW
 - Which missing V2 read-only list/count endpoints merit separate narrowly permissioned additions; avoid implementing large aggregates merely for dashboard cosmetics.
 - Whether any role should default to one assigned branch or require explicit branch selection. Prefer explicit selection for multi-branch staff, not implicit data joining.
 - Exact accounting labels approved for limited daily finance figures; no official receipt statements.
-Phases 16A, 16B and 16C are committed locally. Phase 16D local implementation was separately approved; it projects GLOBAL Clinic Administrator permissions, reads at most ten recent actions through the audited protected audit route, and displays only action/time/outcome, not raw audit metadata. Staff onboarding, finance approval queues, broad finance metrics, and backup approval lack safe dedicated list or summary UIs and are not implied as available. Phase 16D remains uncommitted; no Phase 16E–16F code, migrations, Git finalization, push or deployment is authorized.
+Phases 16A, 16B and 16C are committed locally. Phase 16D local implementation was separately approved; it projects GLOBAL Clinic Administrator permissions, reads at most ten recent actions through the audited protected audit route, and displays only action/time/outcome, not raw audit metadata. Staff onboarding, finance approval queues, broad finance metrics, and backup approval lack safe dedicated list or summary UIs and are not implied as available. Phase 16D was committed locally as dddc88d; Phase 16E implementation was subsequently approved. The technical-only dashboard is guarded by backend application identity, exact GLOBAL permission and one-role SYSTEM_ADMINISTRATOR semantics, and exposes only generic reachability/readiness without underlying diagnostics. Account/role mutation and recovery workflows remain deferred. Phase 16E remains uncommitted; no Phase 16F code, migrations, Git finalization, push or deployment is authorized.

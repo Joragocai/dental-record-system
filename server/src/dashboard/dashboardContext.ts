@@ -32,7 +32,13 @@ export interface ClinicAdministratorCapabilities {
   closingApprove: boolean;
 }
 
+export interface SystemAdministratorCapabilities {
+  technicalAccountRead: boolean;
+  roleDefinitionsConfigure: boolean;
+}
+
 export interface DashboardContext {
+  systemAdministrator?: SystemAdministratorCapabilities;
   clinicAdministrator?: ClinicAdministratorCapabilities;
   personnel?: PersonnelDashboardCapabilities;
   dentist?: DentistDashboardCapabilities;
@@ -43,6 +49,7 @@ export interface DashboardContext {
 }
 
 const links = [
+  { key: "system-administrator-dashboard", label: "System administration", path: "/system-administrator-dashboard", permission: "user.read", scope: "GLOBAL" },
   { key: "clinic-administrator-dashboard", label: "Clinic administration", path: "/clinic-administrator-dashboard", permission: "audit.read", scope: "GLOBAL" },
   { key: "dentist-dashboard", label: "Dentist workspace", path: "/dentist-dashboard", permission: "appointment.list", scope: "BRANCH" },
   { key: "personnel-dashboard", label: "Personnel workspace", path: "/personnel-dashboard", permission: "appointment.list", scope: "BRANCH" },
@@ -61,7 +68,9 @@ export function projectDashboardContext(context: AuthorizationContext): Dashboar
   }
   const validRoles = new Set(["PATIENT", "PERSONNEL", "DENTIST", "CLINIC_ADMINISTRATOR", "SYSTEM_ADMINISTRATOR"]);
   if (context.roles.some((role) => !validRoles.has(role))) throw new Error("Unrecognized dashboard role.");
-  const branchIds = [...new Set(context.branchIds)].sort();
+  const branchIds = context.roles.includes("SYSTEM_ADMINISTRATOR")
+    ? []
+    : [...new Set(context.branchIds)].sort();
   const hasPersonnelGrant = (code: string) =>
     branchIds.length > 0 && context.permissions.some((grant) => grant.code === code && grant.scope === "BRANCH");
   const personnel: PersonnelDashboardCapabilities | undefined = context.roles.includes("PERSONNEL") && !context.roles.includes("SYSTEM_ADMINISTRATOR")
@@ -96,7 +105,13 @@ export function projectDashboardContext(context: AuthorizationContext): Dashboar
         payableApprove: hasAdminGrant("finance.payable.approve"),
         closingApprove: hasAdminGrant("finance.closing.approve")
       } : undefined;
+  const technicalOnly = context.roles.length === 1 && context.roles[0] === "SYSTEM_ADMINISTRATOR";
+  const systemAdministrator: SystemAdministratorCapabilities | undefined = technicalOnly ? {
+    technicalAccountRead: context.permissions.some((grant) => grant.code === "user.read" && grant.scope === "GLOBAL"),
+    roleDefinitionsConfigure: context.permissions.some((grant) => grant.code === "role_definition.configure" && grant.scope === "GLOBAL")
+  } : undefined;
   return {
+    ...(systemAdministrator ? { systemAdministrator } : {}),
     ...(clinicAdministrator ? { clinicAdministrator } : {}),
     ...(personnel ? { personnel } : {}),
     ...(dentist ? { dentist } : {}),
@@ -104,6 +119,7 @@ export function projectDashboardContext(context: AuthorizationContext): Dashboar
     roles: [...new Set(context.roles)].sort(),
     branchIds,
     links: links.filter((link) => {
+      if (link.key === "system-administrator-dashboard") return Boolean(systemAdministrator && Object.values(systemAdministrator).some(Boolean));
       if (context.roles.includes("SYSTEM_ADMINISTRATOR")) return false;
       const operational = context.roles.includes("PERSONNEL") || context.roles.includes("DENTIST");
       if ((link.key === "appointments" || link.key === "clinic-finance") && !operational) return false;
