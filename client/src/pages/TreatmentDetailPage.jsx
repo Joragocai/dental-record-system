@@ -1,14 +1,23 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import AttachmentGallery from "../components/AttachmentGallery";
 import AttachmentUploadForm from "../components/AttachmentUploadForm";
-import BackButton from "../components/BackButton";
+import TreatmentRecordActions from "../components/TreatmentRecordActions";
+import RecordSuccessToast from "../components/RecordSuccessToast";
 import Layout from "../components/Layout";
-import { getExportUrl, getPatient, getTreatment, getTreatmentAttachments } from "../lib/api";
+import { getPatient, getTreatment, getTreatmentAttachments } from "../lib/api";
 import { displayNoFinalTime, formatPesoAmount } from "../lib/formatters";
+import { consumeTreatmentSaveNotice } from "../lib/treatmentSaveNotice";
+import { DASHBOARD_SCHEDULE_ORIGIN, isDashboardScheduleOrigin } from "../lib/dashboardSchedule";
 
 export default function TreatmentDetailPage() {
   const { treatmentId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [saveNotice, setSaveNotice] = useState(null);
+  const attachmentsRef = useRef(null);
+  const cameFromTreatmentEntry = Boolean(location.state?.fromTreatmentEntry && location.state?.treatmentDraft?.patient?.patient_id);
+  const cameFromDashboard = isDashboardScheduleOrigin(location.state);
   const [treatment, setTreatment] = useState(null);
   const [patient, setPatient] = useState(null);
   const [attachments, setAttachments] = useState([]);
@@ -23,6 +32,25 @@ export default function TreatmentDetailPage() {
       .catch(() => setTreatment(null));
     getTreatmentAttachments(treatmentId).then(setAttachments).catch(() => setAttachments([]));
   }, [treatmentId]);
+
+  useEffect(() => {
+    if (location.state?.focusAttachments && treatment) {
+      attachmentsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [location.state, treatment]);
+
+  useEffect(() => {
+    const consumed = consumeTreatmentSaveNotice(location.state);
+    if (!consumed) return;
+
+    setSaveNotice(consumed.notice);
+    navigate(location.pathname + location.search + location.hash, {
+      replace: true,
+      state: consumed.remainingState
+    });
+  }, [location.pathname, location.search, location.hash, location.state, navigate]);
+
+  const dismissSaveNotice = useCallback(() => setSaveNotice(null), []);
 
   function refreshAttachments() {
     return getTreatmentAttachments(treatmentId)
@@ -44,35 +72,32 @@ export default function TreatmentDetailPage() {
   }
 
   return (
-    <Layout>
+    <Layout contentClassName="treatment-record-page record-detail-wide-shell">
+      <RecordSuccessToast notice={saveNotice} onDismiss={dismissSaveNotice} dismissLabel="Dismiss treatment notification" />
+      <div className="no-print mb-3">
+        <Link
+          to={cameFromDashboard ? "/" : cameFromTreatmentEntry ? "/treatments/new" : `/patients/${treatment.patient_id}`}
+          state={cameFromTreatmentEntry && !cameFromDashboard ? { treatmentDraft: location.state.treatmentDraft } : undefined}
+          aria-label={cameFromDashboard ? "Back to Home" : cameFromTreatmentEntry ? "Back to Record Treatment" : "Back to Patient Record"}
+          className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-clinic-700 transition-colors duration-200 ease-out hover:bg-clinic-50 hover:text-clinic-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700"
+        >
+          <span aria-hidden="true">←</span> {cameFromDashboard ? "Home" : cameFromTreatmentEntry ? "Record Treatment" : "Patient Record"}
+        </Link>
+      </div>
       <section className="page-card">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-clinic-700">Treatment Record</p>
-            <h1 className="mt-2 text-3xl font-bold text-slate-900">{treatment.procedure}</h1>
-            <p className="mt-2 text-sm text-slate-600">
-              {treatment.treatment_id} | Date {treatment.treatment_date} | Patient {patient?.display_name || treatment.patient_id}
-            </p>
-          </div>
-          <div className="no-print flex flex-wrap gap-3">
-            <BackButton fallbackTo={patient ? `/patients/${patient.patient_id}` : "/patients"} />
-            <Link to={`/treatments/${treatmentId}/edit`} className="button-secondary">
-              Edit Treatment
-            </Link>
-            <Link to={`/print/treatments/${treatmentId}`} className="button-secondary">
-              Print Treatment Record
-            </Link>
-            {patient && (
-              <a className="button-secondary" href={getExportUrl(`/api/export/patients/${patient.patient_id}/treatments`)}>
-                Export Patient Treatments
-              </a>
-            )}
-          </div>
+        <div>
+          <p className="text-sm uppercase tracking-[0.2em] text-clinic-700">Treatment Record</p>
+          <h1 className="mt-2 text-3xl font-bold text-slate-900">{treatment.procedure}</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            {treatment.treatment_id} | Date {treatment.treatment_date} | Patient {patient?.display_name || treatment.patient_id}
+          </p>
         </div>
+        <TreatmentRecordActions treatmentId={treatmentId} patientId={treatment.patient_id} originState={cameFromDashboard ? DASHBOARD_SCHEDULE_ORIGIN : undefined} />
       </section>
 
       <section className="page-card mt-6">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <h2 className="section-title">Treatment Details</h2>
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div>
             <p className="text-sm text-slate-500">Dentist/s</p>
             <p className="font-semibold text-slate-900">{treatment.dentists}</p>
@@ -134,7 +159,7 @@ export default function TreatmentDetailPage() {
           treatmentOnly
         />
       </div>
-      <div className="mt-6">
+      <div ref={attachmentsRef} className="mt-6 scroll-mt-8">
         <AttachmentGallery attachments={attachments} title="Treatment Attachments" onDeleted={refreshAttachments} />
       </div>
     </Layout>

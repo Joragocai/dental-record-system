@@ -1,0 +1,124 @@
+/* Task 2: Patient registration and editing remain a single uninterrupted form.
+   Keep these responsive rules scoped to the patient form only. */
+
+.patient-registration-page,
+.patient-registration-page .patient-registration-form,
+.patient-registration-page .form-section,
+.patient-registration-page .form-section-body,
+.patient-registration-page .field-box,
+.patient-registration-page .record-tile {
+  min-width: 0;
+}
+
+.patient-registration-page .field-box {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.patient-registration-page .form-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.patient-registration-page .form-grid > *,
+.patient-registration-page .datalist-input-wrap {
+  min-width: 0;
+}
+
+.patient-registration-page .datalist-input-wrap {
+  width: 100%;
+}
+
+.patient-registration-page :is(.text-input, .select-input, .text-area) {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.patient-registration-page .text-area {
+  resize: vertical;
+}
+
+.patient-registration-page .form-section-header,
+.patient-registration-page .form-section-body {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.patient-registration-page .patient-registration-summary .record-tile {
+  min-width: 0;
+  padding: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.patient-registration-page .patient-registration-footer {
+  padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 640px) {
+  .patient-registration-page .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .patient-registration-page .form-section-header,
+  .patient-registration-page .form-section-body {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .patient-registration-page .patient-registration-summary .record-tile {
+    padding: 1rem;
+  }
+
+  .patient-registration-page .patient-registration-footer {
+    padding-bottom: 0.75rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .patient-registration-page .form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1023px) {
+  /* iOS Safari won't zoom into 16px form controls, and touch targets
+     remain comfortable on phones and tablets. */
+  .patient-registration-page :is(.text-input, .select-input, .text-area) {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 639px) {
+  /* When a text/date/select field has focus on mobile, make room for
+     the virtual keyboard instead of covering the field with Save/Clear. */
+  .patient-registration-page:has(input:not([type="checkbox"]):focus, textarea:focus, select:focus) .patient-registration-footer {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(100%);
+  }
+}
+
+@media (max-width: 639px) and (max-height: 480px) {
+  /* On short landscape screens keep the actions in the document flow.
+     This avoids permanently consuming a quarter of the viewport. */
+  .patient-registration-page .patient-registration-footer {
+    position: static;
+    margin-top: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    box-shadow: none;
+  }
+
+  .patient-registration-page .patient-registration-form {
+    padding-bottom: 0;
+  }
+
+  .patient-registration-page:has(input:not([type="checkbox"]):focus, textarea:focus, select:focus) .patient-registration-footer {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+  }
+}

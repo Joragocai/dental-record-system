@@ -54,9 +54,10 @@ function decorateScheduleItems(rows) {
   }));
 }
 
-export function getScheduleRows(database, dateValue, { includeToday = false, exactDate = false } = {}) {
+export function getScheduleRows(database, dateValue, { includeToday = false, exactDate = false, includeOtherStatuses = false } = {}) {
   const dateFilter = exactDate ? "schedule_date = ?" : includeToday ? "schedule_date = ?" : "schedule_date > ?";
   const params = [dateValue];
+  const appointmentFilter = includeOtherStatuses ? "" : "WHERE a.status = 'Scheduled'";
 
   const rows = database
     .prepare(
@@ -65,6 +66,7 @@ export function getScheduleRows(database, dateValue, { includeToday = false, exa
          SELECT
            'appointment' AS source_type,
            a.id AS source_id,
+           NULL AS treatment_record_id,
            a.patient_id,
            p.patient_id AS patient_system_id,
            p.first_name,
@@ -78,13 +80,14 @@ export function getScheduleRows(database, dateValue, { includeToday = false, exa
            a.status
          FROM appointments a
          JOIN patients p ON p.patient_id = a.patient_id
-         WHERE a.status = 'Scheduled'
+         ${appointmentFilter}
 
          UNION ALL
 
          SELECT
            'treatment_follow_up' AS source_type,
            t.id AS source_id,
+           t.treatment_id AS treatment_record_id,
            t.patient_id,
            p.patient_id AS patient_system_id,
            p.first_name,
@@ -162,7 +165,9 @@ export function getDashboardSummaryData({ database, patients, treatments, todayI
 
   return {
     totalPatientRecords: Number(database.prepare("SELECT COUNT(*) AS count FROM patients").get().count || 0),
-    latestPatients: patients.slice(-5).reverse(),
+    latestPatients: [...patients]
+      .sort((left, right) => String(right.created_at || right.date_registered || "").localeCompare(String(left.created_at || left.date_registered || "")))
+      .slice(0, 20),
     latestTreatments: treatments.slice(0, 5),
     todaySchedule: buildTodayScheduleMetrics(todayScheduleEntries, todayIso)
   };

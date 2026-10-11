@@ -11,6 +11,10 @@ import { createTreatment } from "../services/treatmentService.js";
 import { buildAttachmentPath } from "../utils/attachmentUtils.js";
 import { validateAppointmentPayload, validatePatientPayload, validateTreatmentPayload } from "../utils/validation.js";
 import { buildDemoSeedData } from "./demoSeedData.js";
+import { buildDemoTreatmentPayload, validateDemoSeedFixture } from "./demoSeedValidation.js";
+import { clearDemoDatabaseRecords } from "./demoDatabaseReset.js";
+import { assertDemoBackupIdle, clearDemoBackupStatus } from "../services/backupService.js";
+import { beginDemoMutation, endDemoMutation, isDemoMutationInProgress } from "./demoOperationState.js";
 import {
   approvedDemoPaths,
   demoMarkerSchemaVersion,
@@ -145,6 +149,7 @@ function getDemoMarkerPayload(anchorDate) {
   return {
     schemaVersion: demoMarkerSchemaVersion,
     demoSeedVersion,
+    state: "ready",
     seedCompletedAt: new Date().toISOString(),
     anchorDate,
     expectedPatientCount: expectedCounts.patients,
@@ -261,7 +266,7 @@ function resolveOwnerIds(seed, patientByKey, treatmentByKey) {
 }
 
 async function createDemoDataset(anchorDate) {
-  const demoData = buildDemoSeedData(anchorDate);
+  const demoData = validateDemoSeedFixture(buildDemoSeedData(anchorDate));
   const createdFiles = [];
   const patientByKey = new Map();
   const treatmentByKey = new Map();
@@ -291,26 +296,12 @@ async function createDemoDataset(anchorDate) {
 
       const treatmentDate = demoData.addDays(anchorDate, seed.dateOffset);
       const treatmentId = getNextTreatmentId(new Date(`${anchorDate}T10:00:00`));
-      const financials = buildTreatmentFinancials(seed);
-      const { errors, data } = validateTreatmentPayload({
-        treatment_id: treatmentId,
-        patient_id: patient.patient_id,
-        treatment_date: treatmentDate,
-        tooth_numbers: seed.tooth_numbers,
-        next_appointment: seed.next_appointment_offset === null ? "" : demoData.addDays(anchorDate, seed.next_appointment_offset),
-        next_appointment_date: seed.next_appointment_offset === null ? "" : demoData.addDays(anchorDate, seed.next_appointment_offset),
-        next_appointment_time: seed.next_appointment_time,
-        procedure: seed.procedure,
-        dentists: seed.dentists,
-        amount_charged: financials.amountCharged,
-        discount_type: seed.discount_type,
-        discount_percent: financials.discountPercent,
-        discount_amount: financials.discountAmount,
-        net_amount_due: financials.netAmountDue,
-        amount_paid: financials.amountPaid,
-        balance: financials.balance,
-        remarks: seed.remarks
-      });
+      const { errors, data } = validateTreatmentPayload(buildDemoTreatmentPayload(seed, {
+        patientId: patient.patient_id,
+        treatmentId,
+        anchorDate,
+        addDays: demoData.addDays
+      }));
       assertValidationResult(errors, `Treatment ${index + 1}`);
       const treatment = createTreatment(data, toTimestampIso(treatmentDate, 10, index));
       treatmentByKey.set(seed.key, treatment);
@@ -421,8 +412,19 @@ export async function prepareDemoEnvironment() {
   }
 
   if (marker) {
-    if (marker.schemaVersion !== demoMarkerSchemaVersion || marker.demoSeedVersion !== demoSeedVersion) {
-      throw new Error("Demo environment uses an older seed version. Run npm run demo:reset.");
+    if (marker.schemaVersion !== demoMarkerSchemaVersion) {
+      throw new Error("Demo environment marker schema is unsupported. Please inspect the demo database.");
+    }
+
+    // Existing fictional records stay usable after a fixture update until Demo Fill is selected.
+
+    if (marker.state === "empty") {
+      initializeDatabase();
+      const counts = getPreparedCounts();
+      if (Object.values(counts).some((count) => count !== 0)) {
+        throw new Error("Empty demo marker found with existing records. Use the dashboard controls to reset demo data.");
+      }
+      return { status: "empty", anchorDate: null, counts, attachmentFiles: countDemoAttachmentFiles() };
     }
 
     const counts = await validatePreparedDemoEnvironment(marker);
@@ -471,6 +473,119 @@ export function getDemoRuntimeSummary() {
     backups: runtimeConfig.getDisplayPath(runtimeConfig.backupRoot),
     marker: runtimeConfig.getDisplayPath(approvedDemoPaths.markerPath)
   };
+}
+
+export { isDemoMutationInProgress };
+
+export async function runExclusiveDemoMutation(operation) {
+  ensureDemoRuntimePaths();
+  beginDemoMutation();
+  try {
+    assertDemoBackupIdle();
+    return await operation();
+  } finally {
+    endDemoMutation();
+  }
+}
+
+async function assertSafeDemoArtifacts() {
+  ensureDemoRuntimePaths();
+
+  const paths = [
+    runtimeConfig.databaseDir,
+    approvedDemoPaths.databasePath,
+    approvedDemoPaths.markerPath,
+    runtimeConfig.uploadRoot,
+    runtimeConfig.patientUploadDir,
+    runtimeConfig.treatmentUploadDir,
+    runtimeConfig.exportRoot,
+    runtimeConfig.backupRoot
+  ];
+
+  for (const target of paths) {
+    let stats;
+    try {
+      stats = await fsp.lstat(target);
+    } catch (error) {
+      if (error?.code === "ENOENT") continue;
+      throw error;
+    }
+    if (stats.isSymbolicLink()) {
+      throw new Error("Refusing to reset a demo path that is a symbolic link: " + runtimeConfig.getDisplayPath(target));
+    }
+  }
+}
+
+async function emptyDemoArtifactFolders() {
+  for (const directory of [runtimeConfig.uploadRoot, runtimeConfig.exportRoot, runtimeConfig.backupRoot]) {
+    let entries;
+    try {
+      entries = await fsp.readdir(directory);
+    } catch (error) {
+      if (error?.code === "ENOENT") continue;
+      throw error;
+    }
+    for (const entry of entries) {
+      await fsp.rm(path.join(directory, entry), { recursive: true, force: true });
+    }
+  }
+  await ensureDemoDirectories();
+}
+
+async function resetDemoRecordsToEmpty() {
+  await assertSafeDemoArtifacts();
+  initializeDatabase();
+
+  clearDemoDatabaseRecords(db);
+
+  await emptyDemoArtifactFolders();
+  clearDemoBackupStatus();
+  const marker = {
+    schemaVersion: demoMarkerSchemaVersion,
+    demoSeedVersion,
+    state: "empty",
+    clearedAt: new Date().toISOString()
+  };
+  await fsp.writeFile(approvedDemoPaths.markerPath, JSON.stringify(marker, null, 2) + "\n", "utf8");
+
+  return { status: "empty", counts: getPreparedCounts() };
+}
+
+export function getDemoDataStatus() {
+  ensureDemoRuntimePaths();
+  const counts = getPreparedCounts();
+  return {
+    counts,
+    isEmpty: Object.values(counts).every((count) => count === 0)
+  };
+}
+
+export async function clearDemoData() {
+  return runExclusiveDemoMutation(() => resetDemoRecordsToEmpty());
+}
+
+export async function loadDemoData() {
+  return runExclusiveDemoMutation(async () => {
+    // Validate all seed records before deleting any currently entered demo data.
+    const anchorDate = getManilaTodayIso();
+    validateDemoSeedFixture(buildDemoSeedData(anchorDate));
+    await resetDemoRecordsToEmpty();
+    try {
+      await createDemoDataset(anchorDate);
+      const marker = getDemoMarkerPayload(anchorDate);
+      await fsp.writeFile(approvedDemoPaths.markerPath, JSON.stringify(marker, null, 2) + "\n", "utf8");
+      const counts = await validatePreparedDemoEnvironment(marker);
+      return { status: "ready", anchorDate, counts };
+    } catch (error) {
+      // A failed seed should leave a genuinely empty demo, not partially created data.
+      try {
+        await resetDemoRecordsToEmpty();
+      } catch (cleanupError) {
+        console.error("[demo] Recovery cleanup failed:", cleanupError);
+      }
+      throw error;
+    }
+  });
 }
 
 export const demoEnvironmentConfig = {

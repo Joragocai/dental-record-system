@@ -178,7 +178,7 @@ ensureSafeUploadRoot(uploadRoot, backupRoot);
 ensureSafeExportRoot(exportRoot, uploadRoot, backupRoot);
 ensureSafeBackupRoot(backupRoot, databasePath, uploadRoot, exportRoot);
 
-const autoBackupEnabled = parseBooleanEnv(process.env.DENTAL_AUTO_BACKUP_ENABLED, mode === "clean");
+const autoBackupEnabled = parseBooleanEnv(process.env.DENTAL_AUTO_BACKUP_ENABLED, true);
 const patientUploadDir = path.join(uploadRoot, "patients");
 const treatmentUploadDir = path.join(uploadRoot, "treatments");
 
@@ -218,10 +218,6 @@ export const runtimeConfig = {
 export function assertAutomaticBackupsAllowed() {
   if (!runtimeConfig.autoBackupEnabled) {
     throw new Error("Automatic backup is disabled for the active application mode.");
-  }
-
-  if (runtimeConfig.isDemoMode) {
-    throw new Error("Automatic backups are disabled in demo mode.");
   }
 }
 

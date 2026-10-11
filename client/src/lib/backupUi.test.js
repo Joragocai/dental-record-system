@@ -2,24 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   formatRetentionSummary,
+  formatBackupDateTime,
   getBackupHeaderDescription,
   getLatestBackupDisplay,
   getManualBackupButtonState,
   getNextBackupDisplay
 } from "./backupUi.js";
 
-test("clean mode header description says automatic backups run weekly", () => {
-  assert.equal(
-    getBackupHeaderDescription({ isDemoMode: false }),
-    "Protect patient records, treatment records, and uploaded attachments. Automatic backups run weekly."
-  );
-});
-
-test("demo mode header description says automatic backups are disabled", () => {
-  assert.equal(
-    getBackupHeaderDescription({ isDemoMode: true }),
-    "Protect fictional demo records and attachments. Automatic backups are disabled in Demo Mode."
-  );
+test("backup header explains routine protection and on-demand backups", () => {
+  const expected = "Protect your clinic's patient records, treatment information, and uploaded files through automatic weekly and on-demand backups. Review backup history, schedules, and retention details below.";
+  assert.equal(getBackupHeaderDescription({ isDemoMode: false }), expected);
+  assert.equal(getBackupHeaderDescription({ isDemoMode: true }), expected);
+  assert.doesNotMatch(expected, /fictional/i);
 });
 
 test("latest backup combines timestamp, type, and successful result when the latest backup succeeded", () => {
@@ -40,10 +34,10 @@ test("latest backup shows a safe empty state when no backup exists", () => {
   });
 });
 
-test("next backup shows demo disabled state from runtime mode", () => {
+test("next backup shows due date in demo mode", () => {
   assert.equal(
     getNextBackupDisplay({ nextBackupDueAt: "2026-08-04T13:10:00.000Z" }, { isDemoMode: true }),
-    "Disabled in Demo Mode"
+    formatBackupDateTime("2026-08-04T13:10:00.000Z")
   );
 });
 

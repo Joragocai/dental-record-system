@@ -432,6 +432,99 @@ export function buildDemoSeedData(anchorDate) {
     appointmentSeed("p14", 3, { planned_procedure: "Dental Consultation" })
   ];
 
+  // Additional fictional clinic activity so presentation cards visibly scroll.
+  // All names and contact details are synthetic sample records.
+  const additionalProfiles = [
+    ["Rafael", "Arcilla", "Male", 33],
+    ["Isabel", "Navarro", "Female", 27],
+    ["Mateo", "Santos", "Male", 41],
+    ["Elena", "Lim", "Female", 62],
+    ["Nico", "Velasco", "Male", 22],
+    ["Jasmine", "Ortega", "Female", 35],
+    ["Paolo", "Reyes", "Male", 19],
+    ["Camille", "Dizon", "Female", 29],
+    ["Theo", "Cruz", "Male", 13],
+    ["Gabrielle", "Tan", "Female", 45],
+    ["Bruno", "Castillo", "Male", 52],
+    ["Alina", "Robles", "Female", 26],
+    ["Marco", "Valdez", "Male", 56],
+    ["Celine", "Mendoza", "Female", 39],
+    ["Diego", "Salazar", "Male", 31],
+    ["Bianca", "Aquino", "Female", 24],
+    ["Liam", "Vergara", "Male", 15],
+    ["Rina", "Pascual", "Female", 70],
+    ["Joaquin", "Flores", "Male", 64],
+    ["Mae", "Serrano", "Female", 28],
+    ["Arturo", "Villanueva", "Male", 47],
+    ["Leah", "Rivera", "Female", 37],
+    ["Harvey", "Torres", "Male", 34],
+    ["Trisha", "Abad", "Female", 30]
+  ];
+  const procedures = [
+    ["Dental Consultation", 600],
+    ["Oral Prophylaxis / Cleaning", 1500],
+    ["Tooth Filling", 1800],
+    ["Dental Restoration / Pasta", 2000],
+    ["Fluoride Treatment", 1000],
+    ["Tooth Extraction", 2400],
+    ["Follow-up Checkup", 800],
+    ["Orthodontic Adjustment", 1800]
+  ];
+  const branches = ["Lilac", "Concepcion", "Marikina Public Market"];
+  const todaySlots = ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00",
+    "11:30", "13:00", "13:30", "14:00", "14:30", "15:00"];
+  const tomorrowSlots = ["08:15", "08:45", "09:15", "09:45", "10:15", "10:45", "13:15", "14:15"];
+
+  additionalProfiles.forEach(([firstName, lastName, gender, age], index) => {
+    const recordNumber = index + 17;
+    const patientKey = "p" + recordNumber;
+    const [procedure, charge] = procedures[index % procedures.length];
+    const branch = branches[index % branches.length];
+    const appointmentOffset = index < todaySlots.length ? 0 : index < todaySlots.length + tomorrowSlots.length ? 1 : (index % 2 === 0 ? 3 : 7);
+    const appointmentTime = appointmentOffset === 0 ? todaySlots[index] : appointmentOffset === 1 ? tomorrowSlots[index - todaySlots.length] : "10:00";
+    const minor = age < 18;
+    const senior = age >= 60;
+
+    patients.push(patientSeed(patientKey, {
+      first_name: firstName,
+      last_name: lastName,
+      gender,
+      birthday: birthdayFromAnchor(anchorDate, age, -(index + 9)),
+      date_registered_offset: -Math.floor(index / 6),
+      mobile_number: "0917000" + String(recordNumber).padStart(4, "0"),
+      email_address: firstName.toLowerCase() + "." + lastName.toLowerCase() + ".demo@example.com",
+      branch_location: branch,
+      patient_occupation: minor ? "Student" : "Demo Clinic Patient",
+      discount_eligibility: senior ? "Senior Citizen" : "None",
+      is_minor: minor ? "Yes" : "No",
+      parent_guardian_name: minor ? "Demo Parent / Guardian" : "",
+      parent_guardian_occupation: minor ? "Demo Guardian" : "",
+      reason_for_consultation: "FICTIONAL DEMO RECORD - NOT A REAL PATIENT. " + procedure + "."
+    }));
+
+    const discountType = senior ? "Senior Citizen" : "None";
+    const netDue = senior ? charge * 0.8 : charge;
+    const paid = index % 4 === 0 ? Math.round(netDue / 2) : netDue;
+    const followUpOffset = index % 6 === 0 ? 1 : index % 6 === 3 ? 7 : null;
+    const scheduledFollowUpOffset = followUpOffset === appointmentOffset ? null : followUpOffset;
+
+    treatments.push(treatmentSeed(
+      "tr" + (index + 31), patientKey, -(index % 12 + 1), procedure, charge, paid,
+      {
+        discount_type: discountType,
+        dentists: index % 3 === 0 ? "Dr. A. Demo" : "Dr. Fiction",
+        next_appointment_offset: scheduledFollowUpOffset,
+        next_appointment_time: scheduledFollowUpOffset === null ? "" : scheduledFollowUpOffset === 1 ? "16:00" : "09:30"
+      }
+    ));
+
+    appointments.push(appointmentSeed(patientKey, appointmentOffset, {
+      appointment_time: appointmentTime,
+      planned_procedure: procedure,
+      notes: "FICTIONAL DEMO APPOINTMENT - NOT A REAL PATIENT (" + branch + ")"
+    }));
+  });
+
   const attachments = [
     attachmentSeed("att1", "patient", "p1", "txt", "Prescription"),
     attachmentSeed("att2", "patient", "p3", "png", "X-ray"),

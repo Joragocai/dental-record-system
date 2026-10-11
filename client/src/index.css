@@ -61,6 +61,13 @@ body {
   @apply mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8;
 }
 
+/* The patient record needs additional room for clinical schedule and history tables.
+   Keep all record cards aligned while leaving other pages at their existing width. */
+.patient-record-wide-shell,
+.record-detail-wide-shell {
+  max-width: 110rem;
+}
+
 .page-card {
   animation: ui-fade-up var(--ui-duration-standard) var(--ui-ease-standard);
   transition:
@@ -68,6 +75,80 @@ body {
     border-color var(--ui-duration-standard) var(--ui-ease-standard),
     transform var(--ui-duration-standard) var(--ui-ease-standard);
   @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm;
+}
+
+/* Patient and treatment record detail interactions share the clinic's muted teal palette. */
+:is(.patient-record-page, .treatment-record-page) .patient-record-data-row {
+  transition: background-color 180ms var(--ui-ease-standard);
+}
+
+:is(.patient-record-page, .treatment-record-page) .patient-record-data-row:hover,
+:is(.patient-record-page, .treatment-record-page) .patient-record-data-row:focus-within {
+  background-color: #f0f5f3;
+}
+
+:is(.patient-record-page, .treatment-record-page) .button-secondary:not(:disabled):hover,
+:is(.patient-record-page, .treatment-record-page) .button-download:hover,
+:is(.patient-record-page, .treatment-record-page) .file-picker-wrap:not(:has(input:disabled)) .file-picker-button:hover,
+:is(.patient-record-page, .treatment-record-page) .attachment-preview-close:hover {
+  background-color: #e5f0eb;
+  border-color: #457a70;
+  color: #234e46;
+}
+
+/* Keep table action buttons distinct from the softly highlighted row. */
+:is(.patient-record-page, .treatment-record-page) .patient-record-data-row .button-secondary:hover,
+:is(.patient-record-page, .treatment-record-page) .patient-record-data-row .button-secondary:focus-visible {
+  background-color: #285852;
+  border-color: #285852;
+  color: #ffffff;
+  box-shadow: 0 4px 12px -6px rgba(31, 75, 67, 0.5);
+}
+
+:is(.patient-record-page, .treatment-record-page) .patient-record-data-row a:not(.button-secondary):hover,
+:is(.patient-record-page, .treatment-record-page) .patient-record-data-row a:not(.button-secondary):focus-visible {
+  color: #173e36;
+  text-decoration-thickness: 2px;
+}
+
+:is(.patient-record-page, .treatment-record-page) .button-primary:not(:disabled):hover {
+  background-color: #1f4b43;
+}
+
+:is(.patient-record-page, .treatment-record-page) .button-danger-outline:not(:disabled):hover {
+  background-color: #fff1f2;
+  border-color: #be123c;
+  color: #9f1239;
+}
+
+/* The record view is extra wide, but a single attachment shouldn't stretch.
+   Wrap fixed-sized cards instead of expanding them into equal-width columns. */
+:is(.patient-record-page, .treatment-record-page) .attachment-gallery-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+:is(.patient-record-page, .treatment-record-page) .attachment-gallery-card {
+  flex: 0 1 20rem;
+  max-width: 100%;
+  transition:
+    background-color 180ms var(--ui-ease-standard),
+    border-color 180ms var(--ui-ease-standard),
+    box-shadow 180ms var(--ui-ease-standard),
+    transform 180ms var(--ui-ease-standard);
+}
+
+:is(.patient-record-page, .treatment-record-page) .attachment-gallery-card:hover {
+  border-color: #457a70;
+  background-color: #ffffff;
+  box-shadow: 0 12px 28px -18px rgba(31, 75, 67, 0.4);
+}
+
+:is(.patient-record-page, .treatment-record-page) .file-picker-wrap:hover:not(:has(input:disabled)) {
+  border-color: #669a90;
+  background-color: #f7fbf9;
 }
 
 .form-grid {
@@ -81,11 +162,23 @@ body {
 .text-input,
 .select-input,
 .text-area {
+  transition:
+    border-color 190ms var(--ui-ease-standard),
+    background-color 190ms var(--ui-ease-standard),
+    box-shadow 190ms var(--ui-ease-standard);
   @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-clinic-500 focus:outline-none focus:ring-2 focus:ring-clinic-100;
 }
 
 .input-filled {
-  @apply border-teal-200 bg-teal-50/50;
+  @apply border-clinic-100 bg-clinic-50/40;
+}
+
+.classification-compact-select {
+  min-height: 36px;
+  height: 36px;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 1.35;
 }
 
 .text-area {
@@ -182,11 +275,113 @@ body {
 }
 
 .field-box {
+  transition:
+    border-color 190ms var(--ui-ease-standard),
+    background-color 190ms var(--ui-ease-standard),
+    box-shadow 190ms var(--ui-ease-standard);
   @apply rounded-2xl border border-slate-200 bg-slate-50/60 p-3;
 }
 
 .input-error {
   @apply border-rose-400 bg-rose-50 focus:border-rose-500 focus:ring-rose-100;
+}
+
+/* Give editable controls the same gentle teal feedback throughout the forms.
+   Focus is stronger than hover; validation errors always remain red. */
+.text-input:not([readonly]):not(:disabled):not(.input-error):hover,
+.select-input:not(:disabled):not(.input-error):hover,
+.text-area:not([readonly]):not(:disabled):not(.input-error):hover {
+  @apply border-clinic-500 bg-clinic-50;
+}
+
+.text-input:not([readonly]):not(:disabled):not(.input-error):focus,
+.select-input:not(:disabled):not(.input-error):focus,
+.text-area:not([readonly]):not(:disabled):not(.input-error):focus {
+  @apply border-clinic-500 bg-white ring-2 ring-clinic-100;
+}
+
+/* Read-only metadata should not suggest that it is editable. */
+.text-input[readonly]:not(.input-error),
+.text-area[readonly]:not(.input-error),
+.text-input:disabled,
+.select-input:disabled,
+.text-area:disabled {
+  @apply cursor-default border-slate-200 bg-slate-100/70 text-slate-600 shadow-none;
+}
+
+.text-input[readonly]:not(.input-error):focus-visible,
+.text-area[readonly]:not(.input-error):focus-visible {
+  @apply border-slate-300 ring-2 ring-slate-200;
+}
+
+/* Calculated treatment amounts remain read-only while their surrounding
+   panels provide the same subtle visual feedback as other financial fields. */
+.treatment-entry-page .field-box:has(input[readonly]):not(:has(.input-error)):hover {
+  border-color: #669a90;
+  background-color: #f0f5f3;
+}
+
+.treatment-entry-page .field-box:has(input[readonly]):not(:has(.input-error)):focus-within {
+  border-color: #457a70;
+  background-color: #edf5f1;
+}
+
+.field-box:has(.input-filled):not(:has(.input-error)):not(:has([readonly])) {
+  @apply border-clinic-100 bg-clinic-50/30;
+}
+
+.field-box:has(:is(.text-input, .select-input, .text-area):not([readonly]):not(:disabled)):not(:has(.input-error)):hover {
+  @apply border-clinic-500 bg-clinic-50;
+}
+
+.field-box:has(:is(.text-input, .select-input, .text-area):not([readonly]):not(:disabled)):not(:has(.input-error)):focus-within {
+  @apply border-clinic-700 bg-clinic-50;
+  box-shadow: 0 0 0 1px rgb(60 122 115 / 0.12);
+}
+
+.field-box:has(:is(.text-input, .select-input, .text-area):not([readonly]):not(:disabled)):not(:has(.input-error)):focus-within .label-text {
+  @apply text-clinic-700;
+}
+
+/* Red validation feedback takes precedence over the teal input states. */
+.field-box:has(.input-error) {
+  @apply border-rose-200 bg-rose-50/40;
+}
+
+.field-box:has(.input-error):hover,
+.field-box:has(.input-error):focus-within {
+  @apply border-rose-300 bg-rose-50/60;
+}
+
+.text-input.input-error:hover,
+.select-input.input-error:hover,
+.text-area.input-error:hover,
+.text-input.input-error:focus,
+.select-input.input-error:focus,
+.text-area.input-error:focus {
+  @apply border-rose-500 bg-rose-50 ring-2 ring-rose-100;
+}
+
+/* Medical checklist options follow the same restrained interaction language. */
+.medical-condition-option {
+  transition:
+    border-color 190ms var(--ui-ease-standard),
+    background-color 190ms var(--ui-ease-standard),
+    box-shadow 190ms var(--ui-ease-standard);
+}
+
+.medical-condition-option:hover,
+.medical-condition-option:has(input:checked) {
+  @apply border-clinic-500 bg-clinic-50;
+}
+
+.medical-condition-option:focus-within {
+  @apply border-clinic-500 bg-clinic-50;
+  box-shadow: 0 0 0 2px rgb(60 122 115 / 0.13);
+}
+
+.medical-condition-option input {
+  accent-color: #285852;
 }
 
 .error-text {
@@ -322,16 +517,24 @@ body {
     transform var(--ui-duration-fast) var(--ui-ease-standard);
 }
 
-.nav-link-ui:hover {
-  transform: translateY(-1px);
-}
-
 .ui-loading {
   animation: ui-soft-pulse 1.25s ease-in-out infinite;
 }
 
 .print-document {
   @apply mx-auto max-w-5xl bg-white;
+}
+
+/* Keep preview paper centered while letting the controls and Back link
+   fit naturally on smaller screens. Print/PDF rendering remains unchanged. */
+@media screen and (max-width: 640px) {
+  .print-preview-page .print-document > .page-card {
+    padding: 1rem;
+  }
+
+  .print-preview-page .document-sheet {
+    min-width: 0;
+  }
 }
 
 .document-sheet {

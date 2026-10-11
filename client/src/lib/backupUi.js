@@ -28,12 +28,8 @@ export function formatBackupResultLabel(value) {
   return value;
 }
 
-export function getBackupHeaderDescription(runtimeStatus) {
-  if (runtimeStatus?.isDemoMode) {
-    return "Protect fictional demo records and attachments. Automatic backups are disabled in Demo Mode.";
-  }
-
-  return "Protect patient records, treatment records, and uploaded attachments. Automatic backups run weekly.";
+export function getBackupHeaderDescription() {
+  return "Protect your clinic's patient records, treatment information, and uploaded files through automatic weekly and on-demand backups. Review backup history, schedules, and retention details below.";
 }
 
 export function getLatestBackupDisplay(backupStatus) {
@@ -63,10 +59,6 @@ export function getLatestBackupDisplay(backupStatus) {
 }
 
 export function getNextBackupDisplay(backupStatus, runtimeStatus) {
-  if (runtimeStatus?.isDemoMode) {
-    return "Disabled in Demo Mode";
-  }
-
   if (!backupStatus?.nextBackupDueAt) {
     return "Not scheduled";
   }

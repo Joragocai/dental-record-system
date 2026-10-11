@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import BackButton from "../components/BackButton";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import { createPatientAppointment, getAppointment, getPatient, updateAppointment } from "../lib/api";
 import { appointmentStatusOptions, emptyAppointment, suggestedTreatmentProcedures } from "../lib/forms";
 import { validateAppointmentForm } from "../lib/validation";
+import { useRuntimeStatus } from "../context/RuntimeStatusContext";
+import { usePatientUnsavedGuard } from "../lib/usePatientUnsavedGuard";
+import { hasUnsavedAppointmentChanges } from "../lib/appointmentFormState";
+import { isDashboardScheduleOrigin } from "../lib/dashboardSchedule";
 
 function hasFilledValue(value) {
   if (value === null || value === undefined) return false;
@@ -39,11 +42,24 @@ function LabelText({ label, required = false }) {
 export default function AppointmentFormPage({ mode = "create" }) {
   const { patientId, appointmentId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromDashboardSchedule = mode === "edit" && isDashboardScheduleOrigin(location.state);
+  const backDestination = fromDashboardSchedule ? "/" : `/patients/${patientId}`;
+  const backLabel = fromDashboardSchedule ? "Home" : "Patient Record";
+  const { isDemoMode } = useRuntimeStatus();
+  const formRef = useRef(null);
+  const savingRef = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSucceeded, setSaveSucceeded] = useState(false);
   const [patient, setPatient] = useState(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => ({
     ...emptyAppointment,
     appointment_date: new Date().toISOString().slice(0, 10)
-  });
+  }));
+  const [baseline, setBaseline] = useState(() => ({
+    ...emptyAppointment,
+    appointment_date: new Date().toISOString().slice(0, 10)
+  }));
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");
 
@@ -55,8 +71,8 @@ export default function AppointmentFormPage({ mode = "create" }) {
     if (mode !== "edit" || !appointmentId) return;
 
     getAppointment(appointmentId)
-      .then((appointment) =>
-        setForm({
+      .then((appointment) => {
+        const loaded = {
           ...emptyAppointment,
           ...appointment,
           appointment_date: appointment.appointment_date || "",
@@ -64,10 +80,15 @@ export default function AppointmentFormPage({ mode = "create" }) {
           planned_procedure: appointment.planned_procedure || "",
           notes: appointment.notes || "",
           status: appointment.status || "Scheduled"
-        })
-      )
+        };
+        setForm(loaded);
+        setBaseline(loaded);
+      })
       .catch(() => setStatus("Unable to load appointment."));
   }, [appointmentId, mode]);
+
+  const hasUnsavedChanges = hasUnsavedAppointmentChanges(form, baseline);
+  usePatientUnsavedGuard(hasUnsavedChanges && !isSaving && !saveSucceeded, "appointment");
 
   function handleChange(name, value) {
     setForm((current) => ({ ...current, [name]: value }));
@@ -81,30 +102,52 @@ export default function AppointmentFormPage({ mode = "create" }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (savingRef.current) return;
     const validation = validateAppointmentForm(form, patient);
     if (!validation.isValid) {
       setErrors(validation.errors);
       setStatus("Review the highlighted appointment fields before saving.");
+      const firstInvalidName = Object.keys(validation.errors).find((name) => formRef.current?.elements.namedItem(name));
+      if (firstInvalidName) {
+        window.requestAnimationFrame(() => {
+          const field = formRef.current?.elements.namedItem(firstInvalidName);
+          if (!field) return;
+          field.focus({ preventScroll: true });
+          field.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+        });
+      }
       return;
     }
 
+    savingRef.current = true;
+    setIsSaving(true);
+    setStatus("");
     try {
       if (mode === "edit" && appointmentId) {
         await updateAppointment(appointmentId, validation.normalized);
       } else {
         await createPatientAppointment(patientId, validation.normalized);
       }
-      navigate(`/patients/${patientId}`);
+      setSaveSucceeded(true);
+      navigate(backDestination, { state: { saveNotice: { kind: mode === "edit" ? "appointment-updated" : "appointment-created" } } });
     } catch (error) {
       setStatus(error.response?.data?.message || `Unable to ${mode === "edit" ? "update" : "save"} appointment.`);
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
     }
   }
 
   return (
     <Layout>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit} noValidate aria-busy={isSaving} className="space-y-6 pb-36 sm:pb-0">
+        <div className="no-print -mb-2">
+          <Link to={backDestination} aria-label={`Back to ${backLabel}`} className="inline-flex min-h-10 w-fit items-center gap-2 rounded-lg px-2 text-sm font-medium text-clinic-700 transition-colors duration-200 ease-out hover:bg-clinic-50 hover:text-clinic-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700">
+            <span aria-hidden="true">←</span> {backLabel}
+          </Link>
+        </div>
         <section className="page-card">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
             <div>
               <p className="text-sm uppercase tracking-[0.25em] text-clinic-700">Patient Appointment</p>
               <h1 className="mt-2 text-3xl font-bold text-slate-900">{mode === "edit" ? "Edit Appointment" : "Schedule Appointment"}</h1>
@@ -113,12 +156,6 @@ export default function AppointmentFormPage({ mode = "create" }) {
                   ? "Update the appointment details without changing the patient record history."
                   : "Create a planned visit without creating a completed treatment record."}
               </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <BackButton fallbackTo={patientId ? `/patients/${patientId}` : "/patients"} />
-              <button type="submit" className="button-primary">
-                {mode === "edit" ? "Update Appointment" : "Save Appointment"}
-              </button>
             </div>
           </div>
 
@@ -153,6 +190,8 @@ export default function AppointmentFormPage({ mode = "create" }) {
                 <LabelText label="Appointment Date" required />
                 <input
                   type="date"
+                  name="appointment_date"
+                  aria-invalid={Boolean(errors.appointment_date)}
                   className={inputClass(Boolean(errors.appointment_date), hasFilledValue(form.appointment_date))}
                   value={form.appointment_date}
                   onChange={(event) => handleChange("appointment_date", event.target.value)}
@@ -163,6 +202,8 @@ export default function AppointmentFormPage({ mode = "create" }) {
                 <span className="label-text">Appointment Time</span>
                 <input
                   type="time"
+                  name="appointment_time"
+                  aria-invalid={Boolean(errors.appointment_time)}
                   className={inputClass(Boolean(errors.appointment_time), hasFilledValue(form.appointment_time))}
                   value={form.appointment_time}
                   onChange={(event) => handleChange("appointment_time", event.target.value)}
@@ -176,6 +217,8 @@ export default function AppointmentFormPage({ mode = "create" }) {
                   <input
                     className={`${inputClass(Boolean(errors.planned_procedure), hasFilledValue(form.planned_procedure))} pr-10`}
                     list="appointment-procedure-options"
+                    name="planned_procedure"
+                    aria-invalid={Boolean(errors.planned_procedure)}
                     value={form.planned_procedure}
                     onChange={(event) => handleChange("planned_procedure", event.target.value)}
                     placeholder="Choose or type planned procedure"
@@ -193,7 +236,7 @@ export default function AppointmentFormPage({ mode = "create" }) {
               </label>
               <label className="field-box">
                 <span className="label-text">Status</span>
-                <select className={selectClass(Boolean(errors.status), hasFilledValue(form.status))} value={form.status} onChange={(event) => handleChange("status", event.target.value)}>
+                <select name="status" aria-invalid={Boolean(errors.status)} className={selectClass(Boolean(errors.status), hasFilledValue(form.status))} value={form.status} onChange={(event) => handleChange("status", event.target.value)}>
                   {appointmentStatusOptions.map((option) => (
                     <option key={option} value={option}>
                       {option}
@@ -204,11 +247,17 @@ export default function AppointmentFormPage({ mode = "create" }) {
               </label>
               <label className="field-box md:col-span-2 xl:col-span-3">
                 <span className="label-text">Notes</span>
-                <textarea className={areaClass(Boolean(errors.notes), hasFilledValue(form.notes))} value={form.notes} onChange={(event) => handleChange("notes", event.target.value)} />
+                <textarea name="notes" aria-invalid={Boolean(errors.notes)} className={areaClass(Boolean(errors.notes), hasFilledValue(form.notes))} value={form.notes} onChange={(event) => handleChange("notes", event.target.value)} />
               </label>
+            </div>
+            <div className="no-print mt-5 hidden justify-end border-t border-slate-200 pt-5 sm:flex">
+              <button type="submit" disabled={isSaving} className="button-primary min-h-[50px] min-w-[200px] text-base font-semibold disabled:cursor-wait disabled:opacity-60">{isSaving ? "Saving..." : mode === "edit" ? "Update Appointment" : "Save Appointment"}</button>
             </div>
           </div>
         </section>
+        <div className={`no-print fixed left-0 right-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_16px_rgba(15,23,42,0.07)] backdrop-blur sm:hidden ${isDemoMode ? "bottom-14" : "bottom-0"}`}>
+          <button type="submit" disabled={isSaving} className="button-primary min-h-[50px] w-full text-base font-semibold disabled:cursor-wait disabled:opacity-60">{isSaving ? "Saving..." : mode === "edit" ? "Update Appointment" : "Save Appointment"}</button>
+        </div>
       </form>
     </Layout>
   );

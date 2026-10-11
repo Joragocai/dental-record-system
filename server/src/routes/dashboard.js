@@ -44,9 +44,10 @@ router.get("/schedule-by-date", (req, res) => {
   const requestedDate = String(req.query.date || "").trim();
   const date = isValidIsoDate(requestedDate) ? requestedDate : today;
 
+  const expanded = req.query.expanded === "true";
   res.json({
     date,
-    appointments: getScheduleRows(db, date, { exactDate: true })
+    appointments: getScheduleRows(db, date, { exactDate: true, includeOtherStatuses: expanded })
   });
 });
 

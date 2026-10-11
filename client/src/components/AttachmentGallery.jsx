@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { deleteAttachment } from "../lib/api";
 import { getAttachmentDownloadUrl, getUploadUrl } from "../lib/api";
 import { formatAttachmentType, formatUploadedAt } from "../lib/attachments";
+import DeleteAttachmentDialog from "./DeleteAttachmentDialog";
 
 function isImage(mimeType) {
   return mimeType?.startsWith("image/");
@@ -11,6 +12,9 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState("success");
   const [deletingId, setDeletingId] = useState(null);
+  const [attachmentToDelete, setAttachmentToDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+  const deleteInFlightRef = useRef(false);
   const [previewAttachment, setPreviewAttachment] = useState(null);
 
   useEffect(() => {
@@ -37,22 +41,36 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [previewAttachment]);
 
-  async function handleDelete(attachment) {
-    const confirmed = window.confirm("Are you sure you want to delete this attachment?");
-    if (!confirmed) return;
+  function requestDelete(attachment) {
+    if (deleteInFlightRef.current || attachmentToDelete) return;
+    setDeleteError("");
+    setAttachmentToDelete(attachment);
+  }
 
-    setDeletingId(attachment.id);
+  function cancelDelete() {
+    if (deleteInFlightRef.current) return;
+    setAttachmentToDelete(null);
+    setDeleteError("");
+  }
+
+  async function confirmDelete() {
+    if (!attachmentToDelete || deleteInFlightRef.current) return;
+    const attachmentId = attachmentToDelete.id;
+    deleteInFlightRef.current = true;
+    setDeletingId(attachmentId);
+    setDeleteError("");
     setStatus("");
 
     try {
-      await deleteAttachment(attachment.id);
+      await deleteAttachment(attachmentId);
     } catch (error) {
-      setStatus(error.response?.data?.message || "Unable to delete attachment.");
-      setStatusTone("error");
+      setDeleteError(error.response?.data?.message || "Unable to delete attachment. Please retry or cancel.");
       setDeletingId(null);
+      deleteInFlightRef.current = false;
       return;
     }
 
+    setAttachmentToDelete(null);
     try {
       await onDeleted?.();
       setStatus("Attachment deleted successfully.");
@@ -62,6 +80,7 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
       setStatusTone("warning");
     } finally {
       setDeletingId(null);
+      deleteInFlightRef.current = false;
     }
   }
 
@@ -86,9 +105,9 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
       )}
       {!attachments.length && <p className="text-sm text-slate-500">No attachments uploaded.</p>}
       <div className="max-h-[420px] overflow-y-auto pr-1">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="attachment-gallery-grid grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {attachments.map((attachment) => (
-            <article key={attachment.id} className="attachment-gallery-card rounded-2xl border border-slate-200 p-3">
+            <article key={attachment.id} className="attachment-gallery-card min-w-0 rounded-2xl border border-slate-200 p-3">
               {isImage(attachment.mime_type) ? (
                 <button type="button" className="attachment-preview-trigger block w-full" onClick={() => setPreviewAttachment(attachment)}>
                   <img
@@ -105,7 +124,7 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
               <div className="mt-3 space-y-2 text-sm">
                 <p className="text-base font-semibold text-slate-900">{formatAttachmentType(attachment.attachment_type)}</p>
                 <p className="text-sm font-medium text-slate-700">Uploaded: {formatUploadedAt(attachment.uploaded_at)}</p>
-                <p className="text-xs text-slate-500">Filename: {attachment.original_filename}</p>
+                <p className="break-words text-xs text-slate-500 [overflow-wrap:anywhere]">Filename: {attachment.original_filename}</p>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
                   <a
                     href={getAttachmentDownloadUrl(attachment.id)}
@@ -116,8 +135,8 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
                   <button
                     type="button"
                     className="button-danger-outline"
-                    onClick={() => handleDelete(attachment)}
-                    disabled={deletingId === attachment.id}
+                    onClick={() => requestDelete(attachment)}
+                    disabled={deletingId !== null || attachmentToDelete !== null}
                   >
                     {deletingId === attachment.id ? "Deleting..." : "Delete"}
                   </button>
@@ -127,6 +146,9 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
           ))}
         </div>
       </div>
+      {attachmentToDelete ? (
+        <DeleteAttachmentDialog attachment={attachmentToDelete} deleting={deletingId !== null} error={deleteError} onCancel={cancelDelete} onConfirm={confirmDelete} />
+      ) : null}
       {previewAttachment && (
         <div className="attachment-preview-overlay" onClick={() => setPreviewAttachment(null)}>
           <div className="attachment-preview-panel" onClick={(event) => event.stopPropagation()}>

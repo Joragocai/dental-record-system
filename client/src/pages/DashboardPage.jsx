@@ -1,6 +1,12 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
+import ExpandedScheduleDialog from "../components/ExpandedScheduleDialog";
+import ScheduleSizeIcon from "../components/ScheduleSizeIcon";
+import ScheduleEntriesMobile from "../components/ScheduleEntriesMobile";
+import AppointmentSavedToast from "../components/AppointmentSavedToast";
+import { appointmentSaveNotice, isAppointmentSaveNotice } from "../lib/appointmentSaveNotice";
+import { DASHBOARD_SCHEDULE_ORIGIN, isDirectScheduleRowClick, scheduleEntryDestination } from "../lib/dashboardSchedule";
 import { getDashboardSchedule, getDashboardScheduleByDate, getDashboardSummary } from "../lib/api";
 import { displayNoFinalTime, displayPlannedProcedure, formatReadableDate } from "../lib/formatters";
 
@@ -13,13 +19,28 @@ function addOneDay(isoDate) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function ScheduleSection({ title, subtitle, items, emptyMessage, showDate = false, framed = true, maxHeightClass }) {
+function ScheduleSection({ title, subtitle, items, emptyMessage, showDate = false, framed = true, maxHeightClass, onExpand }) {
+  const navigate = useNavigate();
+
+  function openScheduleEntry(event, item) {
+    const target = scheduleEntryDestination(item);
+    if (target && isDirectScheduleRowClick(event)) {
+      navigate(target, { state: DASHBOARD_SCHEDULE_ORIGIN });
+    }
+  }
+
   return (
     <section className={framed ? "page-card" : ""}>
-      <h2 className="section-title">{title}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="section-title">{title}</h2>
+        {onExpand ? <button type="button" className="button-secondary no-print inline-flex h-11 w-11 shrink-0 items-center justify-center p-0 transition-colors duration-200 hover:border-clinic-700 hover:bg-clinic-700 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700" onClick={onExpand} aria-label={`Expand ${title}`} title={`Expand ${title}`}><ScheduleSizeIcon /></button> : null}
+      </div>
       {subtitle ? <p className="mt-1 text-sm text-slate-600">{subtitle}</p> : null}
+      <div className="mt-4 md:hidden">
+        <ScheduleEntriesMobile items={items} emptyMessage={emptyMessage} showDate={showDate} />
+      </div>
       <div
-        className={`mt-4 overflow-auto rounded-2xl border border-slate-200 ${
+        className={`mt-4 hidden overflow-auto rounded-2xl border border-slate-200 md:block ${
           maxHeightClass || (showDate ? "max-h-[420px]" : "max-h-[320px]")
         }`}
       >
@@ -39,10 +60,10 @@ function ScheduleSection({ title, subtitle, items, emptyMessage, showDate = fals
           <tbody className="divide-y divide-slate-200 bg-white">
             {items.length ? (
               items.map((item) => (
-                <tr key={`${item.source_type}-${item.source_id}-${item.schedule_date}`}>
+                <tr key={`${item.source_type}-${item.source_id}-${item.schedule_date}`} onClick={(event) => openScheduleEntry(event, item)} className={`transition-colors duration-200 hover:bg-[#edf5f1] focus-within:bg-[#edf5f1] ${scheduleEntryDestination(item) ? "cursor-pointer" : ""}`}>
                   {showDate ? <td className="px-4 py-3">{formatReadableDate(item.schedule_date)}</td> : null}
                   <td className="px-4 py-3">{displayNoFinalTime(item.appointment_time)}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{item.patient_name}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900">{scheduleEntryDestination(item) ? <Link to={scheduleEntryDestination(item)} state={DASHBOARD_SCHEDULE_ORIGIN} className="rounded text-clinic-700 underline-offset-4 hover:text-clinic-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-clinic-700">{item.patient_name}</Link> : item.patient_name}</td>
                   <td className="px-4 py-3">{displayPlannedProcedure(item.procedure_label)}</td>
                   <td className="px-4 py-3">{item.source_type === "appointment" ? "Scheduled Appointment" : "Follow-up from Treatment"}</td>
                   <td className="px-4 py-3">{item.source_type === "treatment_follow_up" ? "Scheduled" : item.status || "-"}</td>
@@ -122,6 +143,9 @@ function BirthdayHighlightCard({ items }) {
 }
 
 export default function DashboardPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [saveNotice, setSaveNotice] = useState(null);
   const [summary, setSummary] = useState({
     totalPatientRecords: 0,
     latestPatients: [],
@@ -145,6 +169,11 @@ export default function DashboardPage() {
     today: ""
   });
   const [selectedScheduleDate, setSelectedScheduleDate] = useState("");
+  const [expandedSchedule, setExpandedSchedule] = useState(null);
+  const [expandedItems, setExpandedItems] = useState([]);
+  const [expandedLoading, setExpandedLoading] = useState(false);
+  const [expandedError, setExpandedError] = useState("");
+  const [expandedStatusFilter, setExpandedStatusFilter] = useState("Scheduled");
   const [selectedDateSchedule, setSelectedDateSchedule] = useState({
     date: "",
     appointments: []
@@ -169,16 +198,64 @@ export default function DashboardPage() {
     }
   }, [schedule.today, selectedScheduleDate]);
 
+  const dismissSaveNotice = useCallback(() => setSaveNotice(null), []);
+
+  useEffect(() => {
+    const payload = location.state?.saveNotice;
+    if (!isAppointmentSaveNotice(payload)) return;
+    setSaveNotice(appointmentSaveNotice(payload.kind === "appointment-updated" ? "edit" : "create"));
+    const { saveNotice: _consumed, ...remainingState } = location.state;
+    navigate(location.pathname + location.search, {
+      replace: true,
+      state: Object.keys(remainingState).length ? remainingState : null
+    });
+  }, [location.pathname, location.search, location.state, navigate]);
+
+  const closeExpandedSchedule = useCallback(() => setExpandedSchedule(null), []);
+
+  useEffect(() => {
+    if (!expandedSchedule) return undefined;
+    let active = true;
+    setExpandedLoading(true);
+    setExpandedItems([]);
+    setExpandedError("");
+    getDashboardScheduleByDate(expandedSchedule.date, true)
+      .then((response) => { if (active) setExpandedItems(response.appointments || []); })
+      .catch(() => { if (active) setExpandedError("Unable to load the full schedule. Please close and reopen."); })
+      .finally(() => { if (active) setExpandedLoading(false); });
+    return () => { active = false; };
+  }, [expandedSchedule]);
+
+  function expandSchedule(kind) {
+    const date = kind === "today" ? schedule.today : selectedScheduleDate;
+    if (!date) return;
+    setExpandedStatusFilter("Scheduled");
+    setExpandedSchedule({ kind, date });
+  }
+
   return (
     <Layout>
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="page-card space-y-5">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-clinic-700">Clinic Overview</p>
-              <h1 className="mt-2 text-3xl font-bold text-slate-900">A Unified System for Clinical Data and Record Management</h1>
+      <AppointmentSavedToast notice={saveNotice} onDismiss={dismissSaveNotice} />
+      {expandedSchedule ? (
+        <ExpandedScheduleDialog
+          title={expandedSchedule.kind === "today" ? "Today's Clinic Schedule" : "Check Schedule by Date"}
+          selectedDate={expandedSchedule.date}
+          items={expandedItems}
+          loading={expandedLoading}
+          error={expandedError}
+          statusFilter={expandedStatusFilter}
+          onStatusFilter={setExpandedStatusFilter}
+          onClose={closeExpandedSchedule}
+        />
+      ) : null}
+      <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="page-card flex min-w-0 flex-col gap-5 xl:justify-between">
+          <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 sm:flex-nowrap">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs uppercase tracking-[0.2em] text-clinic-700 sm:text-sm sm:tracking-[0.3em]">Clinic Overview</p>
+              <h1 className="mt-2 text-xl font-bold leading-tight text-slate-900 sm:text-2xl xl:text-3xl">A Unified System for Clinical Data and Record Management</h1>
             </div>
-            <div className="rounded-2xl bg-clinic-50 px-4 py-3 text-right" title="Total patient records">
+            <div className="shrink-0 rounded-2xl bg-clinic-50 px-4 py-3 text-right" title="Total patient records">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-clinic-700">Patients</p>
               <p aria-label="Total patient records" className="text-2xl font-bold text-clinic-900">{summary.totalPatientRecords}</p>
             </div>
@@ -186,35 +263,35 @@ export default function DashboardPage() {
           <p className="max-w-2xl text-sm text-slate-600">
             Use patient search to open records, enter treatments under a selected patient, print clean clinic forms, and export data to Excel files stored locally.
           </p>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
             <Link
-              className="dashboard-action-card rounded-2xl bg-teal-700 p-4 text-white shadow-sm ring-1 ring-teal-900/15 hover:bg-teal-800"
+              className="dashboard-action-card col-span-2 min-w-0 rounded-2xl bg-teal-700 p-4 text-white shadow-sm ring-1 ring-teal-900/15 hover:bg-teal-800 sm:col-span-1"
               to="/treatments/new"
             >
               <p className="text-xs uppercase tracking-[0.2em] text-teal-100">Treatment</p>
-              <p className="mt-2 text-lg font-semibold text-white">New Treatment</p>
+              <p className="mt-2 break-words text-base font-semibold text-white sm:text-lg">New Treatment</p>
             </Link>
             <Link
               className="dashboard-action-card rounded-2xl bg-slate-900 p-4 text-white shadow-sm ring-1 ring-slate-950/10 hover:bg-slate-800"
               to="/patients"
             >
               <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Find</p>
-              <p className="mt-2 text-lg font-semibold text-white">Patient Search</p>
+              <p className="mt-2 break-words text-base font-semibold text-white sm:text-lg">Patient Search</p>
             </Link>
             <Link
               className="dashboard-action-card rounded-2xl bg-clinic-700 p-4 text-white shadow-sm ring-1 ring-clinic-800/10 hover:bg-clinic-800"
               to="/patients/new"
             >
               <p className="text-xs uppercase tracking-[0.2em] text-clinic-100">Create</p>
-              <p className="mt-2 text-lg font-semibold text-white">New Patient</p>
+              <p className="mt-2 break-words text-base font-semibold text-white sm:text-lg">New Patient</p>
             </Link>
           </div>
           <BirthdayHighlightCard items={schedule.birthdayReminders} />
         </section>
-        <section className="grid gap-6">
+        <section className="grid min-w-0 gap-4 sm:gap-6">
           <div className="page-card">
             <h2 className="section-title">Today's Schedule</h2>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
               <div aria-label="Appointment entries in today's clinic schedule" className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-sm text-slate-500">Appointments</p>
                 <p className="mt-2 text-3xl font-bold text-slate-900">{summary.todaySchedule.appointmentCount}</p>
@@ -240,11 +317,12 @@ export default function DashboardPage() {
         </section>
       </div>
 
-      <div className="mt-6 grid gap-6">
+      <div className="mt-4 grid min-w-0 gap-4 sm:mt-6 sm:gap-6">
         <ScheduleSection
           title={`Today's Clinic Schedule${schedule.today ? ` • ${formatReadableDate(schedule.today)}` : ""}`}
           items={schedule.todayAppointments}
           emptyMessage="No patients scheduled today."
+          onExpand={() => expandSchedule("today")}
         />
         <section className="page-card">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -252,7 +330,7 @@ export default function DashboardPage() {
               <h2 className="section-title">Check Schedule by Date</h2>
               <p className="mt-1 text-sm text-slate-600">Use this to check schedules for tomorrow or any future date.</p>
             </div>
-            <div className="w-full max-w-xs">
+            <div className="w-full min-w-0 sm:max-w-xs">
               <label className="label-text" htmlFor="dashboard-schedule-date">
                 Select Date
               </label>
@@ -272,6 +350,7 @@ export default function DashboardPage() {
               emptyMessage="No scheduled patients for this date."
               framed={false}
               maxHeightClass="max-h-[320px]"
+              onExpand={() => expandSchedule("date")}
             />
           </div>
         </section>

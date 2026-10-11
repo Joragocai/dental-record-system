@@ -19,8 +19,8 @@ export async function getDashboardSchedule() {
   return data;
 }
 
-export async function getDashboardScheduleByDate(date) {
-  const { data } = await api.get("/dashboard/schedule-by-date", { params: { date } });
+export async function getDashboardScheduleByDate(date, expanded = false) {
+  const { data } = await api.get("/dashboard/schedule-by-date", { params: { date, ...(expanded ? { expanded: "true" } : {}) } });
   return data;
 }
 
@@ -153,6 +153,21 @@ export async function getRuntimeStatus() {
       "Cache-Control": "no-store"
     }
   });
+  return data;
+}
+
+export async function getDemoDataStatus() {
+  const { data } = await api.get("/runtime/demo-data");
+  return data;
+}
+
+export async function loadDemoRecords() {
+  const { data } = await api.post("/runtime/demo-data/load", { confirmation: "LOAD DEMO DATA" });
+  return data;
+}
+
+export async function clearDemoRecords() {
+  const { data } = await api.post("/runtime/demo-data/clear", { confirmation: "CLEAR DEMO DATA" });
   return data;
 }
 

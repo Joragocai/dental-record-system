@@ -5,6 +5,8 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import db, { dbPath } from "../db/database.js";
 import runtimeConfig, { assertAutomaticBackupsAllowed } from "../config/runtimeConfig.js";
+import { isDemoMutationInProgress } from "../demo/demoOperationState.js";
+import { getNextBackupSchedule } from "./backupSchedule.js";
 
 const packageMetadataPaths = [
   path.resolve(runtimeConfig.projectRoot, "package.json"),
@@ -703,13 +705,13 @@ async function buildStatusSnapshot() {
   const lastAutomaticEntry = automaticSuccessfulEntries[0] || null;
   const lastManualEntry = manualEntries[0] || null;
   const lastSuccessfulEntry = successfulEntries[0] || null;
-  const now = new Date();
-  const nextBackupDueAt = runtimeConfig.autoBackupEnabled
-    ? lastAutomaticEntry
-      ? new Date(new Date(lastAutomaticEntry.createdAt).getTime() + automaticBackupFrequencyDays * 86400000).toISOString()
-      : now.toISOString()
-    : null;
-  const isBackupOverdue = Boolean(nextBackupDueAt && new Date(nextBackupDueAt).getTime() <= now.getTime());
+  const { nextBackupDueAt, isBackupOverdue } = getNextBackupSchedule({
+    autoBackupEnabled: runtimeConfig.autoBackupEnabled,
+    isDemoMode: runtimeConfig.isDemoMode,
+    lastAutomaticAt: lastAutomaticEntry?.createdAt,
+    lastSuccessfulAt: lastSuccessfulEntry?.createdAt,
+    intervalDays: automaticBackupFrequencyDays
+  });
   const retentionPlan = getRetentionPlan(entries);
 
   return {
@@ -842,8 +844,10 @@ export async function createSystemBackup(options = {}) {
     assertAutomaticBackupsAllowed();
   }
 
-  if (runtimeConfig.isDemoMode && backupType === "automatic-weekly") {
-    throw new Error("Automatic backups cannot run in demo mode.");
+  if (runtimeConfig.isDemoMode && isDemoMutationInProgress()) {
+    const conflictError = new Error("Demo Fill or Reset is in progress.");
+    conflictError.status = 409;
+    throw conflictError;
   }
 
   if (backupState.inProgress) {
@@ -882,6 +886,21 @@ export async function createSystemBackup(options = {}) {
   }
 }
 
+export function assertDemoBackupIdle() {
+  if (!runtimeConfig.isDemoMode) return;
+  if (backupState.inProgress || fs.existsSync(getLockFilePath())) {
+    const error = new Error("A backup is running or its lock must be inspected before Demo Fill or Reset.");
+    error.status = 409;
+    throw error;
+  }
+}
+
+export function clearDemoBackupStatus() {
+  if (!runtimeConfig.isDemoMode) return;
+  backupState.lastResult = { backupType: null, status: null, error: "" };
+  backupState.statusRequestInFlight = null;
+}
+
 export async function getBackupStatus() {
   if (backupState.statusRequestInFlight) {
     return backupState.statusRequestInFlight;
@@ -896,12 +915,16 @@ export async function getBackupStatus() {
 }
 
 export async function runAutomaticBackupDueCheck() {
-  if (!runtimeConfig.autoBackupEnabled || runtimeConfig.isDemoMode) {
+  if (!runtimeConfig.autoBackupEnabled) {
     return { skipped: true, reason: "automatic-backup-disabled" };
   }
 
-  if (backupState.inProgress) {
-    return { skipped: true, reason: "backup-in-progress" };
+  if (backupState.inProgress || runtimeConfig.isDemoMode && isDemoMutationInProgress()) {
+    return { skipped: true, reason: "backup-or-demo-operation-in-progress" };
+  }
+
+  if (runtimeConfig.isDemoMode && Number(db.prepare("SELECT COUNT(*) AS count FROM patients").get().count) === 0) {
+    return { skipped: true, reason: "empty-demo" };
   }
 
   const status = await getBackupStatus();

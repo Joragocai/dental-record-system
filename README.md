@@ -318,9 +318,11 @@ Important demo behavior:
 - Demo data is fictional only and must never be treated as actual clinic data.
 - Clean data is never copied into demo mode.
 - Changes made in demo mode do not affect the clean clinic database.
-- Demo mode shows a persistent `DEMO MODE - Fictional data only` banner in the application.
-- Automatic backup is disabled in demo mode.
-- Manual backup remains available in demo mode for testing, but it writes only to `demo-backups/` and includes only demo data.
+- Demo mode provides small fixed `Demo Fill` and `Reset` controls, visible only in demo mode.
+- Automatic weekly and manual backups are enabled in demo mode and write only to `demo-backups/`.
+- Automatic backup is skipped when the demo has no patients, and backups never overlap with Demo Fill or Reset.
+- Demo Fill replaces the demo records, uploads, exports, and demo backup history with fictional records after fixture validation.
+- Reset clears all demo records, manual entries, uploads, exports, and backup history, leaving the demo empty.
 - Attachment upload size is limited to `20 MB per file`.
 
 ## Temporary Demo To Clean Client Handover

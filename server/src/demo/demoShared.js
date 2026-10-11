@@ -2,13 +2,13 @@ import path from "node:path";
 import runtimeConfig from "../config/runtimeConfig.js";
 
 export const demoMarkerSchemaVersion = 1;
-export const demoSeedVersion = "slice2-demo-v1";
+export const demoSeedVersion = "presentation-expanded-v2";
 export const manilaTimeZone = "Asia/Manila";
 
 export const expectedCounts = {
-  patients: 16,
-  treatments: 30,
-  appointments: 14,
+  patients: 40,
+  treatments: 54,
+  appointments: 38,
   attachments: 10
 };
 
@@ -45,10 +45,6 @@ export function getManilaTodayIso(now = new Date()) {
 export function ensureDemoRuntimePaths() {
   if (!runtimeConfig.isDemoMode) {
     throw new Error("Demo commands must run with DENTAL_APP_MODE=demo.");
-  }
-
-  if (runtimeConfig.autoBackupEnabled) {
-    throw new Error("Automatic backup must be disabled in demo mode.");
   }
 
   const checks = [

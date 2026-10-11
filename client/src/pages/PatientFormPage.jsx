@@ -1,11 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useNavigate, useParams } from "react-router-dom";
-import BackButton from "../components/BackButton";
 import Layout from "../components/Layout";
+import PatientCreatedDialog from "../components/PatientCreatedDialog";
+import ClearPatientFieldsDialog from "../components/ClearPatientFieldsDialog";
 import { emptyPatient, medicalConditionFields, patientFieldGroups } from "../lib/forms";
 import { isPwdRelatedClassification, shouldShowPatientClassificationInSummary } from "../lib/formatters";
 import { createPatient, getNextPatientId, getPatient, updatePatient } from "../lib/api";
 import { calculateAgeFromBirthday, validatePatientForm } from "../lib/validation";
+import { clearPatientFormFields, hasPatientFieldsToClear, hasUnsavedPatientEdits, prepareNewPatientRegistration } from "../lib/patientFormReset";
+import { usePatientUnsavedGuard } from "../lib/usePatientUnsavedGuard";
+import "../patientRegistrationResponsive.css";
+
+// Keep disability metadata owned by Medical History; display the field beside its related classification.
+const disabilityTypeField = patientFieldGroups[1].fields.find(([name]) => name === "disability_type");
 
 const allergySummaryFields = [
   ["allergy_local_anesthetic", "Local Anesthetic", "local_anesthetic_details"],
@@ -124,7 +132,7 @@ function InputField({ field, value, onChange, error }) {
     return (
       <label className="field-box">
         <LabelText label={label} required={required} />
-        <textarea className={textAreaClassName(Boolean(error), isFilled)} value={value ?? ""} onChange={(event) => onChange(name, event.target.value)} />
+        <textarea name={name} aria-invalid={Boolean(error)} className={textAreaClassName(Boolean(error), isFilled)} value={value ?? ""} onChange={(event) => onChange(name, event.target.value)} />
         {helperText && <p className="mt-1 text-xs text-slate-500">{helperText}</p>}
         {error && <p className="error-text">{error}</p>}
       </label>
@@ -135,7 +143,7 @@ function InputField({ field, value, onChange, error }) {
     return (
       <label className="field-box">
         <LabelText label={label} required={required} />
-        <select className={selectClassName(Boolean(error), isFilled)} value={currentValue} onChange={(event) => onChange(name, event.target.value)}>
+        <select name={name} aria-invalid={Boolean(error)} className={selectClassName(Boolean(error), isFilled)} value={currentValue} onChange={(event) => onChange(name, event.target.value)}>
           {selectOptions.map((option) => (
             <option key={option} value={option}>
               {option || "Select"}
@@ -157,6 +165,8 @@ function InputField({ field, value, onChange, error }) {
         <div className="datalist-input-wrap">
           <input
             type="text"
+            name={name}
+            aria-invalid={Boolean(error)}
             list={datalistId}
             className={`${fieldClassName(Boolean(error), isFilled)} pr-10`}
             value={currentValue}
@@ -184,6 +194,8 @@ function InputField({ field, value, onChange, error }) {
       <LabelText label={label} required={required} />
       <input
         type={type}
+        name={name}
+        aria-invalid={Boolean(error)}
         className={fieldClassName(Boolean(error), isFilled)}
         value={value ?? ""}
         readOnly={Boolean(readOnly)}
@@ -198,7 +210,7 @@ function InputField({ field, value, onChange, error }) {
 
 function Section({ title, description, children }) {
   return (
-    <section className="form-section">
+    <section className="form-section min-w-0">
       <div className="form-section-header">
         <h2 className="section-title">{title}</h2>
         {description && <p className="mt-1 text-sm text-slate-600">{description}</p>}
@@ -211,6 +223,15 @@ function Section({ title, description, children }) {
 export default function PatientFormPage({ mode = "create" }) {
   const { patientId } = useParams();
   const navigate = useNavigate();
+  const formRef = useRef(null);
+  const savingRef = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [loadedPatient, setLoadedPatient] = useState(null);
+  const [saveSucceeded, setSaveSucceeded] = useState(false);
+  const [createdPatient, setCreatedPatient] = useState(null);
+  const [isPreparingAnother, setIsPreparingAnother] = useState(false);
+  const [nextPatientError, setNextPatientError] = useState("");
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false);
   const [form, setForm] = useState(emptyPatient);
   const [status, setStatus] = useState("");
   const [errors, setErrors] = useState({});
@@ -237,7 +258,9 @@ export default function PatientFormPage({ mode = "create" }) {
     if (mode === "edit" && patientId) {
       getPatient(patientId)
         .then((data) => {
-          setForm({ ...emptyPatient, ...data, age: data.age ?? calculateAgeFromBirthday(data.birthday) });
+          const loaded = { ...emptyPatient, ...data, age: data.age ?? calculateAgeFromBirthday(data.birthday) };
+          setLoadedPatient(loaded);
+          setForm(loaded);
         })
         .catch(() => setStatus("Unable to load patient record."));
       return;
@@ -245,6 +268,9 @@ export default function PatientFormPage({ mode = "create" }) {
 
     loadNewPatientMetadata();
   }, [mode, patientId]);
+
+  const hasUnsavedChanges = mode === "edit" ? hasUnsavedPatientEdits(form, loadedPatient) : hasPatientFieldsToClear(form);
+  usePatientUnsavedGuard(hasUnsavedChanges && !isSaving && !saveSucceeded);
 
   function handleChange(name, value) {
     setForm((current) => {
@@ -269,65 +295,119 @@ export default function PatientFormPage({ mode = "create" }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (savingRef.current) return;
+
     const validation = validatePatientForm({ ...form, medical_alert_summary: generateMedicalAlertSummary(form) });
     if (!validation.isValid) {
       setErrors(validation.errors);
       setStatus("Review the highlighted patient fields before saving.");
+      const firstInvalidName = Object.keys(validation.errors).find((name) => formRef.current?.elements.namedItem(name));
+      if (firstInvalidName) {
+        window.requestAnimationFrame(() => {
+          const field = formRef.current?.elements.namedItem(firstInvalidName);
+          if (!field) return;
+          field.focus({ preventScroll: true });
+          field.scrollIntoView({
+            behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+            block: "center"
+          });
+        });
+      }
       return;
     }
 
+    savingRef.current = true;
+    setIsSaving(true);
+    setStatus("");
     try {
       const data = mode === "edit" ? await updatePatient(patientId, validation.normalized) : await createPatient(validation.normalized);
-      navigate(`/patients/${data.patient_id}`);
+      setSaveSucceeded(true);
+      if (mode === "create") setCreatedPatient(data);
+      else navigate(`/patients/${data.patient_id}`, { state: { saveNotice: { kind: "patient-updated" } } });
     } catch (error) {
       setStatus(error.response?.data?.message || "Unable to save patient record.");
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
     }
   }
 
-  function resetNewPatient() {
+  async function registerAnotherPatient() {
+    if (!createdPatient || isPreparingAnother) return;
+    setIsPreparingAnother(true);
+    setNextPatientError("");
+    try {
+      const metadata = await getNextPatientId();
+      const next = prepareNewPatientRegistration(metadata, createdPatient.patient_id);
+      setForm(next);
+      setErrors({});
+      setStatus("");
+      setCreatedPatient(null);
+      setSaveSucceeded(false);
+      window.scrollTo({ top: 0, behavior: "auto" });
+    } catch (error) {
+      setNextPatientError(error.response?.data?.message || error.message || "Unable to prepare another patient. Please retry.");
+    } finally {
+      setIsPreparingAnother(false);
+    }
+  }
+
+  function viewCreatedPatient() {
+    if (!createdPatient) return;
+    navigate(`/patients/${createdPatient.patient_id}`);
+  }
+
+  function requestClearNewPatientFields() {
+    if (mode !== "create" || savingRef.current || createdPatient) return;
+    if (hasPatientFieldsToClear(form)) {
+      setShowClearConfirmation(true);
+      return;
+    }
+    clearNewPatientFields();
+  }
+
+  function clearNewPatientFields() {
+    if (mode !== "create" || savingRef.current || createdPatient) return;
+    setForm((current) => clearPatientFormFields(current));
     setErrors({});
     setStatus("");
-    loadNewPatientMetadata();
+    setShowClearConfirmation(false);
   }
 
   const patientName = [form.last_name, [form.first_name, form.middle_name].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   const hasMedicalAlert = Boolean(form.medical_alert_summary);
 
   return (
-    <Layout>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <section className="page-card">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.25em] text-clinic-700">Dental Clinic Record Form</p>
-              <h1 className="mt-2 text-3xl font-bold text-slate-900">{title}</h1>
-              <p className="mt-2 text-sm text-slate-600">Capture registration, contact, medical history, allergies, and risk indicators in one clean record.</p>
-            </div>
-            <div className="no-print flex flex-wrap gap-3">
-              <BackButton fallbackTo={mode === "edit" && patientId ? `/patients/${patientId}` : "/patients"} />
-              {mode === "create" && (
-                <button type="button" onClick={resetNewPatient} className="button-secondary">
-                  New Patient
-                </button>
-              )}
-              <button type="submit" className="button-primary">
-                {mode === "edit" ? "Update Patient" : "Save Patient"}
-              </button>
-            </div>
+    <Layout contentClassName="patient-registration-page">
+      <form id="patient-record-form" ref={formRef} onSubmit={handleSubmit} noValidate aria-busy={isSaving} className="patient-registration-form min-w-0 space-y-4 pb-32 sm:space-y-6 sm:pb-28">
+        <div className="no-print -mb-2">
+          <Link
+            to={mode === "edit" && patientId ? `/patients/${patientId}` : "/patients"}
+            aria-label={mode === "edit" ? "Back to Patient Details" : "Back to Patient Search"}
+            className="inline-flex min-h-10 w-fit items-center gap-2 rounded-lg px-2 text-sm font-medium text-clinic-700 transition-colors duration-200 ease-out hover:bg-clinic-50 hover:text-clinic-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700"
+          >
+            <span aria-hidden="true">←</span> {mode === "edit" ? "Patient Details" : "Patient Search"}
+          </Link>
+        </div>
+        <section className="page-card min-w-0">
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-[0.2em] text-clinic-700 sm:text-sm sm:tracking-[0.25em]">Dental Clinic Record Form</p>
+            <h1 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">{title}</h1>
+            <p className="mt-2 text-sm text-slate-600">Capture registration, contact, medical history, allergies, and risk indicators in one clean record.</p>
           </div>
 
-          <div className="record-grid mt-5 xl:grid-cols-3">
-            <div className="record-tile">
+          <div className="patient-registration-summary mt-5 grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="record-tile col-span-2 min-w-0 sm:col-span-1">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Patient Name</p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">{patientName || "-"}</p>
+              <p className="mt-2 break-words text-base font-semibold text-slate-900 [overflow-wrap:anywhere] sm:text-lg">{patientName || "-"}</p>
             </div>
             <div className="record-tile">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Date Registered</p>
-              <p className="mt-2 text-xl font-semibold text-slate-900">{form.date_registered || "-"}</p>
+              <p className="mt-2 break-words text-sm font-semibold text-slate-900 [overflow-wrap:anywhere] sm:text-xl">{form.date_registered || "-"}</p>
             </div>
             <div className="record-tile">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Patient ID</p>
-              <p className="mt-2 text-xl font-semibold text-slate-900">{form.patient_id || "-"}</p>
+              <p className="mt-2 break-words text-sm font-semibold text-slate-900 [overflow-wrap:anywhere] sm:text-xl">{form.patient_id || "-"}</p>
             </div>
           </div>
           <div
@@ -338,7 +418,7 @@ export default function PatientFormPage({ mode = "create" }) {
             <p className={`text-xs uppercase tracking-[0.2em] ${hasMedicalAlert ? "text-rose-700" : "text-slate-500"}`}>
               Medical Alert Summary
             </p>
-            <p className="mt-2 whitespace-normal break-words text-sm leading-relaxed">
+            <p className="mt-2 whitespace-normal break-words text-sm leading-relaxed [overflow-wrap:anywhere]">
               {form.medical_alert_summary || "No major medical alerts generated yet."}
             </p>
           </div>
@@ -355,16 +435,52 @@ export default function PatientFormPage({ mode = "create" }) {
 
         <Section title="Registration and Contact" description="Core patient identity and clinic contact details.">
           <div className="form-grid">
-            {patientFieldGroups[0].fields.map((field) => (
-              <InputField key={field[0]} field={field} value={form[field[0]]} onChange={handleChange} error={errors[field[0]]} />
-            ))}
+            {patientFieldGroups[0].fields.map((field) =>
+              field[0] === "discount_eligibility" ? (
+                <div key={field[0]} className="classification-field-card field-box flex min-w-0 flex-col gap-2">
+                  <label className="block min-w-0">
+                    <LabelText label={field[1]} />
+                    <select
+                      name="discount_eligibility"
+                      aria-invalid={Boolean(errors.discount_eligibility)}
+                      className={`${selectClassName(Boolean(errors.discount_eligibility), hasFilledValue(form.discount_eligibility))} classification-compact-select`}
+                      value={form.discount_eligibility ?? "None"}
+                      onChange={(event) => handleChange("discount_eligibility", event.target.value)}
+                    >
+                      {(form.discount_eligibility && !field[5].includes(form.discount_eligibility)
+                        ? [...field[5], form.discount_eligibility]
+                        : field[5]).map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  </label>
+                  {isPwdRelatedClassification(form.discount_eligibility) && disabilityTypeField ? (
+                    <label className="block min-w-0">
+                      <LabelText label={disabilityTypeField[1]} />
+                      <select
+                        name="disability_type"
+                        aria-invalid={Boolean(errors.disability_type)}
+                        className={`${selectClassName(Boolean(errors.disability_type), hasFilledValue(form.disability_type))} classification-compact-select`}
+                        value={form.disability_type ?? ""}
+                        onChange={(event) => handleChange("disability_type", event.target.value)}
+                      >
+                        <option value="">Select disability</option>
+                        {(form.disability_type && !disabilityTypeField[5].includes(form.disability_type)
+                          ? [...disabilityTypeField[5], form.disability_type]
+                          : disabilityTypeField[5]).map((option) => <option key={option} value={option}>{option}</option>)}
+                      </select>
+                    </label>
+                  ) : null}
+                </div>
+              ) : (
+                <InputField key={field[0]} field={field} value={form[field[0]]} onChange={handleChange} error={errors[field[0]]} />
+              )
+            )}
           </div>
         </Section>
 
         <Section title="Medical History" description="Use Yes/No answers and complete the related details when a risk answer is Yes.">
           <div className="form-grid">
             {patientFieldGroups[1].fields
-              .filter((field) => field[0] !== "disability_type" || isPwdRelatedClassification(form.discount_eligibility))
+              .filter((field) => field[0] !== "disability_type")
               .map((field) => (
               <InputField key={field[0]} field={field} value={form[field[0]]} onChange={handleChange} error={errors[field[0]]} />
             ))}
@@ -380,20 +496,57 @@ export default function PatientFormPage({ mode = "create" }) {
         </Section>
 
         <Section title="Medical Condition Checklist" description="Mark all conditions that apply to the patient.">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {medicalConditionFields.map(([name, label]) => (
-              <label key={name} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <label key={name} className="medical-condition-option flex min-h-11 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <input
                   type="checkbox"
+                  className="h-4 w-4 shrink-0"
+                  name={name}
                   checked={Boolean(form[name])}
                   onChange={(event) => handleChange(name, event.target.checked ? 1 : 0)}
                 />
-                <span className="text-sm text-slate-700">{label}</span>
+                <span className="min-w-0 break-words text-sm text-slate-700">{label}</span>
               </label>
             ))}
           </div>
         </Section>
+        <div className="patient-registration-footer no-print fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-3 py-2.5 shadow-[0_-4px_16px_rgba(15,23,42,0.07)] backdrop-blur sm:px-6 sm:py-3">
+          <div className="mx-auto flex max-w-7xl min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-end lg:justify-between">
+            <div className="hidden min-w-0 lg:block">
+              <p className="text-sm font-semibold text-slate-800">{mode === "edit" ? "Update Patient Record" : "Patient Registration"}</p>
+              <p role={status ? "alert" : undefined} className={`text-xs ${status ? "text-amber-700" : "text-slate-500"}`}>
+                {status || (isSaving ? "Saving patient record..." : "Complete the required fields before saving.")}
+              </p>
+            </div>
+            <div className="flex min-w-0 w-full items-center gap-2 sm:w-auto sm:gap-3">
+              {mode === "create" ? (
+                <button type="button" disabled={isSaving} onClick={requestClearNewPatientFields} className="button-secondary min-h-[50px] min-w-0 flex-[2] whitespace-nowrap px-2 text-sm disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:px-5">
+                  Clear Fields
+                </button>
+              ) : null}
+              <button type="submit" disabled={isSaving} className="button-primary min-h-[50px] min-w-0 flex-[3] whitespace-nowrap px-3 text-sm font-semibold disabled:cursor-wait disabled:opacity-60 sm:w-[200px] sm:flex-none sm:px-5 sm:text-base">
+                {isSaving ? "Saving..." : mode === "edit" ? "Update Patient" : "Save Patient"}
+              </button>
+            </div>
+          </div>
+        </div>
       </form>
+      {showClearConfirmation ? (
+        <ClearPatientFieldsDialog
+          onCancel={() => setShowClearConfirmation(false)}
+          onConfirm={clearNewPatientFields}
+        />
+      ) : null}
+      {createdPatient ? (
+        <PatientCreatedDialog
+          patient={createdPatient}
+          preparing={isPreparingAnother}
+          error={nextPatientError}
+          onRegisterAnother={registerAnotherPatient}
+          onViewPatient={viewCreatedPatient}
+        />
+      ) : null}
     </Layout>
   );
 }

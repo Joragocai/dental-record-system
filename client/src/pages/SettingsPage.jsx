@@ -13,11 +13,11 @@ import {
 
 function OverviewItem({ label, primary, secondary }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3.5 sm:px-4 sm:py-4">
       <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className="mt-2 text-base font-semibold text-slate-900">{primary}</p>
+      <p className="mt-2 break-words text-sm font-semibold text-slate-900 [overflow-wrap:anywhere] sm:text-base">{primary}</p>
       {secondary ? (
-        <p className="mt-1 text-sm text-slate-600">{secondary}</p>
+        <p className="mt-1 break-words text-sm text-slate-600 [overflow-wrap:anywhere]">{secondary}</p>
       ) : null}
     </div>
   );
@@ -145,14 +145,14 @@ export default function SettingsPage() {
 
   return (
     <Layout>
-      <section className="mx-auto max-w-3xl">
-        <div className="page-card">
-          <div className="max-w-2xl">
+      <section className="mx-auto w-full min-w-0 max-w-4xl">
+        <div className="page-card min-w-0">
+          <div className="min-w-0 max-w-2xl">
             <p className="text-sm uppercase tracking-[0.2em] text-clinic-700">
               System Maintenance
             </p>
 
-            <h1 className="mt-2 text-3xl font-bold text-slate-900">
+            <h1 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">
               Backup
             </h1>
 
@@ -169,8 +169,8 @@ export default function SettingsPage() {
             </div>
           ) : null}
 
-          <section className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5">
-            <div className="max-w-xl">
+          <section className="mt-5 min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-4 sm:mt-6 sm:px-5 sm:py-5">
+            <div className="min-w-0 max-w-xl">
               <h2 className="text-lg font-semibold text-slate-900">
                 Create a Manual Backup
               </h2>
@@ -186,7 +186,7 @@ export default function SettingsPage() {
             >
               <button
                 type="button"
-                className="button-primary inline-flex items-center gap-2"
+                className="button-primary inline-flex min-h-11 w-full items-center justify-center gap-2 px-4 py-3 sm:w-auto"
                 onClick={handleBackup}
                 disabled={buttonState.disabled}
                 aria-disabled={buttonState.disabled ? "true" : "false"}
@@ -228,7 +228,7 @@ export default function SettingsPage() {
               Backup Overview
             </h2>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
               <OverviewItem
                 label="Latest Backup"
                 primary={isLoading ? "Loading..." : latestBackup.primary}
@@ -270,29 +270,33 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          <section className="mt-6 rounded-2xl border border-slate-200 bg-white px-5 py-5">
+          {runtimeStatus.isDemoMode ? (
+            <p className="mt-5 text-xs text-slate-500">Demo tools note: Reset clears locally stored demo backups along with demo records.</p>
+          ) : null}
+
+          <section className="mt-6 min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-4 sm:px-5 sm:py-5">
             <h2 className="text-lg font-semibold text-slate-900">
               Storage &amp; Retention
             </h2>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div>
+            <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-slate-500">
                   Backup Folder
                 </p>
 
-                <p className="mt-2 break-all text-base font-semibold text-slate-900">
+                <p className="mt-2 break-words text-sm font-semibold text-slate-900 [overflow-wrap:anywhere] sm:text-base">
                   {backupFolderDisplay}
                 </p>
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-slate-500">
                   Retention
                 </p>
 
                 <p
-                  className="mt-2 text-base font-semibold text-slate-900"
+                  className="mt-2 break-words text-sm font-semibold text-slate-900 [overflow-wrap:anywhere] sm:text-base"
                   aria-label={retentionAriaLabel}
                 >
                   {retentionDisplay}

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
-import BackButton from "../components/BackButton";
+import { Link, useParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PrintField, PrintableAttachments, PrintSection } from "../components/PrintableDocument";
 import { displayNone, isPwdRelatedClassification } from "../lib/formatters";
@@ -52,22 +51,38 @@ export default function PrintPatientPage() {
   const hasMedicalAlert = Boolean(patient.medical_alert_summary);
 
   return (
-    <Layout>
-      <div className="print-document">
-        <section className="page-card">
-          <div className="mb-6 flex items-center justify-between no-print">
-            <h1 className="text-2xl font-bold text-slate-900">Patient Record Printout</h1>
-            <div className="flex flex-wrap gap-3">
-              <BackButton fallbackTo={`/patients/${patientId}`} />
-              <button className="button-primary" onClick={() => window.print()}>
+    <Layout contentClassName="print-preview-page">
+      <div className="mx-auto w-full max-w-5xl">
+        <div className="no-print mb-3">
+          <Link
+            to={`/patients/${patientId}`}
+            aria-label="Back to Patient Record"
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-clinic-700 transition-colors duration-200 ease-out hover:bg-clinic-50 hover:text-clinic-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700"
+          >
+            <span aria-hidden="true">←</span> Patient Record
+          </Link>
+        </div>
+        <div className="print-document">
+          <section className="page-card">
+            <div className="no-print mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h1 className="text-2xl font-bold text-slate-900">Patient Record Printout</h1>
+              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <button type="button" className="button-primary inline-flex min-h-11 items-center justify-center gap-2" onClick={() => window.print()}>
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                  <path d="M6 15h12v6H6zM18 12h.01" />
+                </svg>
                 Print
               </button>
-              <button className="button-secondary" onClick={handleDownloadPdf} disabled={isDownloadingPdf}>
+              <button type="button" className="button-secondary inline-flex min-h-11 items-center justify-center gap-2" onClick={handleDownloadPdf} disabled={isDownloadingPdf}>
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4" />
+                </svg>
                 {isDownloadingPdf ? "Preparing PDF..." : "Download PDF"}
               </button>
+              </div>
             </div>
-          </div>
-          {status && (
+            {status && (
             <div className="feedback-message mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 no-print">
               {status}
             </div>
@@ -113,6 +128,7 @@ export default function PrintPatientPage() {
               <PrintField label="Dental Insurance" value={patient.dental_insurance} />
               <PrintField label="Insurance Effective Date" value={patient.insurance_effective_date} />
               <PrintField label="Patient Classification" value={displayNone(patient.discount_eligibility)} />
+              {isPwdRelatedClassification(patient.discount_eligibility) ? <PrintField label="Type of Disability" value={displayNone(patient.disability_type)} /> : null}
               <PrintField label="Previous Dentist" value={patient.previous_dentist} />
               <PrintField label="Last Dental Visit" value={patient.last_dental_visit} />
               <PrintField label="Cellphone/Mobile Number" value={patient.mobile_number} />
@@ -142,7 +158,6 @@ export default function PrintPatientPage() {
               <PrintField label="Medication Details" value={patient.medication_details} />
               <PrintField label="Use tobacco products?" value={patient.uses_tobacco} />
               <PrintField label="Use alcohol, cocaine, or dangerous drugs?" value={patient.uses_alcohol_or_drugs} />
-              {isPwdRelatedClassification(patient.discount_eligibility) ? <PrintField label="Type of Disability" value={displayNone(patient.disability_type)} /> : null}
               <PrintField label="Pregnant?" value={patient.pregnant} />
               <PrintField label="Nursing?" value={patient.nursing} />
               <PrintField label="Taking birth control pills?" value={patient.birth_control_pills} />
@@ -183,7 +198,8 @@ export default function PrintPatientPage() {
           </PrintSection>
           <PrintableAttachments attachments={attachments} />
           </div>
-        </section>
+          </section>
+        </div>
       </div>
     </Layout>
   );

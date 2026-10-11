@@ -17,19 +17,20 @@ export default function PatientSearchPage() {
 
   return (
     <Layout>
-      <section className="page-card space-y-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
+      <section className="page-card min-w-0 space-y-4">
+        <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-slate-900">Patient Search</h1>
             <p className="text-sm text-slate-600">Search by last name, first name, patient ID, or mobile number.</p>
           </div>
-          <div className="w-full max-w-xl">
+          <div className="w-full min-w-0 max-w-xl">
             <label className="label-text" htmlFor="patient-search">
               Search
             </label>
             <input
               id="patient-search"
-              className="text-input"
+              className="text-input min-h-11 min-w-0 text-base sm:text-sm"
+              type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Type Del, P-2026-0001, or a mobile number"

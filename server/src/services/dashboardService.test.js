@@ -95,6 +95,25 @@ test("total patient count uses all patient rows, not only today's registrations"
   database.close();
 });
 
+test("recent patients returns the newest 20 database-backed records for a scrollable card", () => {
+  const database = createDashboardTestDatabase();
+  const patients = Array.from({ length: 25 }, (_, index) => ({
+    patient_id: "P-2026-" + String(index + 1).padStart(4, "0"),
+    display_name: "Fictional " + index,
+    created_at: "2026-10-" + String(index + 1).padStart(2, "0") + "T09:00:00+08:00"
+  }));
+  const summary = getDashboardSummaryData({
+    database,
+    patients,
+    treatments: [],
+    todayIso: "2026-10-11"
+  });
+  assert.equal(summary.latestPatients.length, 20);
+  assert.equal(summary.latestPatients[0].patient_id, "P-2026-0025");
+  assert.equal(summary.latestPatients.at(-1).patient_id, "P-2026-0006");
+  database.close();
+});
+
 test("today schedule metrics reconcile with final displayed schedule rows by source type", () => {
   const database = createDashboardTestDatabase();
   seedDashboardTestData(database);
@@ -128,6 +147,20 @@ test("appointment metric follows the same status inclusion rule as the displayed
   assert.equal(entries.some((entry) => entry.procedure_label === "Cancelled Visit"), false);
   assert.equal(entries.some((entry) => entry.procedure_label === "Completed Visit"), false);
   assert.equal(entries.some((entry) => entry.procedure_label === "Tomorrow Visit"), false);
+  database.close();
+});
+
+test("expanded schedule includes completed and cancelled appointments without changing regular counts", () => {
+  const database = createDashboardTestDatabase();
+  seedDashboardTestData(database);
+  const standard = getScheduleRows(database, "2026-07-28", { exactDate: true });
+  const expanded = getScheduleRows(database, "2026-07-28", { exactDate: true, includeOtherStatuses: true });
+  assert.equal(standard.filter((entry) => entry.source_type === "appointment").length, 2);
+  assert.equal(expanded.filter((entry) => entry.source_type === "appointment").length, 4);
+  assert.ok(expanded.some((entry) => entry.status === "Cancelled"));
+  assert.ok(expanded.some((entry) => entry.status === "Completed"));
+  assert.equal(buildTodayScheduleMetrics(standard, "2026-07-28").appointmentCount, 2);
+  assert.equal(expanded.find((entry) => entry.source_type === "treatment_follow_up").treatment_record_id, "T-2026-0001");
   database.close();
 });
 
