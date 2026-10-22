@@ -1,4 +1,5 @@
 import { buildMedicalAlertSummary } from "./patientUtils.js";
+import { getManilaTodayIso } from "./dateUtils.js";
 
 const mobilePattern = /^[0-9+\-\s()]{7,20}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -77,7 +78,7 @@ function isValidDateString(value) {
 }
 
 function isFutureDate(value) {
-  return isValidDateString(value) && value > new Date().toISOString().slice(0, 10);
+  return isValidDateString(value) && value > getManilaTodayIso();
 }
 
 function isValidTimeString(value) {
@@ -88,10 +89,10 @@ function calculateAge(birthday) {
   if (!isValidDateString(birthday)) return 0;
   const birthDate = parsePlainDate(birthday);
   if (!birthDate || Number.isNaN(birthDate.getTime())) return 0;
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age -= 1;
+  const [year, month, day] = getManilaTodayIso().split("-").map(Number);
+  let age = year - birthDate.getFullYear();
+  const monthDiff = month - (birthDate.getMonth() + 1);
+  if (monthDiff < 0 || (monthDiff === 0 && day < birthDate.getDate())) age -= 1;
   return Math.max(age, 0);
 }
 

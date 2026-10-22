@@ -1,9 +1,11 @@
 import path from "node:path";
 import runtimeConfig from "../config/runtimeConfig.js";
+import { getManilaTodayIso, manilaTimeZone } from "../utils/dateUtils.js";
+
+export { getManilaTodayIso, manilaTimeZone };
 
 export const demoMarkerSchemaVersion = 1;
 export const demoSeedVersion = "presentation-expanded-v2";
-export const manilaTimeZone = "Asia/Manila";
 
 export const expectedCounts = {
   patients: 40,
@@ -28,18 +30,6 @@ export function getComparablePath(targetPath) {
 
 function isSamePath(leftPath, rightPath) {
   return getComparablePath(leftPath) === getComparablePath(rightPath);
-}
-
-export function getManilaTodayIso(now = new Date()) {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: manilaTimeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  });
-  const parts = formatter.formatToParts(now);
-  const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
 }
 
 export function ensureDemoRuntimePaths() {

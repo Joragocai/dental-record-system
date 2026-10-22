@@ -4,6 +4,7 @@ import Layout from "../components/Layout";
 import { createPatientAppointment, getAppointment, getPatient, updateAppointment } from "../lib/api";
 import { appointmentStatusOptions, emptyAppointment, suggestedTreatmentProcedures } from "../lib/forms";
 import { validateAppointmentForm } from "../lib/validation";
+import { getManilaTodayIso } from "../lib/clinicDate";
 import { useRuntimeStatus } from "../context/RuntimeStatusContext";
 import { usePatientUnsavedGuard } from "../lib/usePatientUnsavedGuard";
 import { hasUnsavedAppointmentChanges } from "../lib/appointmentFormState";
@@ -54,11 +55,11 @@ export default function AppointmentFormPage({ mode = "create" }) {
   const [patient, setPatient] = useState(null);
   const [form, setForm] = useState(() => ({
     ...emptyAppointment,
-    appointment_date: new Date().toISOString().slice(0, 10)
+    appointment_date: getManilaTodayIso()
   }));
   const [baseline, setBaseline] = useState(() => ({
     ...emptyAppointment,
-    appointment_date: new Date().toISOString().slice(0, 10)
+    appointment_date: getManilaTodayIso()
   }));
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");

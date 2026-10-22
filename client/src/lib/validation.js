@@ -1,4 +1,5 @@
-import { isPwdRelatedClassification } from "./formatters";
+import { isPwdRelatedClassification } from "./formatters.js";
+import { getManilaTodayIso } from "./clinicDate.js";
 
 const mobilePattern = /^[0-9+\-\s()]{7,20}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,10 +28,10 @@ export function calculateAgeFromBirthday(birthday) {
   if (!birthday) return "";
   const birthDate = parsePlainDate(birthday);
   if (!birthDate || Number.isNaN(birthDate.getTime())) return "";
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age -= 1;
+  const [year, month, day] = getManilaTodayIso().split("-").map(Number);
+  let age = year - birthDate.getFullYear();
+  const monthDiff = month - (birthDate.getMonth() + 1);
+  if (monthDiff < 0 || (monthDiff === 0 && day < birthDate.getDate())) age -= 1;
   return age >= 0 ? age : "";
 }
 
@@ -42,7 +43,7 @@ function isValidDateString(value) {
 
 function isFutureDate(value) {
   if (!value || !isValidDateString(value)) return false;
-  return value > new Date().toISOString().slice(0, 10);
+  return value > getManilaTodayIso();
 }
 
 function isValidTimeString(value) {

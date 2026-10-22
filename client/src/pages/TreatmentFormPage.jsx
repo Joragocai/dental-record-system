@@ -17,6 +17,7 @@ import {
   updateTreatment
 } from "../lib/api";
 import { formatPesoAmount } from "../lib/formatters";
+import { getManilaTodayIso } from "../lib/clinicDate";
 import { DASHBOARD_SCHEDULE_ORIGIN, isDashboardScheduleOrigin } from "../lib/dashboardSchedule";
 import { getTreatmentFooterCopy, getTreatmentHistoryOriginState } from "../lib/treatmentFormPresentation";
 import { calculateTreatmentAmounts, getTreatmentDiscountDefaultsFromEligibility, validateTreatmentForm } from "../lib/validation";
@@ -59,7 +60,7 @@ function formatEditableAmount(value, fallback = "") {
 }
 
 function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
+  return getManilaTodayIso();
 }
 
 function buildTreatmentFormState(current, updates = {}) {

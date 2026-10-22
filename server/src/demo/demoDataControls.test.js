@@ -4,10 +4,41 @@ import { DatabaseSync } from "node:sqlite";
 import { buildDemoSeedData } from "./demoSeedData.js";
 import { validateDemoSeedFixture } from "./demoSeedValidation.js";
 import { clearDemoDatabaseRecords } from "./demoDatabaseReset.js";
+import { getManilaTodayIso } from "../utils/dateUtils.js";
+import { validatePatientPayload, validateTreatmentPayload } from "../utils/validation.js";
 
 test("all expanded demo fixtures pass complete validation", () => {
   const fixture = validateDemoSeedFixture(buildDemoSeedData("2026-10-11"));
   assert.deepEqual(fixture.counts, { patients: 40, treatments: 54, appointments: 38, attachments: 10 });
+});
+
+test("Demo Fill fixtures pass at Manila midnight while UTC is still yesterday", (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-11T23:42:00Z") });
+  try {
+    const anchorDate = getManilaTodayIso();
+    assert.equal(anchorDate, "2026-10-12");
+    const fixture = validateDemoSeedFixture(buildDemoSeedData(anchorDate));
+    assert.deepEqual(fixture.counts, { patients: 40, treatments: 54, appointments: 38, attachments: 10 });
+    const firstPatient = fixture.patients[0];
+    const { errors: patientErrors, data: patientData } = validatePatientPayload({
+      ...firstPatient,
+      patient_id: "P-2026-0001",
+      date_registered: anchorDate
+    });
+    assert.deepEqual(patientErrors, []);
+    assert.equal(patientData.age, 26);
+    assert.deepEqual(validatePatientPayload({ ...firstPatient, patient_id: "P-2026-0001", date_registered: "2026-10-13" }).errors, ["Date Registered cannot be in the future."]);
+    const firstTreatment = fixture.treatments[0];
+    const { errors: treatmentErrors } = validateTreatmentPayload({
+      treatment_id: "T-2026-0001", patient_id: "P-2026-0001",
+      treatment_date: anchorDate, procedure: firstTreatment.procedure,
+      dentists: firstTreatment.dentists, amount_charged: 100,
+      amount_paid: 0, balance: 100
+    });
+    assert.deepEqual(treatmentErrors, []);
+  } finally {
+    t.mock.timers.reset();
+  }
 });
 
 test("invalid follow-up time without date is rejected before any database mutation", () => {
