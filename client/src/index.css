@@ -61,6 +61,12 @@ body {
   @apply mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8;
 }
 
+/* Give the shared header and Home dashboard more room without stretching clinical forms. */
+.site-header-shell,
+.dashboard-wide-shell {
+  max-width: 96rem;
+}
+
 /* The patient record needs additional room for clinical schedule and history tables.
    Keep all record cards aligned while leaving other pages at their existing width. */
 .patient-record-wide-shell,

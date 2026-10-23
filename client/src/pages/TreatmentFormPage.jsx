@@ -604,11 +604,14 @@ export default function TreatmentFormPage({ mode = "create" }) {
                 </label>
                 <label className="field-box">
                   <LabelText label="Amount Paid" required />
-                  <input type="number" step="0.01" min="0" className={inputClass(Boolean(errors.amount_paid), hasFilledValue(form.amount_paid))} value={form.amount_paid || ""} onChange={(event) => handleChange("amount_paid", event.target.value)} />
+                  <input type="number" step="0.01" min="0" readOnly={mode === "edit"} className={inputClass(Boolean(errors.amount_paid), hasFilledValue(form.amount_paid))} value={form.amount_paid || ""} onChange={(event) => handleChange("amount_paid", event.target.value)} />
+                  {mode === "edit" && <p className="mt-1 text-xs text-slate-600">Payments are managed through the treatment Payment History. Use Record Payment to add another payment.</p>}
                   <p className="mt-2 text-xs font-medium text-slate-500">{formatPesoAmount(form.amount_paid || 0)}</p>
                   {errors.amount_paid && <p className="error-text">{errors.amount_paid}</p>}
+
                 </label>
               </div>
+              {mode === "create" && Number(form.amount_paid) > 0 && <div className="mt-4 max-w-sm"><label className="field-box block"><span className="label-text">Initial Payment Method</span><select className="select-input" value={form.initial_payment_method || "Cash"} onChange={(event) => handleChange("initial_payment_method", event.target.value)}>{["Cash", "GCash", "Bank Transfer", "Card", "Other"].map((method) => <option key={method} value={method}>{method}</option>)}</select></label></div>}
               <div className="mt-4 grid gap-4 md:grid-cols-3">
                 <label className="field-box md:col-span-1">
                   <LabelText label="Balance" required />

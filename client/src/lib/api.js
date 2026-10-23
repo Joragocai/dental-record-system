@@ -4,6 +4,31 @@ const api = axios.create({
   baseURL: "http://127.0.0.1:3002/api",
 });
 
+export async function getBalancesReport() {
+  const { data } = await api.get("/balances");
+  return data;
+}
+
+export async function getPatientFinancialSummary(patientId) {
+  const { data } = await api.get(`/balances/patients/${patientId}`);
+  return data;
+}
+
+export async function getTreatmentPayments(treatmentId) {
+  const { data } = await api.get(`/treatments/${treatmentId}/payments`);
+  return data;
+}
+
+export async function recordTreatmentPayment(treatmentId, payload) {
+  const { data } = await api.post(`/treatments/${treatmentId}/payments`, payload);
+  return data;
+}
+
+export async function reverseTreatmentPayment(treatmentId, paymentId, payload) {
+  const { data } = await api.post(`/treatments/${treatmentId}/payments/${paymentId}/reverse`, payload);
+  return data;
+}
+
 export async function getDashboardSummary() {
   const { data } = await api.get("/dashboard/summary");
   return data;

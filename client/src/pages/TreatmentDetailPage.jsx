@@ -5,10 +5,12 @@ import AttachmentUploadForm from "../components/AttachmentUploadForm";
 import TreatmentRecordActions from "../components/TreatmentRecordActions";
 import RecordSuccessToast from "../components/RecordSuccessToast";
 import Layout from "../components/Layout";
+import TreatmentPayments from "../components/TreatmentPayments";
 import { getPatient, getTreatment, getTreatmentAttachments } from "../lib/api";
 import { displayNoFinalTime, formatPesoAmount } from "../lib/formatters";
 import { consumeTreatmentSaveNotice } from "../lib/treatmentSaveNotice";
 import { DASHBOARD_SCHEDULE_ORIGIN, isDashboardScheduleOrigin } from "../lib/dashboardSchedule";
+import { safeInternalLocation } from "../lib/balanceNavigation";
 
 export default function TreatmentDetailPage() {
   const { treatmentId } = useParams();
@@ -18,6 +20,8 @@ export default function TreatmentDetailPage() {
   const attachmentsRef = useRef(null);
   const cameFromTreatmentEntry = Boolean(location.state?.fromTreatmentEntry && location.state?.treatmentDraft?.patient?.patient_id);
   const cameFromDashboard = isDashboardScheduleOrigin(location.state);
+  const cameFromBalances = Boolean(location.state?.fromBalances);
+  const returnToBalances = safeInternalLocation(location.state?.balancesReturnTo, "/balances");
   const [treatment, setTreatment] = useState(null);
   const [patient, setPatient] = useState(null);
   const [attachments, setAttachments] = useState([]);
@@ -32,6 +36,12 @@ export default function TreatmentDetailPage() {
       .catch(() => setTreatment(null));
     getTreatmentAttachments(treatmentId).then(setAttachments).catch(() => setAttachments([]));
   }, [treatmentId]);
+
+  useEffect(() => {
+    if (location.hash === "#payments" && treatment) {
+      document.getElementById("payments")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [location.hash, treatment]);
 
   useEffect(() => {
     if (location.state?.focusAttachments && treatment) {
@@ -76,12 +86,12 @@ export default function TreatmentDetailPage() {
       <RecordSuccessToast notice={saveNotice} onDismiss={dismissSaveNotice} dismissLabel="Dismiss treatment notification" />
       <div className="no-print mb-3">
         <Link
-          to={cameFromDashboard ? "/" : cameFromTreatmentEntry ? "/treatments/new" : `/patients/${treatment.patient_id}`}
-          state={cameFromTreatmentEntry && !cameFromDashboard ? { treatmentDraft: location.state.treatmentDraft } : undefined}
-          aria-label={cameFromDashboard ? "Back to Home" : cameFromTreatmentEntry ? "Back to Record Treatment" : "Back to Patient Record"}
+          to={cameFromBalances ? returnToBalances : cameFromDashboard ? "/" : cameFromTreatmentEntry ? "/treatments/new" : `/patients/${treatment.patient_id}`}
+          state={cameFromBalances ? { backTo: location.state?.balancesOrigin } : cameFromTreatmentEntry && !cameFromDashboard ? { treatmentDraft: location.state.treatmentDraft } : undefined}
+          aria-label={cameFromBalances ? "Back to Balances" : cameFromDashboard ? "Back to Home" : cameFromTreatmentEntry ? "Back to Record Treatment" : "Back to Patient Record"}
           className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-clinic-700 transition-colors duration-200 ease-out hover:bg-clinic-50 hover:text-clinic-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700"
         >
-          <span aria-hidden="true">←</span> {cameFromDashboard ? "Home" : cameFromTreatmentEntry ? "Record Treatment" : "Patient Record"}
+          <span aria-hidden="true">←</span> {cameFromBalances ? "Balances" : cameFromDashboard ? "Home" : cameFromTreatmentEntry ? "Record Treatment" : "Patient Record"}
         </Link>
       </div>
       <section className="page-card">
@@ -93,11 +103,12 @@ export default function TreatmentDetailPage() {
           </p>
         </div>
         <TreatmentRecordActions treatmentId={treatmentId} patientId={treatment.patient_id} originState={cameFromDashboard ? DASHBOARD_SCHEDULE_ORIGIN : undefined} />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-clinic-200 bg-clinic-50 px-3 py-2.5"><p className="text-sm font-semibold text-clinic-900">Outstanding: {formatPesoAmount(treatment.balance)}</p><a href="#payments" className="button-secondary inline-flex min-h-10 items-center justify-center">Payment Details ↓</a></div>
       </section>
 
-      <section className="page-card mt-6">
+      <section className="page-card mt-4">
         <h2 className="section-title">Treatment Details</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <div>
             <p className="text-sm text-slate-500">Dentist/s</p>
             <p className="font-semibold text-slate-900">{treatment.dentists}</p>
@@ -130,18 +141,7 @@ export default function TreatmentDetailPage() {
             <p className="text-sm text-slate-500">Discount Amount</p>
             <p className="font-semibold text-slate-900">{formatPesoAmount(treatment.discount_amount)}</p>
           </div>
-          <div>
-            <p className="text-sm text-slate-500">Net Amount Due</p>
-            <p className="font-semibold text-slate-900">{formatPesoAmount(treatment.net_amount_due)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-slate-500">Amount Paid</p>
-            <p className="font-semibold text-slate-900">{formatPesoAmount(treatment.amount_paid)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-slate-500">Balance</p>
-            <p className="font-semibold text-slate-900">{formatPesoAmount(treatment.balance)}</p>
-          </div>
+
         </div>
         <div className="mt-4">
           <p className="text-sm text-slate-500">Remarks</p>
@@ -149,6 +149,7 @@ export default function TreatmentDetailPage() {
         </div>
       </section>
 
+      <TreatmentPayments treatment={treatment} patientName={patient?.display_name || treatment.patient_id} onUpdated={setTreatment} />
       <div className="mt-6">
         <AttachmentUploadForm
           patientId={treatment.patient_id}

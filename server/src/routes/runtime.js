@@ -1,4 +1,5 @@
 import express from "express";
+import { publishFinanceChange } from "../realtime/financeEvents.js";
 import runtimeConfig from "../config/runtimeConfig.js";
 import { clearDemoData, getDemoDataStatus, loadDemoData } from "../demo/demoEnvironment.js";
 
@@ -39,7 +40,9 @@ router.post("/demo-data/load", requireLocalDemoRequest, async (req, res) => {
   }
   try {
     res.set("Cache-Control", "no-store");
-    res.json(await loadDemoData());
+    const result = await loadDemoData();
+    publishFinanceChange();
+    res.json(result);
   } catch (error) {
     res.status(error.status || 500).json({ message: error.message || "Unable to load demo data." });
   }
@@ -51,7 +54,9 @@ router.post("/demo-data/clear", requireLocalDemoRequest, async (req, res) => {
   }
   try {
     res.set("Cache-Control", "no-store");
-    res.json(await clearDemoData());
+    const result = await clearDemoData();
+    publishFinanceChange();
+    res.json(result);
   } catch (error) {
     res.status(error.status || 500).json({ message: error.message || "Unable to clear demo data." });
   }

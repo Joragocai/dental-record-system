@@ -13,10 +13,11 @@ import { appointmentSaveNotice, isAppointmentSaveNotice } from "../lib/appointme
 import { isPatientUpdatedNotice, patientUpdatedNotice } from "../lib/patientSaveNotice";
 import { proposeAppointmentStatusChange } from "../lib/appointmentStatusChange";
 import TreatmentHistoryTable from "../components/TreatmentHistoryTable";
-import { displayNone, isPwdRelatedClassification } from "../lib/formatters";
+import { displayNone, isPwdRelatedClassification, formatPesoAmount } from "../lib/formatters";
 import {
   getExportUrl,
   getPatient,
+  getPatientFinancialSummary,
   getPatientAppointments,
   getPatientAttachments,
   getTreatmentsByPatient,
@@ -30,6 +31,7 @@ export default function PatientDetailPage() {
   const [saveNotice, setSaveNotice] = useState(null);
   const [patient, setPatient] = useState(null);
   const [treatments, setTreatments] = useState([]);
+  const [financial, setFinancial] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [updatingAppointmentId, setUpdatingAppointmentId] = useState(null);
@@ -39,6 +41,7 @@ export default function PatientDetailPage() {
 
   useEffect(() => {
     getPatient(patientId).then(setPatient).catch(() => setPatient(null));
+    getPatientFinancialSummary(patientId).then(setFinancial).catch(() => setFinancial(null));
     getTreatmentsByPatient(patientId).then(setTreatments).catch(() => setTreatments([]));
     getPatientAttachments(patientId).then(setAttachments).catch(() => setAttachments([]));
     getPatientAppointments(patientId).then(setAppointments).catch(() => setAppointments([]));
@@ -148,6 +151,11 @@ export default function PatientDetailPage() {
         </div>
       </section>
 
+      <section className="page-card mt-6 min-w-0" id="patient-financial-summary">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h2 className="section-title">Patient Financial Summary</h2><Link className="button-secondary" to={`/balances?patientId=${encodeURIComponent(patientId)}`} state={{ backTo: { pathname: location.pathname, search: location.search, hash: "#patient-financial-summary" } }}>View Balances</Link></div>
+        {financial ? <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[["Net Due", financial.net_due], ["Total Paid", financial.total_paid], ["Outstanding", financial.outstanding], ["Treatments with Balance", financial.open_treatments]].map(([title, value]) => <div key={title} className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">{title}</p><p className="mt-2 text-lg font-bold text-clinic-900">{title === "Treatments with Balance" ? value : formatPesoAmount(value)}</p></div>)}</div> : <p className="text-sm text-slate-500">Financial summary unavailable.</p>}
+        <a href="#patient-treatment-history" className="mt-3 inline-flex text-sm font-semibold text-clinic-800 underline">View treatment breakdown</a>
+      </section>
       <section className="page-card mt-6 min-w-0">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="section-title">Appointments</h2>
@@ -175,7 +183,7 @@ export default function PatientDetailPage() {
         ) : null}
       </section>
 
-      <section className="page-card mt-6 min-w-0">
+      <section className="page-card mt-6 min-w-0" id="patient-treatment-history">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="section-title">Treatment History</h2>
           <div className="no-print flex w-full flex-wrap gap-2 sm:w-auto sm:gap-3">

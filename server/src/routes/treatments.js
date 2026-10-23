@@ -1,4 +1,5 @@
 import express from "express";
+import { publishFinanceChange } from "../realtime/financeEvents.js";
 import { createAttachment, getAttachmentsByTreatmentId } from "../services/attachmentService.js";
 import { getPatientByPatientId } from "../services/patientService.js";
 import { getNextTreatmentId } from "../services/idService.js";
@@ -89,8 +90,14 @@ router.post("/", (req, res) => {
     return;
   }
   const now = new Date().toISOString();
-  const record = createTreatment(data, now);
-  res.status(201).json(record);
+  try {
+    const record = createTreatment(data, now);
+    publishFinanceChange();
+    res.status(201).json(record);
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ message: error.message });
+    throw error;
+  }
 });
 
 router.put("/:treatmentId", (req, res) => {
@@ -99,7 +106,17 @@ router.put("/:treatmentId", (req, res) => {
     res.status(404).json({ message: "Treatment not found." });
     return;
   }
-  const { errors, data } = validateTreatmentPayload({ ...req.body, treatment_id: req.params.treatmentId });
+  // The ledger, not an editable treatment form, owns cumulative payments.
+  const submitted = { ...req.body, treatment_id: req.params.treatmentId,
+    patient_id: existing.patient_id, amount_paid: existing.amount_paid };
+  const charged = Number(submitted.amount_charged);
+  const percentage = submitted.discount_type === "None" ? 0 : Number(submitted.discount_percent);
+  if (Number.isFinite(charged) && Number.isFinite(percentage)) {
+    const net = Number((charged - Number((charged * percentage / 100).toFixed(2))).toFixed(2));
+    submitted.balance = Number((net - existing.amount_paid).toFixed(2));
+    submitted.net_amount_due = net;
+  }
+  const { errors, data } = validateTreatmentPayload(submitted);
   if (errors.length) {
     res.status(400).json({ message: errors[0], errors });
     return;
@@ -109,8 +126,14 @@ router.put("/:treatmentId", (req, res) => {
     res.status(400).json({ message: "Valid patient selection is required." });
     return;
   }
-  const record = updateTreatment(req.params.treatmentId, data, new Date().toISOString());
-  res.json(record);
+  try {
+    const record = updateTreatment(req.params.treatmentId, data, new Date().toISOString());
+    publishFinanceChange();
+    res.json(record);
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ message: error.message });
+    throw error;
+  }
 });
 
 export default router;

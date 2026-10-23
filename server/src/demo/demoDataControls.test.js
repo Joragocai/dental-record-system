@@ -55,13 +55,15 @@ test("reset removes both seed and manually entered records, with correct empty s
     "CREATE TABLE treatments (id INTEGER PRIMARY KEY AUTOINCREMENT, label TEXT);",
     "CREATE TABLE appointments (id INTEGER PRIMARY KEY AUTOINCREMENT, label TEXT);",
     "CREATE TABLE attachments (id INTEGER PRIMARY KEY AUTOINCREMENT, label TEXT);",
+    "CREATE TABLE treatment_payments (id INTEGER PRIMARY KEY AUTOINCREMENT, amount_cents INTEGER);",
+    "INSERT INTO treatment_payments(amount_cents) VALUES (500);",
     "INSERT INTO patients(name) VALUES ('Seed patient'), ('Manual patient');",
     "INSERT INTO treatments(label) VALUES ('Seed treatment'), ('Manual treatment');",
     "INSERT INTO appointments(label) VALUES ('Seed appointment'), ('Manual appointment');",
     "INSERT INTO attachments(label) VALUES ('Seed attachment'), ('Manual attachment');"
   ].join("\n"));
   clearDemoDatabaseRecords(db);
-  for (const table of ["patients", "treatments", "appointments", "attachments"]) {
+  for (const table of ["patients", "treatments", "appointments", "attachments", "treatment_payments"]) {
     assert.equal(db.prepare("SELECT COUNT(*) AS count FROM " + table).get().count, 0);
   }
   assert.equal(db.prepare("SELECT name FROM sqlite_sequence WHERE name = 'patients'").get(), undefined);

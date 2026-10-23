@@ -1,4 +1,5 @@
 import express from "express";
+import { publishFinanceChange } from "../realtime/financeEvents.js";
 import { getNextPatientId } from "../services/idService.js";
 import { createPatient, getPatientByPatientId, listPatients, searchPatients, updatePatient } from "../services/patientService.js";
 import { createAppointment, listAppointmentsByPatientId } from "../services/appointmentService.js";
@@ -58,6 +59,7 @@ router.put("/:patientId", (req, res) => {
     return;
   }
   const record = updatePatient(req.params.patientId, data, new Date().toISOString());
+  publishFinanceChange();
   res.json(record);
 });
 

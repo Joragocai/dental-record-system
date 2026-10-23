@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import runtimeConfig from "../config/runtimeConfig.js";
+import { ensurePaymentLedger } from "./paymentSchema.js";
 
 runtimeConfig.ensureRuntimeDirectories();
 const dbPath = runtimeConfig.databasePath;
@@ -220,6 +221,7 @@ export function initializeDatabase() {
     SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
     WHERE updated_at IS NULL OR trim(updated_at) = '';
   `);
+  ensurePaymentLedger(db);
 }
 
 function ensureColumn(tableName, columnName, definition) {

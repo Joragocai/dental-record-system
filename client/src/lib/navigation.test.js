@@ -1,6 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isPatientsNavigationActive } from "./navigation.js";
+import { isPatientsNavigationActive, primaryNavigationItems } from "./navigation.js";
+
+test("main navigation has five clinic-facing links and excludes technical Maintenance", () => {
+  assert.deepEqual(primaryNavigationItems.map(({ to, label }) => ({ to, label })), [
+    { to: "/", label: "Home" },
+    { to: "/patients", label: "Patient Search" },
+    { to: "/patients/new", label: "Register Patient" },
+    { to: "/treatments/new", label: "Record Treatment" },
+    { to: "/balances", label: "Balances" }
+  ]);
+  assert.equal(primaryNavigationItems.some(({ to }) => to === "/settings"), false);
+  for (const item of primaryNavigationItems) {
+    assert.equal(item.isActive(item.to), true, item.label);
+  }
+});
 
 test("Patients stays highlighted across patient record workflows", () => {
   for (const path of [

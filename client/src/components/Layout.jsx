@@ -1,28 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import DemoDataDock from "./DemoDataDock";
-import { isPatientsNavigationActive } from "../lib/navigation";
+import { primaryNavigationItems } from "../lib/navigation";
 import { isDashboardScheduleOrigin } from "../lib/dashboardSchedule";
-
-const navItems = [
-  { to: "/", label: "Home", isActive: (pathname) => pathname === "/" },
-  { to: "/patients", label: "Patient Search", isActive: isPatientsNavigationActive },
-  { to: "/patients/new", label: "Register Patient", isActive: (pathname) => pathname === "/patients/new" },
-  { to: "/treatments/new", label: "Record Treatment", isActive: (pathname) => pathname === "/treatments/new" },
-  { to: "/settings", label: "Maintenance", isActive: (pathname) => pathname === "/settings" || pathname === "/backup" }
-];
 
 function isCurrentSection(item, location) {
   const returningToEntry = location.state?.fromTreatmentEntry && /^\/treatments\/[^/]+$/.test(location.pathname);
   const dashboardRoute = /^\/patients\/[^/]+\/appointments\/[^/]+\/edit$/.test(location.pathname) ||
     /^\/treatments\/(?!new$)[^/]+(?:\/edit)?$/.test(location.pathname);
   const fromDashboard = dashboardRoute && isDashboardScheduleOrigin(location.state);
-  return fromDashboard ? item.to === "/" :
+  const fromBalances = dashboardRoute && Boolean(location.state?.fromBalances);
+  return fromBalances ? item.to === "/balances" :
+    fromDashboard ? item.to === "/" :
     returningToEntry ? item.to === "/treatments/new" : item.isActive(location.pathname);
 }
 
 function NavigationLinks({ location, mobile = false, onNavigate }) {
-  return navItems.map((item) => {
+  return primaryNavigationItems.map((item) => {
     const isActive = isCurrentSection(item, location);
     return (
       <NavLink
@@ -30,7 +24,7 @@ function NavigationLinks({ location, mobile = false, onNavigate }) {
         to={item.to}
         onClick={onNavigate}
         aria-current={isActive ? "page" : undefined}
-        className={`nav-link-ui relative flex min-h-11 items-center rounded-lg px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700 ${mobile ? "w-full justify-start text-left" : "w-[136px] shrink-0 justify-center whitespace-nowrap text-center"} ${isActive ? "bg-clinic-100/70 font-semibold text-clinic-900" : "font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}
+        className={`nav-link-ui relative flex min-h-11 items-center rounded-lg text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700 ${mobile ? "w-full justify-start px-3 text-left" : "min-w-[116px] shrink-0 justify-center whitespace-nowrap px-3.5 text-center 2xl:min-w-[132px]"} ${isActive ? "bg-clinic-100/70 font-semibold text-clinic-900" : "font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}
       >
         {item.label}
         {isActive ? <span aria-hidden="true" className={mobile ? "absolute bottom-2 left-0 top-2 w-[3px] rounded-full bg-clinic-500" : "absolute bottom-0 left-4 right-4 h-[3px] rounded-full bg-clinic-500"} /> : null}
@@ -83,8 +77,8 @@ export default function Layout({ children, contentClassName = "" }) {
   return (
     <div className="min-h-screen min-w-0 bg-[radial-gradient(circle_at_top_left,_rgba(60,122,115,0.15),_transparent_28%),linear-gradient(180deg,_#f8fbfb_0%,_#eef4f4_100%)]">
       <header className="no-print border-b border-slate-200 bg-white/85 backdrop-blur">
-        <div className="page-shell flex flex-col gap-3 py-3 sm:py-4 xl:flex-row xl:items-center xl:justify-between xl:gap-4">
-          <div className="flex min-w-0 items-center justify-between gap-3 xl:shrink-0">
+        <div className="page-shell site-header-shell flex flex-col gap-3 py-3 sm:py-4 min-[1440px]:flex-row min-[1440px]:items-center min-[1440px]:justify-between min-[1440px]:gap-6">
+          <div className="flex min-w-0 items-center justify-between gap-3 min-[1440px]:shrink-0">
             <div className="min-w-0">
               <Link to="/" className="block text-base font-bold leading-tight text-clinic-900 sm:text-xl xl:text-xl 2xl:text-2xl">
                 Khurana Calilap Dental <span className="block sm:inline">Record System</span>
@@ -105,7 +99,7 @@ export default function Layout({ children, contentClassName = "" }) {
               </svg>
             </button>
           </div>
-          <nav aria-label="Main navigation" className="hidden shrink-0 items-center gap-1 xl:flex">
+          <nav aria-label="Main navigation" className="hidden min-w-0 items-center gap-4 xl:flex xl:justify-between min-[1440px]:shrink-0 min-[1440px]:justify-end min-[1440px]:gap-5">
             <NavigationLinks location={location} />
           </nav>
           <nav

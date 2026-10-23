@@ -1,4 +1,6 @@
 import db from "../db/database.js";
+import { addInitialPayment, fromCents, getPaidCents } from "./paymentLedger.js";
+import { paymentMethods, toCents } from "../utils/paymentValidation.js";
 
 const treatmentFields = [
   "treatment_id",
@@ -94,16 +96,36 @@ export function getTreatmentsByPatientId(patientId) {
 }
 
 export function createTreatment(treatment, now) {
+  if (Number(treatment.amount_paid) > 0 && !paymentMethods.includes(treatment.initial_payment_method || "Cash") && treatment.initial_payment_method !== "Not recorded") {
+    throw Object.assign(new Error("Select a valid initial payment method."), { status: 400 });
+  }
   const fields = [...treatmentFields, "created_at", "updated_at"];
   const values = fields.map((field) => (field === "created_at" || field === "updated_at" ? now : treatment[field] ?? null));
   const placeholders = fields.map(() => "?").join(", ");
-  db.prepare(`INSERT INTO treatments (${fields.join(", ")}) VALUES (${placeholders})`).run(...values);
+  db.exec("SAVEPOINT create_treatment");
+  try {
+    db.prepare(`INSERT INTO treatments (${fields.join(", ")}) VALUES (${placeholders})`).run(...values);
+    addInitialPayment(db, { treatmentId: treatment.treatment_id, amountPaid: treatment.amount_paid,
+      treatmentDate: treatment.treatment_date, paymentMethod: treatment.initial_payment_method || "Not recorded", createdAt: now });
+    db.exec("RELEASE SAVEPOINT create_treatment");
+  } catch (error) {
+    db.exec("ROLLBACK TO SAVEPOINT create_treatment");
+    db.exec("RELEASE SAVEPOINT create_treatment");
+    throw error;
+  }
   return getTreatmentByTreatmentId(treatment.treatment_id);
 }
 
 export function updateTreatment(treatmentId, treatment, now) {
+  const existing = getTreatmentByTreatmentId(treatmentId);
+  if (!existing) throw Object.assign(new Error("Treatment not found."), { status: 404 });
+  if (treatment.patient_id !== existing.patient_id) throw Object.assign(new Error("Cannot change the patient linked to an existing treatment."), { status: 400 });
+  const paidCents = getPaidCents(db, treatmentId);
+  const dueCents = toCents(treatment.net_amount_due);
+  if (dueCents === null || dueCents < paidCents) throw Object.assign(new Error("Net Amount Due cannot be below payments already received."), { status: 400 });
+  const updated = { ...treatment, amount_paid: fromCents(paidCents), balance: fromCents(dueCents - paidCents) };
   const assignments = treatmentFields.map((field) => `${field} = ?`).join(", ");
-  const values = treatmentFields.map((field) => treatment[field] ?? null);
+  const values = treatmentFields.map((field) => updated[field] ?? null);
   db.prepare(`UPDATE treatments SET ${assignments}, updated_at = ? WHERE treatment_id = ?`).run(...values, now, treatmentId);
   return getTreatmentByTreatmentId(treatmentId);
 }

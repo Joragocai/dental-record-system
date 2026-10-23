@@ -15,22 +15,14 @@ export default function PatientSearchResults({ patients }) {
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="break-words text-base font-semibold leading-snug text-slate-900 [overflow-wrap:anywhere]">{patient.display_name}</p>
-                <p className="mt-1 text-xs font-medium text-clinic-700">Open Record</p>
+
               </div>
-              <svg
-                aria-hidden="true"
-                className="mt-1 shrink-0 text-clinic-700 transition-transform duration-200 group-hover:translate-x-0.5"
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m9 18 6-6-6-6" />
-              </svg>
+              <span className="mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-[#285B55] transition-colors group-hover:border-[#285B55] group-hover:bg-clinic-50">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </span>
             </div>
             <dl className="mt-3 grid min-w-0 grid-cols-2 gap-2">
               <div className="min-w-0">
@@ -57,7 +49,7 @@ export default function PatientSearchResults({ patients }) {
               <th scope="col" className="px-4 py-3">Patient</th>
               <th scope="col" className="whitespace-nowrap px-4 py-3">Patient ID</th>
               <th scope="col" className="whitespace-nowrap px-4 py-3">Mobile Number</th>
-              <th scope="col" className="w-[155px] whitespace-nowrap px-4 py-3">Action</th>
+              <th scope="col" className="w-[96px] whitespace-nowrap px-4 py-3 text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 bg-white">
@@ -66,12 +58,17 @@ export default function PatientSearchResults({ patients }) {
                 <td className="break-words px-4 py-3 font-medium text-slate-900">{patient.display_name}</td>
                 <td className="whitespace-nowrap px-4 py-3">{patient.patient_id}</td>
                 <td className="whitespace-nowrap px-4 py-3">{patient.mobile_number || "-"}</td>
-                <td className="whitespace-nowrap px-4 py-3">
+                <td className="whitespace-nowrap px-4 py-3 text-center">
                   <Link
-                    className="button-secondary inline-flex min-h-11 items-center justify-center whitespace-nowrap"
                     to={`/patients/${patient.patient_id}`}
+                    aria-label={`View patient record for ${patient.display_name}, ${patient.patient_id}`}
+                    title="View Patient Record"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-[#285B55] transition-colors hover:border-[#285B55] hover:bg-clinic-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700"
                   >
-                    Open Record
+                    <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
                   </Link>
                 </td>
               </tr>
