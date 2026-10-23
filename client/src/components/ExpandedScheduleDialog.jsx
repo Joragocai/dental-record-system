@@ -82,9 +82,9 @@ export default function ExpandedScheduleDialog({ title, selectedDate, items, loa
   return createPortal(
     <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-3 sm:p-6">
       <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="expanded-schedule-title" className="flex max-h-[94vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 id="expanded-schedule-title" className="text-xl font-bold text-slate-900">{title}</h2>
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h2 id="expanded-schedule-title" className="break-words text-xl font-bold text-slate-900">{title}</h2>
             <p className="mt-1 text-sm text-slate-600">{formatReadableDate(selectedDate)} · Full schedule view</p>
           </div>
           <button ref={closeRef} type="button" onClick={onClose} className="button-secondary inline-flex h-11 w-11 shrink-0 items-center justify-center p-0 transition-colors duration-200 hover:border-clinic-700 hover:bg-clinic-700 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700" aria-label="Minimize full schedule" title="Minimize full schedule"><ScheduleSizeIcon expanded /></button>

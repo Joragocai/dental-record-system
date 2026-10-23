@@ -103,12 +103,17 @@ function ScheduleSection({ title, subtitle, items, emptyMessage, showDate = fals
 
   return (
     <section className={framed ? "page-card" : ""}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="section-title">{title}</h2>
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <h2 className="section-title min-w-0 flex-1 break-words">{title}</h2>
         {onExpand ? <button type="button" className="button-secondary no-print inline-flex h-11 w-11 shrink-0 items-center justify-center p-0 transition-colors duration-200 hover:border-clinic-700 hover:bg-clinic-700 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700" onClick={onExpand} aria-label={`Expand ${title}`} title={`Expand ${title}`}><ScheduleSizeIcon /></button> : null}
       </div>
       {subtitle ? <p className="mt-1 text-sm text-slate-600">{subtitle}</p> : null}
-      <div className="mt-4 md:hidden">
+      <div
+        className="mt-4 max-h-[min(55dvh,26rem)] overflow-y-auto overscroll-y-contain pr-1 focus-visible:rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700 md:hidden"
+        role="region"
+        aria-label={`${title} patient entries`}
+        tabIndex={items.length ? 0 : undefined}
+      >
         <ScheduleEntriesMobile items={items} emptyMessage={emptyMessage} showDate={showDate} />
       </div>
       <div
