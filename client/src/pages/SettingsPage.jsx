@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Layout from "../components/Layout";
 import { useRuntimeStatus } from "../context/RuntimeStatusContext";
 import { createBackup, getBackupStatus } from "../lib/api";
+import { cloudAuthEnabled } from "../lib/cloudAuth";
 import {
   formatBackupDateTime,
   formatRetentionSummary,
@@ -172,11 +173,11 @@ export default function SettingsPage() {
           <section className="mt-5 min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-4 sm:mt-6 sm:px-5 sm:py-5">
             <div className="min-w-0 max-w-xl">
               <h2 className="text-lg font-semibold text-slate-900">
-                Create a Manual Backup
+                {cloudAuthEnabled ? "Cloud Backup Management" : "Create a Manual Backup"}
               </h2>
 
               <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                Create an immediate backup of the database, uploads, and exports.
+                {cloudAuthEnabled ? "Cloud database and private Storage backups require separate provider-side setup and a verified restore test. Exports are not backups." : "Create an immediate backup of the database, uploads, and exports."}
               </p>
             </div>
 
@@ -188,7 +189,7 @@ export default function SettingsPage() {
                 type="button"
                 className="button-primary inline-flex min-h-11 w-full items-center justify-center gap-2 px-4 py-3 sm:w-auto"
                 onClick={handleBackup}
-                disabled={buttonState.disabled}
+                disabled={cloudAuthEnabled || buttonState.disabled}
                 aria-disabled={buttonState.disabled ? "true" : "false"}
               >
                 {buttonState.isBusy ? (
@@ -198,7 +199,7 @@ export default function SettingsPage() {
                   />
                 ) : null}
 
-                <span>{buttonState.label}</span>
+                <span>{cloudAuthEnabled ? "Provider Backup Verification Required" : buttonState.label}</span>
               </button>
 
               {backupStatus?.backupInProgress && !isCreatingBackup ? (

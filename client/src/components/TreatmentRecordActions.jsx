@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { getExportUrl } from "../lib/api";
+import ProtectedExportLink from "./ProtectedExportLink";
 
 // Group supporting document actions while keeping the clinical edit action prominent.
 export default function TreatmentRecordActions({ treatmentId, patientId, originState }) {
@@ -81,13 +81,13 @@ export default function TreatmentRecordActions({ treatmentId, patientId, originS
               Print Treatment Record
             </Link>
             {patientId ? (
-              <a
-                href={getExportUrl(`/api/export/patients/${patientId}/treatments`)}
+              <ProtectedExportLink
+                path={`/api/export/patients/${patientId}/treatments`}
                 onClick={() => setMoreOpen(false)}
                 className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors duration-200 hover:bg-clinic-50 hover:text-clinic-900 focus-visible:bg-clinic-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clinic-700"
               >
                 Export Patient Treatments
-              </a>
+              </ProtectedExportLink>
             ) : null}
           </div>
         ) : null}

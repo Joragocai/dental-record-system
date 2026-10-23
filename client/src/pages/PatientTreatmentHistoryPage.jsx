@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Layout from "../components/Layout";
+import ProtectedExportLink from "../components/ProtectedExportLink";
 import TreatmentHistoryTable from "../components/TreatmentHistoryTable";
-import { getExportUrl, getPatient, getTreatmentsByPatient } from "../lib/api";
+import { getPatient, getTreatmentsByPatient } from "../lib/api";
 
 export default function PatientTreatmentHistoryPage() {
   const { patientId } = useParams();
@@ -40,12 +41,12 @@ export default function PatientTreatmentHistoryPage() {
             </svg>
             Print Full History
           </Link>
-          <a className="button-secondary inline-flex min-h-11 items-center justify-center gap-2" href={getExportUrl(`/api/export/patients/${patientId}/treatments`)}>
+          <ProtectedExportLink className="button-secondary inline-flex min-h-11 items-center justify-center gap-2" path={`/api/export/patients/${patientId}/treatments`}>
             <svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4" />
             </svg>
             Export Treatments
-          </a>
+          </ProtectedExportLink>
         </div>
       </section>
 

@@ -1,3 +1,5 @@
+import { cloudAuthEnabled } from "./cloudAuth";
+
 // Load the Socket.IO browser client served by the local backend itself.
 // This avoids introducing a second frontend package for the presentation demo.
 const backend = "http://127.0.0.1:3002";
@@ -22,6 +24,9 @@ function loadClient() {
 
 // Notify clients to refetch from the API; no payment or patient data goes over the socket.
 export async function subscribeToFinanceChanges(onChange) {
+  // The cloud API deliberately does not expose unauthenticated Socket.IO.
+  // The Balances page already refetches on focus and visibility change.
+  if (cloudAuthEnabled) return () => {};
   const connect = await loadClient();
   const socket = connect(backend, { transports: ["websocket", "polling"], reconnection: true });
   socket.on("finance:changed", onChange);

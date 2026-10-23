@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { clearDemoRecords, loadDemoRecords } from "../lib/api";
 import { useRuntimeStatus } from "../context/RuntimeStatusContext";
+import { useCloudAuth } from "../context/CloudAuthContext";
 
 export default function DemoDataDock() {
-  const { isDemoMode } = useRuntimeStatus();
+  const { isDemoMode, loading, statusError, refreshRuntimeStatus } = useRuntimeStatus();
+  const { enabled: cloudEnabled, authenticated } = useCloudAuth();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -25,7 +27,14 @@ export default function DemoDataDock() {
     };
   }, [open]);
 
-  if (!isDemoMode) return null;
+  if (!isDemoMode) {
+    if (!cloudEnabled || !authenticated) return null;
+    return <aside className="no-print fixed bottom-24 right-0 z-40 rounded-l-lg border border-r-0 border-slate-200 bg-white p-2 text-xs shadow-sm sm:bottom-20" role="status">
+      <p className="max-w-48 text-slate-600">{loading ? "Checking Demo Tools..." : statusError ? "Demo Tools unavailable" : "Demo Tools disabled"}</p>
+      {statusError ? <p className="mt-1 max-w-48 break-words text-rose-700">{statusError}</p> : null}
+      <button type="button" disabled={loading} onClick={refreshRuntimeStatus} className="mt-1 rounded border border-slate-200 px-2 py-1 text-clinic-800 hover:bg-slate-50 disabled:opacity-50">Retry</button>
+    </aside>;
+  }
 
   async function handleAction(action) {
     if (busy) return;

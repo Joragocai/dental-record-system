@@ -1,7 +1,17 @@
 import axios from "axios";
+import { cloudAuthEnabled, getCloudAccessToken } from "./cloudAuth";
 
 const api = axios.create({
-  baseURL: "http://127.0.0.1:3002/api",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:3002/api",
+});
+
+api.interceptors.request.use(async (config) => {
+  if (cloudAuthEnabled) {
+    const token = await getCloudAccessToken();
+    if (!token) throw new Error("Sign in to access the dental system.");
+    config.headers.set("Authorization", `Bearer ${token}`);
+  }
+  return config;
 });
 
 export async function getBalancesReport() {
@@ -162,6 +172,34 @@ export async function deleteAttachment(attachmentId) {
   return data;
 }
 
+// Cloud files are never exposed as public URLs. The request interceptor supplies
+// the verified Supabase access token, including for image previews and downloads.
+export async function getPrivateAttachmentPreview(attachmentId, { signal } = {}) {
+  if (!cloudAuthEnabled) throw new Error("Private attachment previews require cloud mode.");
+  const { data } = await api.get(`/attachments/${attachmentId}/preview`, {
+    responseType: "blob", signal
+  });
+  return data;
+}
+
+export async function downloadPrivateAttachmentFile(attachment) {
+  if (!cloudAuthEnabled) throw new Error("Private downloads require cloud mode.");
+  const { data } = await api.get(`/attachments/${attachment.id}/download`, { responseType: "blob" });
+  const objectUrl = URL.createObjectURL(data);
+  try {
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = String(attachment.original_filename || "attachment")
+      .replaceAll("\\", "/").split("/").pop();
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  } finally {
+    // Allow the browser to initiate the download before releasing the blob URL.
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  }
+}
+
 export async function createBackup() {
   const { data } = await api.post("/backup");
   return data;
@@ -173,11 +211,9 @@ export async function getBackupStatus() {
 }
 
 export async function getRuntimeStatus() {
-  const { data } = await api.get("/runtime/status", {
-    headers: {
-      "Cache-Control": "no-store"
-    }
-  });
+  // The server sets Cache-Control: no-store on the response. A request-side
+  // Cache-Control header is unnecessary and triggers a rejected CORS preflight.
+  const { data } = await api.get("/runtime/status");
   return data;
 }
 
@@ -196,15 +232,35 @@ export async function clearDemoRecords() {
   return data;
 }
 
+export async function downloadProtectedExport(path) {
+  if (!cloudAuthEnabled) throw new Error("Cloud export requires sign-in.");
+  if (!/^\/api\/export\/(patients|treatments)(\/P-[0-9]{4}-[0-9]{4}\/(full-record|treatments))?$/.test(path) &&
+      !/^\/api\/export\/patients\/P-[0-9]{4}-[0-9]{4}\/(full-record|treatments)$/.test(path)) {
+    throw new Error("Invalid export request.");
+  }
+  const { data, headers } = await api.get(path.replace(/^\/api/, ""), { responseType:"blob" });
+  const suggested = headers["content-disposition"]?.match(/filename="([^"]+)"/)?.[1] || "dental_export.xlsx";
+  const objectUrl = URL.createObjectURL(data);
+  const element = document.createElement("a");
+  element.href = objectUrl;
+  element.download = suggested;
+  document.body.appendChild(element);
+  element.click();
+  element.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
 export function getExportUrl(path) {
   return `http://127.0.0.1:3002${path}`;
 }
 
 export function getUploadUrl(filePath) {
+  if (cloudAuthEnabled) throw new Error("Cloud attachments must use authenticated private previews.");
   return `http://127.0.0.1:3002${filePath}`;
 }
 
 export function getAttachmentDownloadUrl(attachmentId) {
+  if (cloudAuthEnabled) throw new Error("Cloud attachments must use authenticated private downloads.");
   return `http://127.0.0.1:3002/api/attachments/${attachmentId}/download`;
 }
 

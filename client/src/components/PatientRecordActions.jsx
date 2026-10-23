@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { getExportUrl } from "../lib/api";
+import ProtectedExportLink from "./ProtectedExportLink";
 
 // Keep clinical actions prominent; print/export remain one click away.
 export default function PatientRecordActions({ patientId }) {
@@ -86,13 +86,13 @@ export default function PatientRecordActions({ patientId }) {
             >
               Print Patient Record
             </Link>
-            <a
-              href={getExportUrl(`/api/export/patients/${patientId}/full-record`)}
+            <ProtectedExportLink
+              path={`/api/export/patients/${patientId}/full-record`}
               onClick={() => setMoreOpen(false)}
               className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors duration-200 hover:bg-clinic-50 hover:text-clinic-900 focus-visible:bg-clinic-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clinic-700"
             >
               Export Full Record
-            </a>
+            </ProtectedExportLink>
           </div>
         ) : null}
       </div>

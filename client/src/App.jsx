@@ -1,4 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { useCloudAuth } from "./context/CloudAuthContext";
+import CloudLoginPage from "./pages/CloudLoginPage";
 import AppointmentFormPage from "./pages/AppointmentFormPage";
 import DashboardPage from "./pages/DashboardPage";
 import BalancesPage from "./pages/BalancesPage";
@@ -14,6 +16,9 @@ import TreatmentDetailPage from "./pages/TreatmentDetailPage";
 import TreatmentFormPage from "./pages/TreatmentFormPage";
 
 export default function App() {
+  const { enabled, ready, authenticated } = useCloudAuth();
+  if (enabled && !ready) return <main className="min-h-screen grid place-items-center">Verifying session…</main>;
+  if (enabled && !authenticated) return <CloudLoginPage />;
   return (
     <Routes>
       <Route path="/" element={<DashboardPage />} />

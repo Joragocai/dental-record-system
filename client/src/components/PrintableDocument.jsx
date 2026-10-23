@@ -1,5 +1,5 @@
 import { formatAttachmentType } from "../lib/attachments";
-import { getUploadUrl } from "../lib/api";
+import AttachmentImage from "./AttachmentImage";
 
 export function PrintField({ label, value }) {
   return (
@@ -32,7 +32,7 @@ export function PrintableAttachments({ attachments, title = "Uploaded Images and
         {attachments.map((attachment) => (
           <div key={attachment.id} className="attachment-sheet-item">
             {attachment.mime_type?.startsWith("image/") ? (
-              <img src={getUploadUrl(attachment.file_path)} alt={attachment.original_filename} className="attachment-sheet-image" />
+              <AttachmentImage attachment={attachment} className="attachment-sheet-image" />
             ) : (
               <div className="attachment-sheet-placeholder">File Preview Not Available</div>
             )}

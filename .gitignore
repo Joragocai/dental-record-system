@@ -16,6 +16,7 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 data/dental-demo.marker.json
+data/postgres-private-files/
 
 # Uploaded clinic files
 uploads/
@@ -32,6 +33,10 @@ demo-backups/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Local Supabase CA downloads and Windows alternate-stream metadata
+server/certs/
+*:Zone.Identifier
 
 # OS files
 .DS_Store

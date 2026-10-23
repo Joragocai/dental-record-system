@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace server\" \"npm run dev --workspace client\"",
     "dev:server": "npm run dev --workspace server",
+    "dev:postgres": "node server/scripts/devPostgresLocal.js",
     "dev:client": "npm run dev --workspace client",
     "demo:prepare": "node server/scripts/demoPrepare.js",
     "dev:demo": "node server/scripts/devDemo.js",

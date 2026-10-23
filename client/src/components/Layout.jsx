@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import DemoDataDock from "./DemoDataDock";
+import AccountProfileDropdown from "./AccountProfileDropdown";
+import { useCloudAuth } from "../context/CloudAuthContext";
 import { primaryNavigationItems } from "../lib/navigation";
 import { isDashboardScheduleOrigin } from "../lib/dashboardSchedule";
 
@@ -34,6 +36,7 @@ function NavigationLinks({ location, mobile = false, onNavigate }) {
 }
 
 export default function Layout({ children, contentClassName = "" }) {
+  const { enabled: isCloud } = useCloudAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const toggleRef = useRef(null);
@@ -85,6 +88,8 @@ export default function Layout({ children, contentClassName = "" }) {
               </Link>
               <p className="mt-1 hidden text-sm text-slate-600 sm:block">Local clinic record system for patient and treatment management</p>
             </div>
+            <div className="flex shrink-0 items-center gap-2 min-[1440px]:hidden">
+              {isCloud ? <AccountProfileDropdown /> : null}
             <button
               ref={toggleRef}
               type="button"
@@ -98,10 +103,12 @@ export default function Layout({ children, contentClassName = "" }) {
                 {menuOpen ? <path d="M5 5l14 14M19 5L5 19" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
               </svg>
             </button>
+            </div>
           </div>
           <nav aria-label="Main navigation" className="hidden min-w-0 items-center gap-4 xl:flex xl:justify-between min-[1440px]:shrink-0 min-[1440px]:justify-end min-[1440px]:gap-5">
             <NavigationLinks location={location} />
           </nav>
+          {isCloud ? <div className="hidden min-[1440px]:block"><AccountProfileDropdown /></div> : null}
           <nav
             ref={menuRef}
             id="mobile-primary-navigation"

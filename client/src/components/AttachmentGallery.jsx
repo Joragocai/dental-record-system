@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { deleteAttachment } from "../lib/api";
-import { getAttachmentDownloadUrl, getUploadUrl } from "../lib/api";
+import { deleteAttachment, downloadPrivateAttachmentFile, getAttachmentDownloadUrl } from "../lib/api";
+import { cloudAuthEnabled } from "../lib/cloudAuth";
+import AttachmentImage from "./AttachmentImage";
 import { formatAttachmentType, formatUploadedAt } from "../lib/attachments";
 import DeleteAttachmentDialog from "./DeleteAttachmentDialog";
 
@@ -12,6 +13,7 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState("success");
   const [deletingId, setDeletingId] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
   const [attachmentToDelete, setAttachmentToDelete] = useState(null);
   const [deleteError, setDeleteError] = useState("");
   const deleteInFlightRef = useRef(false);
@@ -40,6 +42,20 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
   }, [previewAttachment]);
+
+  async function handlePrivateDownload(attachment) {
+    if (downloadingId !== null) return;
+    setDownloadingId(attachment.id);
+    setStatus("");
+    try {
+      await downloadPrivateAttachmentFile(attachment);
+    } catch {
+      setStatus("Unable to download this private attachment. Please sign in again or retry.");
+      setStatusTone("error");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   function requestDelete(attachment) {
     if (deleteInFlightRef.current || attachmentToDelete) return;
@@ -110,9 +126,8 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
             <article key={attachment.id} className="attachment-gallery-card min-w-0 rounded-2xl border border-slate-200 p-3">
               {isImage(attachment.mime_type) ? (
                 <button type="button" className="attachment-preview-trigger block w-full" onClick={() => setPreviewAttachment(attachment)}>
-                  <img
-                    src={getUploadUrl(attachment.file_path)}
-                    alt={attachment.original_filename}
+                  <AttachmentImage
+                    attachment={attachment}
                     className="h-40 w-full rounded-xl object-cover transition hover:opacity-95"
                   />
                 </button>
@@ -126,12 +141,17 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
                 <p className="text-sm font-medium text-slate-700">Uploaded: {formatUploadedAt(attachment.uploaded_at)}</p>
                 <p className="break-words text-xs text-slate-500 [overflow-wrap:anywhere]">Filename: {attachment.original_filename}</p>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
-                  <a
-                    href={getAttachmentDownloadUrl(attachment.id)}
-                    className="button-download"
-                  >
-                    Download
-                  </a>
+                  {cloudAuthEnabled ? (
+                    <button type="button" className="button-download"
+                      disabled={downloadingId !== null}
+                      onClick={() => handlePrivateDownload(attachment)}>
+                      {downloadingId === attachment.id ? "Downloading..." : "Download"}
+                    </button>
+                  ) : (
+                    <a href={getAttachmentDownloadUrl(attachment.id)} className="button-download">
+                      Download
+                    </a>
+                  )}
                   <button
                     type="button"
                     className="button-danger-outline"
@@ -155,11 +175,7 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
             <button type="button" className="attachment-preview-close" onClick={() => setPreviewAttachment(null)}>
               ×
             </button>
-            <img
-              src={getUploadUrl(previewAttachment.file_path)}
-              alt={previewAttachment.original_filename}
-              className="attachment-preview-image"
-            />
+            <AttachmentImage attachment={previewAttachment} className="attachment-preview-image" />
             <div className="mt-4 space-y-1">
               <p className="text-lg font-semibold text-slate-900">{formatAttachmentType(previewAttachment.attachment_type)}</p>
               <p className="text-sm text-slate-600">Uploaded: {formatUploadedAt(previewAttachment.uploaded_at)}</p>

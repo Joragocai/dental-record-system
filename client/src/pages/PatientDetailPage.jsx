@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import AttachmentGallery from "../components/AttachmentGallery";
 import AttachmentUploadForm from "../components/AttachmentUploadForm";
 import PatientRecordActions from "../components/PatientRecordActions";
+import ProtectedExportLink from "../components/ProtectedExportLink";
 import Layout from "../components/Layout";
 import PatientAppointmentsTable from "../components/PatientAppointmentsTable";
 import PatientAppointmentCards from "../components/PatientAppointmentCards";
@@ -15,7 +16,6 @@ import { proposeAppointmentStatusChange } from "../lib/appointmentStatusChange";
 import TreatmentHistoryTable from "../components/TreatmentHistoryTable";
 import { displayNone, isPwdRelatedClassification, formatPesoAmount } from "../lib/formatters";
 import {
-  getExportUrl,
   getPatient,
   getPatientFinancialSummary,
   getPatientAppointments,
@@ -190,9 +190,9 @@ export default function PatientDetailPage() {
             <Link className="button-secondary" to={`/patients/${patientId}/treatments`}>
               Full History Page
             </Link>
-            <a className="button-secondary" href={getExportUrl(`/api/export/patients/${patientId}/treatments`)}>
+            <ProtectedExportLink className="button-secondary" path={`/api/export/patients/${patientId}/treatments`}>
               Export Treatments
-            </a>
+            </ProtectedExportLink>
           </div>
         </div>
         <div className="md:hidden"><PatientTreatmentCards treatments={treatments} /></div>
