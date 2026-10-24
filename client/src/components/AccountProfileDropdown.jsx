@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useCloudAuth } from "../context/CloudAuthContext";
 
 function AccountAvatar({ small = false }) {
@@ -119,6 +120,17 @@ export default function AccountProfileDropdown() {
               <p className="mt-1"><span className="font-semibold text-clinic-900">Account type:</span> Authorized clinic account</p>
             </div>
           ) : null}
+          <Link
+            to="/settings"
+            onClick={() => { setOpen(false); setDetailsOpen(false); }}
+            className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-medium text-clinic-900 transition hover:bg-clinic-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clinic-700"
+          >
+            <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 8V5h14v3M5 13V8h14v5M4 13h16v7H4z" />
+              <path d="M9 16h6" />
+            </svg>
+            Backup &amp; Recovery
+          </Link>
           <button
             type="button"
             onClick={handleSignOut}

@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { Link } from "react-router-dom";
 import { useCloudAuth } from "../context/CloudAuthContext";
 
 // The account controls are part of the navigation sheet only on small screens.
@@ -70,6 +71,17 @@ export default function MobileAccountSection({ onSignedOut }) {
         </div>
       )}
 
+      <Link
+        to="/settings"
+        onClick={() => onSignedOut?.()}
+        className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium text-clinic-900 transition-colors hover:bg-clinic-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clinic-700"
+      >
+        <svg aria-hidden="true" className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 8V5h14v3M5 13V8h14v5M4 13h16v7H4z" />
+          <path d="M9 16h6" />
+        </svg>
+        Backup &amp; Recovery
+      </Link>
       <button
         type="button"
         disabled={signingOut}
