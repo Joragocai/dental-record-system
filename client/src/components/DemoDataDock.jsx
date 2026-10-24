@@ -41,8 +41,8 @@ export default function DemoDataDock() {
     const isReset = action === "reset";
     const confirmed = window.confirm(
       isReset
-        ? "Reset the presentation to an empty clinic? This permanently clears all demo patients, treatments, appointments, attachments, exports, and demo backup history. Real clinic data will not be affected."
-        : "Replace existing presentation records with fictional demo data? Any changes made to current demo records, attachments, exports, and demo backups will be lost."
+        ? "Reset the dedicated demo to an empty clinic? All ACTIVE fictional patients, treatments, appointments, payments and attachments will be permanently cleared. Independently downloaded encrypted backups are not deleted. Continue?"
+        : "Replace the current demo records and attachments with a fresh fictional dataset? All manual changes to ACTIVE demo records will be lost unless separately backed up. Saved downloaded backups remain available. Continue?"
     );
     if (!confirmed) return;
 

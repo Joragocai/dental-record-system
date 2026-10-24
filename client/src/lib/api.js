@@ -205,6 +205,23 @@ export async function downloadPrivateAttachmentFile(attachment) {
   }
 }
 
+export async function downloadCloudBackup(passphrase) {
+  const response = await api.post("/backup/download", { passphrase }, { responseType: "blob", timeout: 120000 });
+  const filename = `dental-demo-backup-${new Date().toISOString().slice(0, 10)}.drb`;
+  const url = URL.createObjectURL(response.data);
+  try {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } finally {
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  return filename;
+}
+
 export async function createBackup() {
   const { data } = await api.post("/backup");
   return data;

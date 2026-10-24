@@ -71,14 +71,14 @@ export async function uploadPrivateAttachment(config, { path, mimeType, contents
   await responseOrThrow(response);
   return { bucket:config.bucket, path };
 }
-export async function downloadPrivateAttachment(config, path, fetchImpl=fetch) {
+export async function downloadPrivateAttachment(config, path, fetchImpl=fetch, signal=null) {
   approvedPath(path);
   if (config.localPreview) {
     const data = await readFile(localStoragePath(path));
     return { ok: true, arrayBuffer: async () => data };
   }
   const response = await fetchImpl(`${config.url}/storage/v1/object/authenticated/${config.bucket}/${path}`,
-    { headers:headers(config) });
+    { headers:headers(config), ...(signal ? {signal} : {}) });
   await responseOrThrow(response);
   return response;
 }

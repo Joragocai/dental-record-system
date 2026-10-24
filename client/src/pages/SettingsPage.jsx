@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Layout from "../components/Layout";
 import { useRuntimeStatus } from "../context/RuntimeStatusContext";
-import { createBackup, getBackupStatus } from "../lib/api";
+import { createBackup, downloadCloudBackup, getBackupStatus } from "../lib/api";
 import { cloudAuthEnabled } from "../lib/cloudAuth";
 import {
   formatBackupDateTime,
@@ -29,6 +29,8 @@ export default function SettingsPage() {
   const [backupStatus, setBackupStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
+  const [backupPassphrase, setBackupPassphrase] = useState("");
+  const [backupPassphraseConfirm, setBackupPassphraseConfirm] = useState("");
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState("info");
   const requestInFlightRef = useRef(false);
@@ -95,8 +97,18 @@ export default function SettingsPage() {
     setStatus("");
 
     try {
-      await createBackup();
-      setStatus("Backup created successfully.");
+      if (cloudAuthEnabled) {
+        if (backupPassphrase.length < 14 || backupPassphrase !== backupPassphraseConfirm) {
+          throw new Error("Enter a matching backup passphrase of at least 14 characters.");
+        }
+        await downloadCloudBackup(backupPassphrase);
+        setBackupPassphrase("");
+        setBackupPassphraseConfirm("");
+        setStatus("Encrypted backup download started. Keep the file and passphrase in separate safe places.");
+      } else {
+        await createBackup();
+        setStatus("Backup created successfully.");
+      }
       setStatusTone("success");
       await loadBackupStatus(false);
     } catch (error) {
@@ -177,8 +189,16 @@ export default function SettingsPage() {
               </h2>
 
               <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                {cloudAuthEnabled ? "Cloud database and private Storage backups require separate provider-side setup and a verified restore test. Exports are not backups." : "Create an immediate backup of the database, uploads, and exports."}
+                {cloudAuthEnabled ? "Download an encrypted copy of demo records and private attachments. This does not reset your data. Keep your passphrase separately: it cannot be recovered." : "Create an immediate backup of the database, uploads, and exports."}
               </p>
+              {cloudAuthEnabled && backupStatus?.backupDownloadAvailable ? <div className="mt-4 grid gap-3">
+                <label className="text-sm text-slate-700">Backup passphrase (at least 14 characters)
+                  <input type="password" autoComplete="new-password" value={backupPassphrase} onChange={e => setBackupPassphrase(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2" />
+                </label>
+                <label className="text-sm text-slate-700">Confirm backup passphrase
+                  <input type="password" autoComplete="new-password" value={backupPassphraseConfirm} onChange={e => setBackupPassphraseConfirm(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2" />
+                </label>
+              </div> : null}
             </div>
 
             <div
@@ -189,7 +209,7 @@ export default function SettingsPage() {
                 type="button"
                 className="button-primary inline-flex min-h-11 w-full items-center justify-center gap-2 px-4 py-3 sm:w-auto"
                 onClick={handleBackup}
-                disabled={cloudAuthEnabled || buttonState.disabled}
+                disabled={(cloudAuthEnabled && !backupStatus?.backupDownloadAvailable) || buttonState.disabled || (cloudAuthEnabled && (backupPassphrase.length < 14 || backupPassphrase !== backupPassphraseConfirm))}
                 aria-disabled={buttonState.disabled ? "true" : "false"}
               >
                 {buttonState.isBusy ? (
@@ -199,7 +219,7 @@ export default function SettingsPage() {
                   />
                 ) : null}
 
-                <span>{cloudAuthEnabled ? "Provider Backup Verification Required" : buttonState.label}</span>
+                <span>{cloudAuthEnabled ? (backupStatus?.backupDownloadAvailable ? "Download Encrypted Backup" : "Cloud Backup Not Enabled") : buttonState.label}</span>
               </button>
 
               {backupStatus?.backupInProgress && !isCreatingBackup ? (
@@ -272,7 +292,7 @@ export default function SettingsPage() {
           </section>
 
           {runtimeStatus.isDemoMode ? (
-            <p className="mt-5 text-xs text-slate-500">Demo tools note: Reset clears locally stored demo backups along with demo records.</p>
+            <p className="mt-5 text-xs text-slate-500">{cloudAuthEnabled ? "Downloaded backup files are independent of Demo Fill and Reset. Save them outside the demo database." : "Demo tools note: Reset clears locally stored demo backups along with demo records."}</p>
           ) : null}
 
           <section className="mt-6 min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-4 sm:px-5 sm:py-5">
