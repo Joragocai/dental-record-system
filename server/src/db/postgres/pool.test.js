@@ -18,6 +18,14 @@ test("Production Postgres configuration requires certificate-validated TLS", () 
   }), /require/);
 });
 
+test("Render can use a trusted Supabase PEM CA without disabling TLS verification", () => {
+  const env={ DATABASE_URL:"postgresql://user:pass@db.example.test:5432/clinic", NODE_ENV:"production", PG_SSL_MODE:"require", PG_CA_CERT_PEM:"-----BEGIN CERTIFICATE-----\\nFictionalTestCertificate\\n-----END CERTIFICATE-----" };
+  const config=getPostgresConfig(env);
+  assert.equal(config.ssl.rejectUnauthorized,true);
+  assert.match(config.ssl.ca,/BEGIN CERTIFICATE-----\nFictionalTestCertificate/);
+  assert.throws(()=>getPostgresConfig({...env,PG_CA_CERT_PEM:"invalid"}),/PEM certificate/);
+});
+
 test("Postgres transactions commit and always release their connection", async () => {
   const calls = [];
   const pool = { connect: async () => ({ query: async (sql) => { calls.push(sql); return { rows: [] }; }, release: () => calls.push("release") }) };

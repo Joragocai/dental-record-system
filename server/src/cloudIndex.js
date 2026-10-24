@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { createCloudApp } from "./cloudApp.js";
 import { getPostgresPool } from "./db/postgres/pool.js";
+import { verifyPostgresMigrations } from "./db/postgres/verifyMigrations.js";
 import { getSupabaseAuthConfig } from "./auth/supabaseAuth.js";
 
 // Separate entry point; does not initialize SQLite, legacy backups, uploads,
@@ -11,6 +12,7 @@ const port=Number(process.env.PORT||3002);
 if(!Number.isInteger(port)||port<1||port>65535)throw new Error("Invalid PORT.");
 const pool=await getPostgresPool();
 await pool.query("SELECT 1");
+await verifyPostgresMigrations(pool);
 const app=createCloudApp({config,pool,origins});
 const server=createServer(app);
 server.listen(port,"0.0.0.0",()=>console.log(`Cloud dental API listening on port ${port}`));

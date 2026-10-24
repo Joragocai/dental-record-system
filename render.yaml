@@ -1,0 +1,32 @@
+# Cloud demo deployment configuration. Never automatically deploy this service.
+services:
+  - type: web
+    name: dental-presentation-demo-api
+    runtime: node
+    region: singapore
+    branch: feature/single-clinic-cloud
+    autoDeployTrigger: off
+    buildCommand: npm ci
+    startCommand: npm run start:cloud --workspace server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: PG_SSL_MODE
+        value: require
+      - key: PG_CA_CERT_PEM
+        sync: false
+      - key: CLOUD_DEMO_ENABLED
+        value: "false"
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_ALLOWED_USER_ID
+        sync: false
+      - key: CLOUD_ALLOWED_ORIGINS
+        sync: false

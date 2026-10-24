@@ -27,10 +27,14 @@ export function getPostgresConfig(env = process.env) {
   if (mode === "production" && tls !== "require") {
     throw new Error("Production PostgreSQL connections require PG_SSL_MODE=require.");
   }
+  const ca = String(env.PG_CA_CERT_PEM || "").trim();
+  if (ca && !ca.includes("-----BEGIN CERTIFICATE-----")) {
+    throw new Error("PG_CA_CERT_PEM must contain a PEM certificate.");
+  }
   return {
     connectionString,
     ...poolOptions,
-    ssl: tls === "disable" ? false : { rejectUnauthorized: true }
+    ssl: tls === "disable" ? false : { rejectUnauthorized: true, ...(ca ? { ca: ca.replace(/\\n/g, "\n") } : {}) }
   };
 }
 
