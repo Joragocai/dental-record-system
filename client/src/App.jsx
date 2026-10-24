@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useCloudAuth } from "./context/CloudAuthContext";
 import CloudLoginPage from "./pages/CloudLoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
@@ -19,9 +19,12 @@ import TreatmentFormPage from "./pages/TreatmentFormPage";
 
 export default function App() {
   const { enabled, ready, authenticated } = useCloudAuth();
+  // React Router links change location without causing a full page reload.
+  // Subscribing to its location ensures public auth pages actually render.
+  const { pathname } = useLocation();
   if (enabled && !ready) return <main className="min-h-screen grid place-items-center">Verifying session…</main>;
-  if (enabled && window.location.pathname === "/reset-password") return <ResetPasswordPage />;
-  if (enabled && window.location.pathname === "/forgot-password") return <ForgotPasswordPage />;
+  if (enabled && pathname === "/reset-password") return <ResetPasswordPage />;
+  if (enabled && pathname === "/forgot-password") return <ForgotPasswordPage />;
   if (enabled && !authenticated) return <CloudLoginPage />;
   return (
     <Routes>
