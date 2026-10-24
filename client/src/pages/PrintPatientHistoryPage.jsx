@@ -11,14 +11,33 @@ export default function PrintPatientHistoryPage() {
   const { patientId } = useParams();
   const [patient, setPatient] = useState(null);
   const [treatments, setTreatments] = useState([]);
+  const [loadingRecord, setLoadingRecord] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const [status, setStatus] = useState("");
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const printableRef = useRef(null);
 
   useEffect(() => {
-    getPatient(patientId).then(setPatient).catch(() => setPatient(null));
-    getTreatmentsByPatient(patientId).then(setTreatments).catch(() => setTreatments([]));
-  }, [patientId]);
+    let active = true;
+    setLoadingRecord(true);
+    setLoadError("");
+    setPatient(null);
+    setTreatments([]);
+    Promise.all([getPatient(patientId), getTreatmentsByPatient(patientId)])
+      .then(([record, history]) => {
+        if (!active) return;
+        setPatient(record);
+        setTreatments(history);
+      })
+      .catch(() => {
+        if (active) setLoadError("Unable to load the complete patient treatment history. Please retry.");
+      })
+      .finally(() => {
+        if (active) setLoadingRecord(false);
+      });
+    return () => { active = false; };
+  }, [patientId, retryCount]);
 
   useEffect(() => {
     if (!patient) return undefined;
@@ -47,6 +66,12 @@ export default function PrintPatientHistoryPage() {
       setIsDownloadingPdf(false);
     }
   }
+
+  if (loadingRecord) return <Layout><section className="page-card"><p role="status" className="ui-loading text-sm text-slate-500">Loading treatment history print view...</p></section></Layout>;
+  if (loadError || !patient) return <Layout><section className="page-card">
+    <p role="alert" className="text-sm text-rose-700">{loadError || "Patient treatment history is unavailable."}</p>
+    <button type="button" className="button-secondary mt-3 min-h-11" onClick={() => setRetryCount((count) => count + 1)}>Retry</button>
+  </section></Layout>;
 
   return (
     <Layout>

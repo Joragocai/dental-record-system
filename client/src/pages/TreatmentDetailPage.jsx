@@ -23,21 +23,35 @@ export default function TreatmentDetailPage() {
   const cameFromBalances = Boolean(location.state?.fromBalances);
   const returnToBalances = safeInternalLocation(location.state?.balancesReturnTo, "/balances");
   const [treatment, setTreatment] = useState(null);
+  const [recordLoading, setRecordLoading] = useState(true);
+  const [recordError, setRecordError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const [patient, setPatient] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [followup, setFollowup] = useState(null);
 
   useEffect(() => {
+    let active = true;
+    setRecordLoading(true);
+    setRecordError("");
+    setTreatment(null);
+    setPatient(null);
+    setAttachments([]);
+    setFollowup(null);
+
     getTreatment(treatmentId)
-      .then(async (data) => {
-        setTreatment(data);
-        const patientData = await getPatient(data.patient_id);
-        setPatient(patientData);
+      .then((record) => {
+        if (!active) return;
+        setTreatment(record);
+        // The treatment is still viewable if its optional patient summary fails.
+        getPatient(record.patient_id).then((value) => { if (active) setPatient(value); }).catch(() => { if (active) setPatient(null); });
       })
-      .catch(() => setTreatment(null));
-    getTreatmentAttachments(treatmentId).then(setAttachments).catch(() => setAttachments([]));
-    getTreatmentFollowup(treatmentId).then(setFollowup).catch(() => setFollowup(null));
-  }, [treatmentId]);
+      .catch(() => { if (active) setRecordError("Unable to load this treatment record. Please retry."); })
+      .finally(() => { if (active) setRecordLoading(false); });
+    getTreatmentAttachments(treatmentId).then((value) => { if (active) setAttachments(value); }).catch(() => { if (active) setAttachments([]); });
+    getTreatmentFollowup(treatmentId).then((value) => { if (active) setFollowup(value); }).catch(() => { if (active) setFollowup(null); });
+    return () => { active = false; };
+  }, [treatmentId, retryCount]);
 
   useEffect(() => {
     if (location.hash === "#payments" && treatment) {
@@ -77,7 +91,14 @@ export default function TreatmentDetailPage() {
     return (
       <Layout>
         <section className="page-card">
-          <p className="ui-loading text-sm text-slate-500">Loading treatment record...</p>
+          {recordLoading ? (
+            <p role="status" className="ui-loading text-sm text-slate-500">Loading treatment record...</p>
+          ) : (
+            <div>
+              <p role="alert" className="text-sm text-rose-700">{recordError || "Treatment record is unavailable."}</p>
+              <button type="button" className="button-secondary mt-3 min-h-11" onClick={() => setRetryCount((count) => count + 1)}>Retry</button>
+            </div>
+          )}
         </section>
       </Layout>
     );

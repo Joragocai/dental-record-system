@@ -11,14 +11,33 @@ export default function PrintPatientPage() {
   const { patientId } = useParams();
   const [patient, setPatient] = useState(null);
   const [attachments, setAttachments] = useState([]);
+  const [loadingRecord, setLoadingRecord] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const [status, setStatus] = useState("");
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const printableRef = useRef(null);
 
   useEffect(() => {
-    getPatient(patientId).then(setPatient).catch(() => setPatient(null));
-    getPatientAttachments(patientId).then(setAttachments).catch(() => setAttachments([]));
-  }, [patientId]);
+    let active = true;
+    setLoadingRecord(true);
+    setLoadError("");
+    setPatient(null);
+    setAttachments([]);
+    Promise.all([getPatient(patientId), getPatientAttachments(patientId)])
+      .then(([record, files]) => {
+        if (!active) return;
+        setPatient(record);
+        setAttachments(files);
+      })
+      .catch(() => {
+        if (active) setLoadError("Unable to load the complete patient printout. Please retry.");
+      })
+      .finally(() => {
+        if (active) setLoadingRecord(false);
+      });
+    return () => { active = false; };
+  }, [patientId, retryCount]);
 
   useEffect(() => {
     if (!patient) return undefined;
@@ -46,7 +65,11 @@ export default function PrintPatientPage() {
     }
   }
 
-  if (!patient) return <Layout><section className="page-card"><p className="ui-loading text-sm text-slate-500">Loading patient print view...</p></section></Layout>;
+  if (loadingRecord) return <Layout><section className="page-card"><p role="status" className="ui-loading text-sm text-slate-500">Loading patient print view...</p></section></Layout>;
+  if (loadError || !patient) return <Layout><section className="page-card">
+    <p role="alert" className="text-sm text-rose-700">{loadError || "Patient print record is unavailable."}</p>
+    <button type="button" className="button-secondary mt-3 min-h-11" onClick={() => setRetryCount((count) => count + 1)}>Retry</button>
+  </section></Layout>;
 
   const hasMedicalAlert = Boolean(patient.medical_alert_summary);
 

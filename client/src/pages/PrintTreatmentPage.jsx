@@ -11,20 +11,40 @@ export default function PrintTreatmentPage() {
   const [treatment, setTreatment] = useState(null);
   const [patient, setPatient] = useState(null);
   const [attachments, setAttachments] = useState([]);
+  const [loadingRecord, setLoadingRecord] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const [status, setStatus] = useState("");
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const printableRef = useRef(null);
 
   useEffect(() => {
-    getTreatment(treatmentId)
-      .then(async (data) => {
-        setTreatment(data);
-        const patientData = await getPatient(data.patient_id);
-        setPatient(patientData);
+    let active = true;
+    setLoadingRecord(true);
+    setLoadError("");
+    setTreatment(null);
+    setPatient(null);
+    setAttachments([]);
+    async function load() {
+      const record = await getTreatment(treatmentId);
+      const [patientRecord, files] = await Promise.all([
+        getPatient(record.patient_id),
+        getTreatmentAttachments(treatmentId)
+      ]);
+      if (!active) return;
+      setTreatment(record);
+      setPatient(patientRecord);
+      setAttachments(files);
+    }
+    load()
+      .catch(() => {
+        if (active) setLoadError("Unable to load the complete treatment printout. Please retry.");
       })
-      .catch(() => setTreatment(null));
-    getTreatmentAttachments(treatmentId).then(setAttachments).catch(() => setAttachments([]));
-  }, [treatmentId]);
+      .finally(() => {
+        if (active) setLoadingRecord(false);
+      });
+    return () => { active = false; };
+  }, [treatmentId, retryCount]);
 
   useEffect(() => {
     if (!treatment) return undefined;
@@ -52,7 +72,11 @@ export default function PrintTreatmentPage() {
     }
   }
 
-  if (!treatment) return <Layout><section className="page-card"><p className="ui-loading text-sm text-slate-500">Loading treatment print view...</p></section></Layout>;
+  if (loadingRecord) return <Layout><section className="page-card"><p role="status" className="ui-loading text-sm text-slate-500">Loading treatment print view...</p></section></Layout>;
+  if (loadError || !treatment) return <Layout><section className="page-card">
+    <p role="alert" className="text-sm text-rose-700">{loadError || "Treatment print record is unavailable."}</p>
+    <button type="button" className="button-secondary mt-3 min-h-11" onClick={() => setRetryCount((count) => count + 1)}>Retry</button>
+  </section></Layout>;
 
   return (
     <Layout contentClassName="print-preview-page">

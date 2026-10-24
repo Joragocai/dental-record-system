@@ -1,6 +1,3 @@
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
-
 const PDF_MARGIN_MM = 12;
 const PDF_FORMAT = "letter";
 
@@ -8,6 +5,13 @@ export async function downloadElementAsPdf(element, filename) {
   if (!element) {
     throw new Error("Printable content is not available.");
   }
+
+  // The PDF libraries are large; load them only when Print -> Download PDF is used.
+  // This keeps everyday patient search, dashboard, and payment screens lighter.
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import("html2canvas"),
+    import("jspdf")
+  ]);
 
   const canvas = await html2canvas(element, {
     scale: 2,

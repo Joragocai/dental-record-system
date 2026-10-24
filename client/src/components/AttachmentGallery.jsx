@@ -4,6 +4,7 @@ import { cloudAuthEnabled } from "../lib/cloudAuth";
 import AttachmentImage from "./AttachmentImage";
 import { formatAttachmentType, formatUploadedAt } from "../lib/attachments";
 import DeleteAttachmentDialog from "./DeleteAttachmentDialog";
+import AttachmentPreviewDialog from "./AttachmentPreviewDialog";
 
 function isImage(mimeType) {
   return mimeType?.startsWith("image/");
@@ -29,19 +30,6 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
 
     return () => window.clearTimeout(timeoutId);
   }, [status]);
-
-  useEffect(() => {
-    if (!previewAttachment) return undefined;
-
-    function handleEscape(event) {
-      if (event.key === "Escape") {
-        setPreviewAttachment(null);
-      }
-    }
-
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [previewAttachment]);
 
   async function handlePrivateDownload(attachment) {
     if (downloadingId !== null) return;
@@ -169,21 +157,9 @@ export default function AttachmentGallery({ attachments, title, onDeleted }) {
       {attachmentToDelete ? (
         <DeleteAttachmentDialog attachment={attachmentToDelete} deleting={deletingId !== null} error={deleteError} onCancel={cancelDelete} onConfirm={confirmDelete} />
       ) : null}
-      {previewAttachment && (
-        <div className="attachment-preview-overlay" onClick={() => setPreviewAttachment(null)}>
-          <div className="attachment-preview-panel" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="attachment-preview-close" onClick={() => setPreviewAttachment(null)}>
-              ×
-            </button>
-            <AttachmentImage attachment={previewAttachment} className="attachment-preview-image" />
-            <div className="mt-4 space-y-1">
-              <p className="text-lg font-semibold text-slate-900">{formatAttachmentType(previewAttachment.attachment_type)}</p>
-              <p className="text-sm text-slate-600">Uploaded: {formatUploadedAt(previewAttachment.uploaded_at)}</p>
-              <p className="text-xs text-slate-500">Filename: {previewAttachment.original_filename}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {previewAttachment ? (
+        <AttachmentPreviewDialog attachment={previewAttachment} onClose={() => setPreviewAttachment(null)} />
+      ) : null}
     </section>
   );
 }

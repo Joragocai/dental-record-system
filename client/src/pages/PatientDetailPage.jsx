@@ -30,6 +30,9 @@ export default function PatientDetailPage() {
   const navigate = useNavigate();
   const [saveNotice, setSaveNotice] = useState(null);
   const [patient, setPatient] = useState(null);
+  const [recordLoading, setRecordLoading] = useState(true);
+  const [recordError, setRecordError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const [treatments, setTreatments] = useState([]);
   const [financial, setFinancial] = useState(null);
   const [attachments, setAttachments] = useState([]);
@@ -40,12 +43,25 @@ export default function PatientDetailPage() {
   const [statusChangeSuccess, setStatusChangeSuccess] = useState("");
 
   useEffect(() => {
-    getPatient(patientId).then(setPatient).catch(() => setPatient(null));
-    getPatientFinancialSummary(patientId).then(setFinancial).catch(() => setFinancial(null));
-    getTreatmentsByPatient(patientId).then(setTreatments).catch(() => setTreatments([]));
-    getPatientAttachments(patientId).then(setAttachments).catch(() => setAttachments([]));
-    getPatientAppointments(patientId).then(setAppointments).catch(() => setAppointments([]));
-  }, [patientId]);
+    let active = true;
+    setRecordLoading(true);
+    setRecordError("");
+    setPatient(null);
+    setFinancial(null);
+    setTreatments([]);
+    setAttachments([]);
+    setAppointments([]);
+
+    getPatient(patientId)
+      .then((record) => { if (active) setPatient(record); })
+      .catch(() => { if (active) setRecordError("Unable to load this patient record. Please retry."); })
+      .finally(() => { if (active) setRecordLoading(false); });
+    getPatientFinancialSummary(patientId).then((value) => { if (active) setFinancial(value); }).catch(() => { if (active) setFinancial(null); });
+    getTreatmentsByPatient(patientId).then((value) => { if (active) setTreatments(value); }).catch(() => { if (active) setTreatments([]); });
+    getPatientAttachments(patientId).then((value) => { if (active) setAttachments(value); }).catch(() => { if (active) setAttachments([]); });
+    getPatientAppointments(patientId).then((value) => { if (active) setAppointments(value); }).catch(() => { if (active) setAppointments([]); });
+    return () => { active = false; };
+  }, [patientId, retryCount]);
 
   useEffect(() => {
     const payload = location.state?.saveNotice;
@@ -104,7 +120,14 @@ export default function PatientDetailPage() {
     return (
       <Layout contentClassName="patient-record-page patient-record-wide-shell">
         <section className="page-card">
-          <p className="ui-loading text-sm text-slate-500">Loading patient record...</p>
+          {recordLoading ? (
+            <p role="status" className="ui-loading text-sm text-slate-500">Loading patient record...</p>
+          ) : (
+            <div>
+              <p role="alert" className="text-sm text-rose-700">{recordError || "Patient record is unavailable."}</p>
+              <button type="button" className="button-secondary mt-3 min-h-11" onClick={() => setRetryCount((count) => count + 1)}>Retry</button>
+            </div>
+          )}
         </section>
       </Layout>
     );
