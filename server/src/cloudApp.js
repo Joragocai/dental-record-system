@@ -26,6 +26,9 @@ export function createCloudApp({ config = getSupabaseAuthConfig(), verifier, poo
   }));
   app.use(express.json({ limit: "1mb" }));
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+  // Clinical and authentication-dependent responses must not be stored by
+  // browsers or shared intermediary caches, including denied requests.
+  app.use("/api", (_req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
   app.use("/api", requireAuth);
   app.use("/api", createPostgresClinicalRouter(pool));
   app.use("/api", createCloudAttachmentsRouter(pool));

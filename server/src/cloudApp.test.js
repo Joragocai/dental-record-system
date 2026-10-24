@@ -46,6 +46,30 @@ test("runtime status preflight permits the authorized browser request",async()=>
   assert.match(response.headers.get("access-control-allow-headers")||"",/Authorization/i);
  });
 });
+test("clinical responses prevent caching for both authorized and anonymous requests",async()=>{
+ await withServer(async()=>({userId}),async origin=>{
+  for(const headers of [{},{Authorization:"Bearer authorized-token"}]){
+   const response=await fetch(origin+"/api/patients",{headers});
+   assert.equal(response.headers.get("cache-control"),"no-store");
+   assert.equal(response.status,headers.Authorization?200:401);
+  }
+ });
+});
+test("CORS only allows the configured clinic origin",async()=>{
+ await withServer(async()=>({userId}),async origin=>{
+  const allowed=await fetch(origin+"/api/patients",{
+   method:"OPTIONS",
+   headers:{Origin:"http://127.0.0.1:5173","Access-Control-Request-Method":"GET","Access-Control-Request-Headers":"authorization"}
+  });
+  assert.equal(allowed.status,204);
+  assert.equal(allowed.headers.get("access-control-allow-origin"),"http://127.0.0.1:5173");
+  const denied=await fetch(origin+"/api/patients",{
+   method:"OPTIONS",
+   headers:{Origin:"https://untrusted.example","Access-Control-Request-Method":"GET","Access-Control-Request-Headers":"authorization"}
+  });
+  assert.notEqual(denied.headers.get("access-control-allow-origin"),"https://untrusted.example");
+ });
+});
 test("wrong or expired token denies cloud APIs",async()=>{
  await withServer(async()=>{throw new Error("expired")},async origin=>{
   const response=await fetch(origin+"/api/patients",{headers:{Authorization:"Bearer invalid"}});
