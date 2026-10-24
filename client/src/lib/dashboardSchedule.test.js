@@ -28,10 +28,10 @@ test("plain row clicks navigate but nested links, inputs, and modified clicks ke
   assert.equal(isDirectScheduleRowClick({ ...event, defaultPrevented: true }), false);
 });
 
-test("status filtering preserves follow-ups under Scheduled only", () => {
-  const rows=[{source_type:"appointment",status:"Scheduled"},{source_type:"appointment",status:"Completed"},{source_type:"appointment",status:"Cancelled"},{source_type:"treatment_follow_up",status:""}];
-  assert.equal(filterScheduleRows(rows,"All").length,4);
+test("status filtering uses the actual linked follow-up status", () => {
+  const rows=[{source_type:"appointment",status:"Scheduled"},{source_type:"appointment",status:"Completed"},{source_type:"appointment",status:"Cancelled"},{source_type:"treatment_follow_up",status:"Completed"},{source_type:"treatment_follow_up",status:"Scheduled"}];
+  assert.equal(filterScheduleRows(rows,"All").length,5);
   assert.equal(filterScheduleRows(rows,"Scheduled").length,2);
-  assert.equal(filterScheduleRows(rows,"Completed").length,1);
+  assert.equal(filterScheduleRows(rows,"Completed").length,2);
   assert.equal(filterScheduleRows(rows,"Cancelled").length,1);
 });

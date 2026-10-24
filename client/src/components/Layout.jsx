@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import DemoDataDock from "./DemoDataDock";
 import AccountProfileDropdown from "./AccountProfileDropdown";
+import ClinicBrandMark from "./ClinicBrandMark";
+import MobileAccountSection from "./MobileAccountSection";
 import { useCloudAuth } from "../context/CloudAuthContext";
 import { primaryNavigationItems } from "../lib/navigation";
 import { isDashboardScheduleOrigin } from "../lib/dashboardSchedule";
@@ -26,7 +28,7 @@ function NavigationLinks({ location, mobile = false, onNavigate }) {
         to={item.to}
         onClick={onNavigate}
         aria-current={isActive ? "page" : undefined}
-        className={`nav-link-ui relative flex min-h-11 items-center rounded-lg text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700 ${mobile ? "w-full justify-start px-3 text-left" : "min-w-[116px] shrink-0 justify-center whitespace-nowrap px-3.5 text-center 2xl:min-w-[132px]"} ${isActive ? "bg-clinic-100/70 font-semibold text-clinic-900" : "font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}
+        className={`nav-link-ui relative flex min-h-11 items-center rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700 ${mobile ? "w-full justify-start px-3 text-left text-sm" : "min-w-[118px] shrink-0 justify-center whitespace-nowrap px-3.5 text-center text-[15px] min-[1600px]:min-w-[122px] min-[1920px]:min-w-[132px] min-[1920px]:text-base"} ${isActive ? "bg-clinic-100/70 font-semibold text-clinic-900" : "font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}
       >
         {item.label}
         {isActive ? <span aria-hidden="true" className={mobile ? "absolute bottom-2 left-0 top-2 w-[3px] rounded-full bg-clinic-500" : "absolute bottom-0 left-4 right-4 h-[3px] rounded-full bg-clinic-500"} /> : null}
@@ -62,7 +64,7 @@ export default function Layout({ children, contentClassName = "" }) {
       toggleRef.current?.focus();
     }
 
-    const desktopQuery = window.matchMedia("(min-width: 1280px)");
+    const desktopQuery = window.matchMedia("(min-width: 1440px)");
     function handleDesktopTransition(event) {
       if (event.matches) setMenuOpen(false);
     }
@@ -79,43 +81,56 @@ export default function Layout({ children, contentClassName = "" }) {
 
   return (
     <div className="min-h-screen min-w-0 bg-[radial-gradient(circle_at_top_left,_rgba(60,122,115,0.15),_transparent_28%),linear-gradient(180deg,_#f8fbfb_0%,_#eef4f4_100%)]">
-      <header className="no-print border-b border-slate-200 bg-white/85 backdrop-blur">
-        <div className="page-shell site-header-shell flex flex-col gap-3 py-3 sm:py-4 min-[1440px]:flex-row min-[1440px]:items-center min-[1440px]:justify-between min-[1440px]:gap-6">
-          <div className="flex min-w-0 items-center justify-between gap-3 min-[1440px]:shrink-0">
-            <div className="min-w-0">
-              <Link to="/" className="block text-base font-bold leading-tight text-clinic-900 sm:text-xl xl:text-xl 2xl:text-2xl">
-                Khurana Calilap Dental <span className="block sm:inline">Record System</span>
-              </Link>
-              <p className="mt-1 hidden text-sm text-slate-600 sm:block">Local clinic record system for patient and treatment management</p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2 min-[1440px]:hidden">
-              {isCloud ? <AccountProfileDropdown /> : null}
-            <button
-              ref={toggleRef}
-              type="button"
-              aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-              aria-controls="mobile-primary-navigation"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((open) => !open)}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-clinic-900 transition-colors hover:border-clinic-700 hover:bg-clinic-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700 xl:hidden"
+      <header className="no-print relative z-40 border-b border-slate-200 bg-white/85 backdrop-blur">
+        <div className="site-header-shell mx-auto flex w-full flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8 min-[1440px]:grid min-[1440px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] min-[1440px]:items-center min-[1440px]:gap-4">
+          <div className="flex min-w-0 items-center justify-between gap-3">
+            <Link
+              to="/"
+              aria-label="Khurana Calilap Dental Record System — Home"
+              className="flex min-w-0 items-center gap-2.5 rounded-lg text-clinic-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700 sm:gap-3"
             >
-              <svg aria-hidden="true" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                {menuOpen ? <path d="M5 5l14 14M19 5L5 19" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
-              </svg>
-            </button>
+              <ClinicBrandMark />
+              <span aria-hidden="true" className="hidden h-9 w-px shrink-0 bg-clinic-100 sm:block" />
+              <span className="flex min-w-0 flex-col leading-tight">
+                <span className="text-sm font-bold sm:text-lg min-[1440px]:whitespace-nowrap min-[1440px]:text-base min-[1800px]:text-lg">
+                  Khurana Calilap
+                </span>
+                <span className="mt-1 text-[9px] font-semibold uppercase tracking-[0.13em] text-slate-500 sm:text-[10px] min-[1440px]:whitespace-nowrap min-[1800px]:text-[11px]">
+                  Dental Record System
+                </span>
+              </span>
+            </Link>
+            <div className="flex shrink-0 items-center gap-2 min-[1440px]:hidden">
+              <button
+                ref={toggleRef}
+                type="button"
+                aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-controls="mobile-primary-navigation"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((open) => !open)}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-clinic-900 transition-colors hover:border-clinic-700 hover:bg-clinic-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700 min-[1440px]:hidden"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  {menuOpen ? <path d="M5 5l14 14M19 5L5 19" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
+                </svg>
+              </button>
+              {isCloud ? <div className="hidden md:block"><AccountProfileDropdown /></div> : null}
             </div>
           </div>
-          <nav aria-label="Main navigation" className="hidden min-w-0 items-center gap-4 xl:flex xl:justify-between min-[1440px]:shrink-0 min-[1440px]:justify-end min-[1440px]:gap-5">
+          <nav aria-label="Main navigation" className="hidden min-w-0 items-center justify-center gap-2 min-[1440px]:flex min-[1600px]:gap-5 min-[1920px]:gap-7">
             <NavigationLinks location={location} />
           </nav>
-          {isCloud ? <div className="hidden min-[1440px]:block"><AccountProfileDropdown /></div> : null}
+          {isCloud ? <div className="hidden min-[1440px]:flex min-[1440px]:min-w-0 min-[1440px]:justify-end"><AccountProfileDropdown /></div> : null}
           <nav
             ref={menuRef}
             id="mobile-primary-navigation"
             aria-label="Mobile navigation"
-            className={`${menuOpen ? "grid" : "hidden"} grid-cols-1 gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:grid-cols-2 xl:hidden`}
+            className={`${menuOpen ? "block" : "hidden"} absolute left-4 right-4 top-[calc(100%-0.35rem)] z-50 max-h-[min(75vh,calc(100dvh-6rem))] overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_45px_-20px_rgba(22,53,51,0.35)] sm:left-6 sm:right-6 lg:left-8 lg:right-8 min-[1440px]:hidden`}
           >
-            <NavigationLinks location={location} mobile onNavigate={() => setMenuOpen(false)} />
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+              <NavigationLinks location={location} mobile onNavigate={() => setMenuOpen(false)} />
+            </div>
+            {isCloud ? <MobileAccountSection onSignedOut={() => setMenuOpen(false)} /> : null}
           </nav>
         </div>
       </header>

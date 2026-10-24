@@ -60,7 +60,19 @@ export async function mutateCloudDemo({pool, operation, env = process.env, adapt
     transactionStarted = true;
     await client.query("SELECT pg_advisory_xact_lock($1,$2)", LOCK);
     await assertCloudDemoGuard(client, config, {lock:true});
+    if (operation === "clear") {
+      // The authorized full demo reset must not race with payment inserts.
+      // This lock lasts through COMMIT or ROLLBACK.
+      await client.query("LOCK TABLE public.treatment_payments IN ACCESS EXCLUSIVE MODE");
+    }
     await clearFictionalDemoRows(client);
+    if (operation === "clear") {
+      // PostgreSQL DELETE leaves IDENTITY counters untouched. Unlike setval(),
+      // ALTER TABLE ... RESTART is transactional, so a failed reset rolls back
+      // both the ledger deletion and the counter change together.
+      // Never execute this outside the environment + database demo guard above.
+      await client.query("ALTER TABLE public.treatment_payments ALTER COLUMN id RESTART WITH 1");
+    }
     let prepared = null;
     if (operation === "fill") {
       prepared = await seedFictionalClinicalRows(client, anchorDate);

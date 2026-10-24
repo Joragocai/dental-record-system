@@ -34,13 +34,22 @@ export function getPostgresConfig(env = process.env) {
   };
 }
 
+export function getPostgresDateTypeParser(pg) {
+  return { getTypeParser(oid, format) {
+    if (oid === 1082 && (!format || format === "text")) return value => value;
+    return pg.types.getTypeParser(oid, format);
+  } };
+}
+
 let poolPromise;
 export function getPostgresPool() {
   if (!poolPromise) {
     poolPromise = (async () => {
       const config = getPostgresConfig();
-      const { Pool } = await import("pg");
-      return new Pool(config);
+      const { default: pg } = await import("pg");
+      // PostgreSQL DATE is a calendar day, not a timestamp. Keep the raw
+      // YYYY-MM-DD text to prevent the Node timezone from shifting the day.
+      return new pg.Pool({ ...config, types: getPostgresDateTypeParser(pg) });
     })().catch((error) => {
       poolPromise = undefined;
       throw error;

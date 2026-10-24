@@ -29,10 +29,10 @@ export function createPostgresClinicalRouter(pool=null){
  router.get("/dashboard/schedule",asyncRoute(async(req,res)=>{
   const client=await db();
   const today=getManilaTodayIso();
-  const todayEntries=await getPostgresScheduleRows(client,today,{includeToday:true});
+  const todayEntries=await getPostgresScheduleRows(client,today,{includeToday:true,includeOtherStatuses:true});
   const upcoming=await getPostgresScheduleRows(client,today);
   const patients=await listPostgresPatients(client);
-  res.json({todaySchedule:buildTodayScheduleMetrics(todayEntries,today),
+  res.json({todaySchedule:buildTodayScheduleMetrics(todayEntries.filter(entry=>entry.status==="Scheduled" || (entry.source_type==="treatment_follow_up" && !entry.status)),today),
     todayAppointments:todayEntries,upcomingAppointments:upcoming,
     birthdayReminders:getBirthdayReminders(patients),today});
  }));
@@ -40,7 +40,7 @@ export function createPostgresClinicalRouter(pool=null){
   const requested=String(req.query.date||"").trim();
   const date=isValidIsoDate(requested)?requested:getManilaTodayIso();
   res.json({date,appointments:await getPostgresScheduleRows(await db(),date,
-    {exactDate:true,includeOtherStatuses:req.query.expanded==="true"})});
+    {exactDate:true,includeOtherStatuses:true})});
  }));
  router.get("/patients",asyncRoute(async(req,res)=>res.json(await listPostgresPatients(await db()))));
  router.get("/patients/search",asyncRoute(async(req,res)=>res.json(await searchPostgresPatients(await db(),req.query.q||""))));
@@ -105,6 +105,16 @@ export function createPostgresClinicalRouter(pool=null){
  router.get("/treatments/next-id",asyncRoute(async(req,res)=>{
   const year=Number(getManilaTodayIso().slice(0,4));
   res.json({treatment_id:await previewPublicId(await db(),"T",year)});
+ }));
+ router.get("/treatments/:treatmentId/follow-up",asyncRoute(async(req,res)=>{
+  const client=await db();
+  const treatment=await getPostgresTreatment(client,req.params.treatmentId);
+  if(!treatment)throw fail("Treatment not found.",404);
+  const found=await client.query(
+    "SELECT id FROM public.appointments WHERE origin_treatment_id=$1",
+    [treatment.treatment_id]
+  );
+  res.json(found.rows.length ? await getPostgresAppointment(client,found.rows[0].id) : null);
  }));
  router.get("/treatments/:treatmentId",asyncRoute(async(req,res)=>{
   const t=await getPostgresTreatment(await db(),req.params.treatmentId);

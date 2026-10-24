@@ -5,7 +5,7 @@ import { listPostgresPatients } from "./patients.js";
 import { listPostgresTreatments } from "./treatments.js";
 
 export const scheduleQuery = `SELECT * FROM (
- SELECT 'appointment' AS source_type,a.id AS source_id,NULL::text AS treatment_record_id,
+ SELECT CASE WHEN a.origin_treatment_id IS NOT NULL THEN 'treatment_follow_up' ELSE 'appointment' END AS source_type,a.id AS source_id,a.origin_treatment_id AS treatment_record_id,
  a.patient_id,p.patient_id AS patient_system_id,p.first_name,p.middle_name,p.last_name,
  p.mobile_number,p.branch_location,a.appointment_date AS schedule_date,a.appointment_time,
  a.planned_procedure AS procedure_label,a.status
@@ -19,6 +19,7 @@ export const scheduleQuery = `SELECT * FROM (
  t.procedure AS procedure_label,''::text AS status
  FROM public.treatments t JOIN public.patients p ON p.patient_id=t.patient_id
  WHERE t.next_appointment_date IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM public.appointments a WHERE a.origin_treatment_id=t.treatment_id)
 ) scheduled WHERE schedule_date ${"$DATE_OPERATOR"} $1::date
  ORDER BY schedule_date ASC,(appointment_time IS NULL OR btrim(appointment_time)='') ASC,
  appointment_time ASC,last_name ASC,first_name ASC`;

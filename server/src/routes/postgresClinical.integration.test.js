@@ -53,10 +53,23 @@ integration("PostgreSQL clinical API roundtrip with disposable fictional records
    patient_id:patientId,treatment_date:date,procedure:"Demo Cleaning",
    dentists:"Demo Dentist",amount_charged:8000,discount_type:"None",discount_percent:0,
    discount_amount:0,net_amount_due:8000,amount_paid:1000,balance:7000,
-   initial_payment_method:"Cash",remarks:"Fictional data only"
+   initial_payment_method:"Cash",remarks:"Fictional data only",
+   next_appointment_date:date,next_appointment_time:"10:30"
   });
   treatmentId=created.treatment_id;
   assert.match(treatmentId,/^T-\d{4}-\d{4}$/);
+  const linked=await call("/api/treatments/"+treatmentId+"/follow-up");
+  assert.equal(linked.appointment_date,date);
+  assert.equal(linked.origin_treatment_id,treatmentId);
+  assert.equal(linked.status,"Scheduled");
+  const scheduleBefore=await call("/api/dashboard/schedule-by-date?date="+date);
+  assert.equal(scheduleBefore.appointments.filter(item=>item.treatment_record_id===treatmentId).length,1);
+  assert.equal(scheduleBefore.appointments.find(item=>item.treatment_record_id===treatmentId).source_type,"treatment_follow_up");
+  const updatedFollowup=await call("/api/appointments/"+linked.id+"/status","PATCH",{status:"Completed"});
+  assert.equal(updatedFollowup.status,"Completed");
+  const scheduleAfter=await call("/api/dashboard/schedule-by-date?date="+date);
+  assert.equal(scheduleAfter.appointments.find(item=>item.treatment_record_id===treatmentId).status,"Completed");
+  assert.equal(scheduleAfter.appointments.filter(item=>item.treatment_record_id===treatmentId).length,1);
   const txn=await call("/api/treatments/"+treatmentId+"/payments","POST",{
    amount:"1500.00",payment_date:date,payment_method:"GCash",reference:"FAKE",notes:"Test only",request_id:randomUUID()
   });
@@ -76,6 +89,7 @@ integration("PostgreSQL clinical API roundtrip with disposable fictional records
    await client.query("BEGIN");
    if(treatmentId){
     await client.query("DELETE FROM public.treatment_payments WHERE treatment_id=$1",[treatmentId]);
+    await client.query("DELETE FROM public.appointments WHERE origin_treatment_id=$1",[treatmentId]);
     await client.query("DELETE FROM public.treatments WHERE treatment_id=$1",[treatmentId]);
    }
    if(appointmentId)await client.query("DELETE FROM public.appointments WHERE id=$1",[appointmentId]);

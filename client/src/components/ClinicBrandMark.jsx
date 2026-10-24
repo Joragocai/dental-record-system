@@ -1,0 +1,35 @@
+// Compact, resolution-independent tooth-and-leaf brand mark for the clinic header.
+export default function ClinicBrandMark() {
+  return (
+    <svg
+      viewBox="0 0 64 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      className="h-10 w-10 shrink-0 sm:h-11 sm:w-11"
+    >
+      <path
+        d="M11 19C12 10 19 7 26 10c4 2 8 2 12 0 7-3 14 0 15 9 2 12-5 27-12 35-2 2-5 1-5-3l-3-13c-1-4-5-4-6 0l-3 13c-1 4-4 5-6 2C11 44 9 30 11 19Z"
+        stroke="#163533"
+        strokeWidth="3.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M16 18c7-6 13 2 19 1 6-1 9-6 14-4"
+        stroke="#8AADA4"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+      <path
+        d="M31 52c1-14 7-25 20-29-1 14-7 22-20 29Z"
+        fill="#3C7A73"
+      />
+      <path
+        d="M32 48c-8-3-11-10-10-19 9 4 13 10 10 19Z"
+        fill="#A8C6B9"
+      />
+      <path d="M31 55c2-11 8-20 18-27" stroke="#163533" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}

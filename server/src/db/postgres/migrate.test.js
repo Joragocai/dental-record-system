@@ -9,7 +9,9 @@ test("migration files are ordered and checksummed", async () => {
     "0002_payment_ledger.sql",
     "0003_workflow_indexes.sql",
     "0004_public_id_counters.sql",
-    "0005_demo_guard.sql"
+    "0005_demo_guard.sql",
+    "0006_treatment_followup_appointments.sql",
+    "0007_followup_history_safety.sql"
   ]);
   for (const migration of migrations) assert.match(migration.checksum, /^[0-9a-f]{64}$/);
 });

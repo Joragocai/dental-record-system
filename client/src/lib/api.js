@@ -89,6 +89,11 @@ export async function updatePatient(patientId, payload) {
   return data;
 }
 
+export async function getTreatmentFollowup(treatmentId) {
+  const { data } = await api.get(`/treatments/${encodeURIComponent(treatmentId)}/follow-up`);
+  return data;
+}
+
 export async function getTreatment(treatmentId) {
   const { data } = await api.get(`/treatments/${treatmentId}`);
   return data;

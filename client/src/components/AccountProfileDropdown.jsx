@@ -74,7 +74,7 @@ export default function AccountProfileDropdown() {
         aria-haspopup="true"
         aria-expanded={open}
         aria-controls={open ? detailsId : undefined}
-        className="flex min-h-11 items-center gap-2 rounded-xl border border-clinic-100 bg-clinic-50 px-2 py-1.5 text-left text-clinic-900 shadow-sm transition hover:border-clinic-500 hover:bg-clinic-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700 sm:px-3"
+        className={`flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 px-2 py-1.5 text-left text-clinic-900 shadow-sm transition hover:border-clinic-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700 sm:px-3 ${open ? "bg-clinic-50" : "bg-white"}`}
       >
         <AccountAvatar small />
         <span className="hidden min-w-0 flex-col sm:flex">

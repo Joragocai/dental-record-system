@@ -1,12 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { asPgMoney, fromPgCents, fromPgMoneyCents, normalizePgRow, pgDate, pgTimestamp } from "./format.js";
+import { getPostgresDateTypeParser } from "./pool.js";
+import pg from "pg";
 
 test("DATE and TIMESTAMPTZ keep API-compatible formats", () => {
   assert.equal(pgDate(new Date("2026-10-23T00:00:00.000Z")), "2026-10-23");
   assert.equal(pgDate("2026-10-23"), "2026-10-23");
   assert.equal(pgTimestamp(new Date("2026-10-23T02:00:00Z")), "2026-10-23T02:00:00.000Z");
   assert.throws(() => pgDate("10/23/2026"), /Invalid/);
+});
+
+test("PostgreSQL DATE parser preserves the selected clinic day across timezone offsets", () => {
+  const parsers = getPostgresDateTypeParser(pg);
+  assert.equal(parsers.getTypeParser(1082, "text")("2026-10-24"), "2026-10-24");
+  assert.equal(pgDate(parsers.getTypeParser(1082, "text")("2026-10-24")), "2026-10-24");
+  assert.strictEqual(parsers.getTypeParser(1184, "text"), pg.types.getTypeParser(1184, "text"));
 });
 
 test("PostgreSQL NUMERIC strings round-trip exact centavos", () => {

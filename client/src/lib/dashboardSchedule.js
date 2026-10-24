@@ -26,6 +26,6 @@ export function scheduleEntryDestination(entry) {
 
 export function filterScheduleRows(items, status) {
   if (status === "All") return items;
-  if (status === "Scheduled") return items.filter((entry) => entry.source_type === "treatment_follow_up" || entry.status === "Scheduled");
-  return items.filter((entry) => entry.source_type === "appointment" && entry.status === status);
+  if (status === "Scheduled") return items.filter((entry) => entry.status === "Scheduled" || (entry.source_type === "treatment_follow_up" && !entry.status));
+  return items.filter((entry) => entry.status === status);
 }

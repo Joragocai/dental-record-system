@@ -29,7 +29,7 @@ export default function ScheduleEntriesMobile({ items, emptyMessage, showDate = 
             </p>
             <p className="mt-2 break-words text-sm leading-relaxed text-slate-700">{displayPlannedProcedure(item.procedure_label)}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="rounded-md bg-clinic-50 px-2 py-1 text-xs font-medium text-clinic-900">{isFollowUp ? "Follow-up" : item.status || "Scheduled"}</span>
+              <span className="rounded-md bg-clinic-50 px-2 py-1 text-xs font-medium text-clinic-900">{isFollowUp ? `Follow-up · ${item.status || "Scheduled"}` : item.status || "Scheduled"}</span>
               {item.branch_location ? <span className="break-words text-xs text-slate-500">{item.branch_location}</span> : null}
             </div>
           </>

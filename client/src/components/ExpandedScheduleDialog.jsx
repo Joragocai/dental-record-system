@@ -36,7 +36,7 @@ export function ScheduleTable({ items, emptyMessage, expanded = false, statusFil
                 </td>
                 <td className="px-4 py-3">{displayPlannedProcedure(item.procedure_label)}</td>
                 <td className="px-4 py-3">{item.source_type === "appointment" ? "Scheduled Appointment" : "Follow-up from Treatment"}</td>
-                <td className="px-4 py-3">{item.source_type === "treatment_follow_up" ? "Scheduled" : item.status || "-"}</td>
+                <td className="px-4 py-3">{item.status || (item.source_type === "treatment_follow_up" ? "Scheduled" : "-")}</td>
                 <td className="whitespace-nowrap px-4 py-3">{item.mobile_number || "-"}</td>
                 <td className="px-4 py-3">{item.branch_location || "-"}</td>
                 <td className="px-4 py-3">{destination ? <Link to={destination} state={DASHBOARD_SCHEDULE_ORIGIN} className="button-secondary inline-flex min-h-10 items-center whitespace-nowrap hover:border-clinic-700 hover:bg-clinic-700 hover:text-white">{item.source_type === "appointment" ? "Edit Appointment" : "View Treatment"}</Link> : "-"}</td>

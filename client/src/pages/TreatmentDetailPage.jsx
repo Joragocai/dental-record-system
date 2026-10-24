@@ -6,7 +6,7 @@ import TreatmentRecordActions from "../components/TreatmentRecordActions";
 import RecordSuccessToast from "../components/RecordSuccessToast";
 import Layout from "../components/Layout";
 import TreatmentPayments from "../components/TreatmentPayments";
-import { getPatient, getTreatment, getTreatmentAttachments } from "../lib/api";
+import { getPatient, getTreatment, getTreatmentAttachments, getTreatmentFollowup } from "../lib/api";
 import { displayNoFinalTime, formatPesoAmount } from "../lib/formatters";
 import { consumeTreatmentSaveNotice } from "../lib/treatmentSaveNotice";
 import { DASHBOARD_SCHEDULE_ORIGIN, isDashboardScheduleOrigin } from "../lib/dashboardSchedule";
@@ -25,6 +25,7 @@ export default function TreatmentDetailPage() {
   const [treatment, setTreatment] = useState(null);
   const [patient, setPatient] = useState(null);
   const [attachments, setAttachments] = useState([]);
+  const [followup, setFollowup] = useState(null);
 
   useEffect(() => {
     getTreatment(treatmentId)
@@ -35,6 +36,7 @@ export default function TreatmentDetailPage() {
       })
       .catch(() => setTreatment(null));
     getTreatmentAttachments(treatmentId).then(setAttachments).catch(() => setAttachments([]));
+    getTreatmentFollowup(treatmentId).then(setFollowup).catch(() => setFollowup(null));
   }, [treatmentId]);
 
   useEffect(() => {
@@ -149,6 +151,30 @@ export default function TreatmentDetailPage() {
         </div>
       </section>
 
+      {treatment.next_appointment_date ? (
+        <section className="page-card mt-4" aria-label="Follow-up appointment management">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="section-title">Follow-up Appointment</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {followup?.appointment_date || treatment.next_appointment_date} · {followup?.status || "Scheduled"}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">Appointment status is independent of treatment payments and outstanding balance.</p>
+            </div>
+            {followup?.id ? (
+              <Link
+                to={`/patients/${encodeURIComponent(treatment.patient_id)}/appointments/${encodeURIComponent(followup.id)}/edit`}
+                state={cameFromDashboard ? DASHBOARD_SCHEDULE_ORIGIN : undefined}
+                className="button-secondary inline-flex min-h-11 items-center justify-center"
+              >
+                Manage Follow-up →
+              </Link>
+            ) : (
+              <span className="text-sm text-slate-500">Follow-up management is unavailable.</span>
+            )}
+          </div>
+        </section>
+      ) : null}
       <TreatmentPayments treatment={treatment} patientName={patient?.display_name || treatment.patient_id} onUpdated={setTreatment} />
       <div className="mt-6">
         <AttachmentUploadForm
