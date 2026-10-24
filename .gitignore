@@ -17,6 +17,7 @@ data/*.db-shm
 data/*.db-wal
 data/dental-demo.marker.json
 data/postgres-private-files/
+server/data/postgres-private-files/
 
 # Uploaded clinic files
 uploads/

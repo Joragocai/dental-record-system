@@ -168,9 +168,6 @@ export default function CloudLoginPage() {
           {busy ? "Signing in…" : "Sign In"}
         </button>
 
-        <p className="text-center text-xs text-slate-500">
-          Secure clinic records access
-        </p>
       </form>
     </main>
   );
