@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useCloudAuth } from "./context/CloudAuthContext";
 import CloudLoginPage from "./pages/CloudLoginPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AppointmentFormPage from "./pages/AppointmentFormPage";
 import DashboardPage from "./pages/DashboardPage";
 import BalancesPage from "./pages/BalancesPage";
@@ -18,6 +20,8 @@ import TreatmentFormPage from "./pages/TreatmentFormPage";
 export default function App() {
   const { enabled, ready, authenticated } = useCloudAuth();
   if (enabled && !ready) return <main className="min-h-screen grid place-items-center">Verifying session…</main>;
+  if (enabled && window.location.pathname === "/reset-password") return <ResetPasswordPage />;
+  if (enabled && window.location.pathname === "/forgot-password") return <ForgotPasswordPage />;
   if (enabled && !authenticated) return <CloudLoginPage />;
   return (
     <Routes>

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useCloudAuth } from "../context/CloudAuthContext";
 
-function ToothIcon() {
+export function ToothIcon() {
   return (
     <svg
       aria-hidden="true"
@@ -47,7 +47,7 @@ function PasswordVisibilityIcon({ visible }) {
   );
 }
 
-const inputStyles =
+export const inputStyles =
   "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm outline-none transition-colors duration-200 hover:border-clinic-500 focus:border-clinic-700 focus:ring-2 focus:ring-clinic-100";
 
 export default function CloudLoginPage() {
@@ -167,7 +167,7 @@ export default function CloudLoginPage() {
         >
           {busy ? "Signing in…" : "Sign In"}
         </button>
-
+        <p className="text-center text-sm"><Link to="/forgot-password" className="font-semibold text-clinic-700 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-clinic-700">Forgot password?</Link></p>
       </form>
     </main>
   );

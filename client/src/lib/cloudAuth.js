@@ -53,6 +53,34 @@ async function authRequest(grantType, payload) {
   }
   return response.json();
 }
+export async function requestPasswordRecovery(email) {
+  if (!cloudAuthEnabled) throw new Error("Supabase Auth is not configured.");
+  const response = await fetch(`${configuredUrl}/auth/v1/recover?redirect_to=${encodeURIComponent(window.location.origin + "/reset-password")}`, {
+    method:"POST",
+    headers:{ apikey:publishableKey, "Content-Type":"application/json" },
+    body:JSON.stringify({email:email.trim()})
+  });
+  if (!response.ok) throw new Error("Unable to send recovery instructions. Please try again later.");
+}
+export async function verifyPasswordRecoveryToken(tokenHash) {
+  const response = await fetch(`${configuredUrl}/auth/v1/verify`, {
+    method:"POST",
+    headers:{ apikey:publishableKey, "Content-Type":"application/json" },
+    body:JSON.stringify({type:"recovery",token_hash:tokenHash})
+  });
+  if (!response.ok) throw new Error("Recovery link is invalid or expired. Request a new link.");
+  const data=await response.json();
+  if (!data.access_token) throw new Error("The recovery session could not be verified.");
+  return data.access_token;
+}
+export async function setRecoveredPassword(accessToken,password) {
+  const response=await fetch(`${configuredUrl}/auth/v1/user`, {
+    method:"PUT",
+    headers:{ apikey:publishableKey, Authorization:`Bearer ${accessToken}`, "Content-Type":"application/json" },
+    body:JSON.stringify({password})
+  });
+  if (!response.ok) throw new Error("Unable to update your password. Request a fresh link and try again.");
+}
 export async function signInCloud(email, password) {
   if (!email?.trim() || !password) throw new Error("Email and password are required.");
   return saveSession(await authRequest("password", { email: email.trim(), password }));
