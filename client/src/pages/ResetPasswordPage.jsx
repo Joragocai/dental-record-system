@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { readRecoveryCallback, validateNewPassword } from "../lib/passwordRecovery";
 import { setRecoveredPassword, verifyPasswordRecoveryToken, clearCloudSession } from "../lib/cloudAuth";
-import { ToothIcon, inputStyles } from "./CloudLoginPage";
+import { inputStyles } from "./CloudLoginPage";
+import ClinicBrandMark from "../components/ClinicBrandMark";
 
 export default function ResetPasswordPage() {
   const callbackRef=useRef(null);
@@ -47,7 +48,7 @@ export default function ResetPasswordPage() {
   return <main className="grid min-h-screen place-items-center bg-[radial-gradient(circle_at_top_left,_rgba(60,122,115,0.15),_transparent_28%),linear-gradient(180deg,_#f8fbfb_0%,_#eef4f4_100%)] px-4 py-8 sm:py-12">
     <form onSubmit={submit} aria-label="Set new password" className="w-full max-w-[420px] space-y-6 rounded-2xl border border-clinic-100 bg-white px-6 py-8 shadow-[0_20px_55px_-25px_rgba(22,53,51,0.30)] sm:px-9 sm:py-9">
       <header className="text-center">
-        <div className="mx-auto mb-4 flex h-[72px] w-[72px] items-center justify-center rounded-2xl bg-clinic-100"><ToothIcon/></div>
+        <div className="mx-auto mb-4 flex h-[72px] w-[72px] items-center justify-center rounded-2xl bg-clinic-100"><ClinicBrandMark/></div>
         <h1 className="text-[22px] font-bold leading-tight tracking-tight text-clinic-900 sm:text-2xl">Khurana Calilap Dental</h1>
         <p className="mt-1 text-sm font-semibold text-clinic-700">Record System</p>
         <p className="mt-3 text-sm leading-relaxed text-slate-600">Create a new password</p>

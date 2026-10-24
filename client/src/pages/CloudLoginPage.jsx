@@ -1,23 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useCloudAuth } from "../context/CloudAuthContext";
-
-export function ToothIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 48 48"
-      fill="none"
-      className="h-9 w-9 text-clinic-700"
-      stroke="currentColor"
-      strokeWidth="2.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M24 11.6c-3.5-2.9-8-3.7-11.4-1.8-4.8 2.8-5.7 8.1-3 14.7 1.9 4.7 3 14.8 7 14.8 3.4 0 3.2-9.5 7.4-9.5s4 9.5 7.4 9.5c4 0 5.1-10.1 7-14.8 2.7-6.6 1.8-11.9-3-14.7-3.4-1.9-7.9-1.1-11.4 1.8Z" />
-    </svg>
-  );
-}
+import ClinicBrandMark from "../components/ClinicBrandMark";
 
 function PasswordVisibilityIcon({ visible }) {
   return (
@@ -91,7 +75,7 @@ export default function CloudLoginPage() {
       >
         <header className="text-center">
           <div className="mx-auto mb-4 flex h-[72px] w-[72px] items-center justify-center rounded-2xl bg-clinic-100">
-            <ToothIcon />
+            <ClinicBrandMark />
           </div>
           <h1 className="text-[22px] font-bold leading-tight tracking-tight text-clinic-900 sm:text-2xl">
             Khurana Calilap Dental
