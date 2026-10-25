@@ -1,551 +1,166 @@
-# DENTAL RECORD SYSTEM
+# Khurana Calilap Dental Record System
 
-A local web-based dental record system for managing patient records, treatment records, appointments, attachments, print/PDF documents, Excel exports, and backups for clinic use.
+A single-clinic dental record management application for patient registration, treatment records, appointments and follow-ups, balances and payments, private attachments, and clinic reporting.
 
-This system replaces the earlier Excel/VBA workflow with a browser-based clinic record system built for local operation on a clinic computer or laptop.
+**Repository:** `dental-presentation`
 
-## Stack
+**Active cloud-development branch:** `feature/single-clinic-cloud`
 
-- Frontend: React + Vite + Tailwind CSS
-- Backend: Node.js + Express
-- Database: SQLite using Node built-in `node:sqlite`
-- Uploads: local filesystem storage
-- Excel export: `exceljs`
-- PDF download: `html2canvas` and `jsPDF`
+**Purpose:** A functional, fictional-data demonstration for interviews and system evaluation. It is not approved for real patient data or clinical production use.
 
-## Project Structure
+> This repository also preserves the original SQLite application. The legacy and cloud workflows are separate. Do not use old SQLite backup or demo-reset procedures against PostgreSQL or Supabase.
+
+## Technology stack
+
+| Layer | Technology | Purpose |
+| --- | --- | --- |
+| Frontend | React, Vite, Tailwind CSS | Responsive clinic workspace and forms |
+| Backend | Node.js, Express | Clinical APIs, authorization, file handling, exports |
+| Cloud database | PostgreSQL (Supabase) | Patients, treatments, appointments, financial ledger |
+| Authentication | Supabase Auth | Single authorized clinic administrator sign-in |
+| Private files | Supabase Storage | Hosted attachments with authenticated server-side access |
+| Hosting | Vercel (client), Render (API) | Separately deployed cloud demo services |
+| Legacy local database | SQLite (`node:sqlite`) | Original local-only implementation and rollback reference |
+| Documents | ExcelJS, html2canvas, jsPDF | Excel reports and print/PDF output |
+
+The cloud branch is designed for one clinic and one authorized account. It is distinct from the separate multi-branch dental V2 project.
+
+## Key features
+
+- **Clinic Home:** Clinic Snapshot, quick actions, today's appointments/follow-ups, recent patients, birthdays, and a schedule-by-date table.
+- **Patients:** Register, search, edit, and review patient profiles, medical alerts, treatment history, and attachments.
+- **Treatments:** Record procedures, dentists, tooth numbers, treatment dates, fees, discounts, and follow-up plans.
+- **Appointments:** Create and edit appointments, manage statuses, and link treatment follow-ups to their own appointment records.
+- **Payments and Balances:** View unpaid, partially paid, and settled treatments; record payments in a ledger, inspect financial history, and review balances.
+- **Attachments:** Upload, preview, download, and delete permitted clinical files. Cloud attachment access is protected by the backend.
+- **Exports:** Print/PDF clinical documents and export supported data to Excel.
+- **Demo controls:** Authorized **Demo Fill** and **Demo Reset** for disposable fictional data in a specifically isolated environment. Fill replaces active demo data; Reset deletes active demo data. Never use these controls for real records.
+- **Account UI:** Protected sign-in, profile menu, and responsive desktop/mobile navigation.
+
+The exact set of hosted features depends on the deployed code revision and environment configuration. Local build or test success does not prove hosted end-to-end behavior.
+
+## Repository layout
 
 ```text
-dental-record-system/
-  client/
-  server/
-  data/
-    dental.db
-  uploads/
-    patients/
-    treatments/
-  exports/
-  backups/
-  Start Dental System.bat
-  Backup System.bat
+dental-presentation/
+  client/                     React/Vite frontend
+    public/                   Public frontend assets
+    src/                      Pages, components, state, API helpers
+    vercel.json               SPA routing configuration
+  server/                     Express backend
+    src/                      Legacy and PostgreSQL/cloud modules
+      db/postgres/migrations/ Versioned PostgreSQL migrations
+    scripts/                  Local startup, demo, and backup scripts
+  docs/                       Setup, migration, deployment, and QA guides
+  data/                       Ignored local runtime data
+  demo-uploads/               Ignored local fictional demo files
+  demo-exports/               Ignored local demo exports
+  demo-backups/               Ignored local demo backups
+  render.yaml                 Cloud API hosting blueprint
+  package.json                npm workspace scripts
   README.md
 ```
 
-## Current Features
+Do not commit runtime files, `.env` files, secrets, downloaded certificates, local databases, clinical attachments, or encrypted backup archives.
 
-### Patient Record Management
+## Prerequisites
 
-- Add, edit, and view patient records
-- Auto-generated Patient ID
-- Patient ID format: `P-YYYY-0001`
-- Patient ID resets yearly, for example:
-  `P-2026-0001`
-  `P-2027-0001`
-- Patient search by name, patient ID, or mobile number
-- Patient classification field:
-  `None`, `Senior Citizen`, `PWD`, `Senior Citizen and PWD`, `Other`
-- Type of Disability appears only for PWD-related classification
-- Branch location field
-- Medical Alert Summary
+- Node.js and npm (use a supported Node version; the Render blueprint uses Node 22).
+- Dependencies installed from the repository root with `npm ci`.
+- For the **local PostgreSQL preview**, a configured local PostgreSQL database and the previously provisioned Supabase Auth account. Refer to `docs/LOCAL_POSTGRES_PREVIEW.md` for the required isolated databases and environment files.
+- For **cloud hosting**, independently configured Vercel, Render, and Supabase projects. Never place backend credentials in Vite variables.
 
-### Treatment Record Management
+Run commands from the project root:
 
-- Add and view treatment records
-- Auto-generated Treatment ID
-- Treatment ID format: `T-YYYY-0001`
-- Treatment ID resets yearly, for example:
-  `T-2026-0001`
-  `T-2027-0001`
-- Treatment date defaults to today but remains editable
-- Treatment date cannot be a future date
-- Procedure choose-or-type field
-- Dentist/s choose-or-type field
-- Tooth number/s
-- Remarks
-- Treatment history per patient
-
-### Payment and Discount Tracking
-
-- Amount Charged
-- Discount Type
-- Discount Percent
-- Discount Amount
-- Net Amount Due
-- Amount Paid
-- Balance
-- Senior Citizen and PWD should not double the discount
-- Senior Citizen and PWD should use only one 20% discount basis unless the clinic confirms otherwise
-
-### Appointment Scheduling
-
-- Schedule Appointment from Patient Record
-- Appointments table/list per patient
-- Edit appointment
-- Appointment status:
-  `Scheduled`, `Completed`, `Cancelled`, `No-show`
-- Only `Scheduled` appointments appear in Dashboard schedules
-- `Completed`, `Cancelled`, and `No-show` remain visible in Patient Record appointment history
-- Planned Procedure choose-or-type field using the same options as Treatment Procedure
-- Blank Planned Procedure displays as `General Appointment`
-- Appointment time is optional
-- Blank appointment time displays as `No final time`
-
-### Follow-up Appointments from Treatment
-
-- Treatment Entry includes:
-  `Next Appointment Date`
-  `Next Appointment Time`
-- Next Appointment Time is optional
-- If Next Appointment Time is entered, Next Appointment Date is required
-- Follow-up appointments from treatment appear in Dashboard schedules
-- Follow-up from Treatment displays status as `Scheduled`
-
-### Dashboard
-
-- Clinic Overview
-- Quick Totals
-- Birthday Reminder card
-- Recent Patients with internal scroll
-- Today's Clinic Schedule
-- Check Schedule by Date
-- Upcoming Appointments was removed from the main Dashboard because Check Schedule by Date is used to view any selected date
-- Dashboard schedule tables use internal scroll where applicable
-- Patient ID is not shown in Dashboard schedule tables because clinic personnel mainly needs name, time, procedure, source, status, contact, and branch
-
-### Birthday Reminders
-
-- Uses the existing patient birthday field
-- Shows `Birthday Today` or `Upcoming Birthday` near the top dashboard area
-- Birthday is treated as a plain date, not a timezone timestamp
-- The lower Birthday Reminders table was removed to avoid duplication
-
-### Attachments
-
-- Patient-level attachments
-- Treatment-level attachments
-- Attachment Category required
-- Allowed files:
-  `jpg`, `jpeg`, `png`, `webp`, `pdf`, `doc`, `docx`, `txt`
-- Unsafe executable, archive, and script files are blocked
-- Maximum attachment size: `20 MB`
-- Download attachments
-- Delete attachments
-- Preview image attachments
-- Print/PDF shows clean attachment display:
-  image preview and category label only
-- Print/PDF hides filename and extra attachment metadata
-
-### Print and PDF
-
-- Patient Record print page
-- Treatment Record print page
-- Patient Treatment History print/PDF
-- Download PDF support
-- Uses Letter-size layout
-- Buttons are excluded from printable/PDF output
-- Print/PDF uses a clean document-style layout
-
-### Excel Export
-
-- Export records to Excel
-- Includes patient and treatment information
-- Includes next appointment date/time where applicable
-
-### Backup
-
-- Backup database and uploaded files
-- Backup includes:
-  `data/`
-  `uploads/`
-  `exports/` if present
-- Restoring only the database without uploads may leave attachment records without files
-
-## Windows Setup
-
-Open Windows PowerShell in the project folder and run:
-
-```powershell
-cd F:\dental-record-system
-npm install --include=optional
-npm run dev
+```bash
+cd ~/projects/dental-presentation
+npm ci
 ```
 
-Expected URLs:
+## Recommended local run: PostgreSQL preview
 
-- Frontend: `http://localhost:5173`
-- Backend: `http://127.0.0.1:3002`
+This previews the cloud-oriented application locally, with clinical records stored in a separate local PostgreSQL database and login through Supabase Auth.
 
-Expected backend message:
-
-```text
-Dental server running at http://127.0.0.1:3002
+```bash
+npm run dev:postgres
 ```
 
-Expected Node warning:
+Open: **http://127.0.0.1:5174**
 
-```text
-ExperimentalWarning: SQLite is an experimental feature
+API: **http://127.0.0.1:3003/api**
+
+The launcher expects:
+
+- `server/.env` with the **disposable local test** PostgreSQL credentials. The launcher explicitly changes its database target to the separate `dental_presentation_local` database.
+- `server/.env.local` with the configured Supabase Auth URL and allowlisted user ID.
+- `client/.env.local` with the browser-safe Supabase settings.
+
+The launcher checks the local source database URL before starting. The demo data must remain entirely fictional. **Do not point local preview or destructive integration tests at hosted Supabase data.** Stop the running processes with `Ctrl+C`.
+
+## Legacy local SQLite modes
+
+These commands remain in the repository for the original local application; they are **not** the PostgreSQL/cloud demo:
+
+| Command | Purpose | Frontend |
+| --- | --- | --- |
+| `npm run dev` | Original SQLite clean mode | http://localhost:5173 |
+| `npm run dev:demo` | Original isolated fictional SQLite demo | http://localhost:5173 |
+| `npm run demo:prepare` | Prepare the legacy SQLite demo dataset | N/A |
+| `npm run demo:reset` | Recreate the original fictional SQLite demo data | N/A |
+| `npm run demo:cleanup` | Remove generated legacy demo data | N/A |
+| `npm run backup:create` | Manual **SQLite/local-files** backup only | N/A |
+
+The legacy backend ordinarily uses port **3002**. Do not run two frontends on the same port. Local SQLite data, local PostgreSQL data, and hosted Supabase data are separate.
+
+The older Windows `.bat` launchers and `startDemo.txt` are not needed for these npm commands. The original SQLite reference implementation remains available in `demo/presentation`; do not remove its underlying source or runtime scripts as part of launcher cleanup.
+
+## Cloud deployment overview
+
+The cloud branch has deployment configuration for:
+
+- **Vercel frontend:** root `client`, build `npm run build`, output `dist`, with SPA rewrites in `client/vercel.json`.
+- **Render backend:** separate `dental-presentation-demo-api` service, build `npm ci`, start `npm run start:cloud --workspace server`, and health check `/api/health`. The repository's `render.yaml` disables automatic deployment.
+- **Supabase:** dedicated PostgreSQL/Auth/private Storage project for the presentation demo.
+
+Backend configuration names include `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_ALLOWED_USER_ID`, `CLOUD_ALLOWED_ORIGINS`, and secure PostgreSQL TLS settings. Frontend configuration uses browser-safe `VITE_*` values such as `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY`.
+
+**Do not copy actual values into the README or Git.** Set secrets in the appropriate private local environment or hosting service. PostgreSQL schema migrations are run through an explicit, separately verified process; the API startup does not automatically migrate a hosted database. Never enable automatic deployment, schema changes, Demo Fill, or Reset without confirming the intended isolated project and safety controls.
+
+For the current procedures and restrictions, see `docs/CLOUD_DEPLOYMENT_READINESS.md`, `docs/SINGLE_CLINIC_CLOUD_MIGRATION.md`, and `docs/HOSTED_DEMO_RESET_SAFETY_GATE_2026-10-24.md`.
+
+## Backups and demo safety
+
+- The legacy `npm run backup:create` backs up the local SQLite application. **It is not a Supabase/PostgreSQL backup.**
+- The cloud backup feature uses a separate controlled workflow for downloadable encrypted `.drb` archives when explicitly enabled and properly configured; do not assume a hosted backup is active or verified.
+- A complete PostgreSQL recovery needs both application database records **and actual private attachment bytes**. A database-only export is not a complete backup.
+- There is **no generally available hosted Restore Backup button** documented for this project. Recovery requires a separately approved and tested procedure.
+- Demo Fill and Demo Reset are destructive to the **active fictional demo dataset**. Independent backup files previously saved outside that dataset are not the same as active records.
+- Use only fictional patients and payments during demonstrations. Never use real clinical, personal, or financial data in the disposable demo.
+
+See `docs/HOSTED_DEMO_BACKUP_ACTIVATION_2026-10-24.md` and `docs/HOSTED_DEMO_BACKUP_RECOVERY_PLAN_2026-10-24.md` for restrictions and recovery planning.
+
+## Build and test
+
+```bash
+npm run build
+node --test
 ```
 
-This warning is expected and is not a crash.
+The first command builds the frontend. The second runs Node's discovered tests; PostgreSQL integration tests requiring opt-in flags may be skipped by default.
 
-## Build Command
+**Database integration tests are destructive by design.** Only run those commands against the explicitly designated, disposable local test database after verifying its identity and contents. Do not reuse credentials for a shared or hosted Supabase project. Use the exact guarded commands documented in `docs/CLOUD_DEPLOYMENT_READINESS.md`.
 
-Run this in Windows PowerShell:
+Before a live demo, manually check sign-in, patient search, fictional patient registration, treatments, appointments, payments, attachments, Excel export, print/PDF, responsive navigation, and logout. A successful build is not a substitute for browser and hosted-environment testing.
 
-```powershell
-npm run build --workspace client
-```
+## Project documentation
 
-## Important Windows / WSL Warning
+- `docs/LOCAL_POSTGRES_PREVIEW.md` — isolated PostgreSQL preview and port setup.
+- `docs/CLOUD_DEPLOYMENT_READINESS.md` — cloud configuration, release gates, and safety checks.
+- `docs/PHASE_04_HOSTED_UI_INTERVIEW_READINESS_2026-10-24.md` — interview walkthrough and visual QA checklist.
+- `docs/PHASE_09_VALIDATION_2026-10-24.md` — last recorded scoped test results and outstanding validation items.
+- `docs/HOSTED_DEMO_RESET_SAFETY_GATE_2026-10-24.md` — destructive demo-control guardrails.
+- `docs/HOSTED_DEMO_BACKUP_ACTIVATION_2026-10-24.md` — encrypted backup feature activation guidance.
 
-Do not run `npm install` in WSL/Linux for this Windows project folder.
+## Repository and release policy
 
-Reason:
-Running `npm install` in WSL may install Linux native optional dependencies such as `esbuild` or `rollup` packages, which can break Windows PowerShell runs.
-
-Use Windows PowerShell for:
-
-- `npm install`
-- `npm run dev`
-- `npm run build --workspace client`
-
-If dependency issues happen, reinstall in Windows PowerShell:
-
-```powershell
-cd F:\dental-record-system
-Remove-Item -Recurse -Force .\node_modules -ErrorAction SilentlyContinue
-Remove-Item -Force .\package-lock.json -ErrorAction SilentlyContinue
-npm cache clean --force
-npm install --include=optional
-npm run dev
-```
-
-## Startup and Launcher
-
-You can start the system in either of these ways:
-
-```powershell
-cd F:\dental-record-system
-npm run dev
-```
-
-or:
-
-```powershell
-Start Dental System.bat
-```
-
-### Start Dental System.bat
-
-- Starts backend and frontend in separate command windows
-- Opens `http://localhost:5173`
-- Should remain inside the project folder
-- Uses the batch file location, so it should not be copied out of the project folder
-
-If a desktop shortcut is needed, create a shortcut to `Start Dental System.bat`.
-Do not copy the `.bat` file itself to Desktop if it relies on project-relative paths.
-
-### Backup System.bat
-
-- Creates a timestamped backup folder
-- Backs up `data/`, `uploads/`, and `exports/` when present
-
-## Local File Locations
-
-- Database file: `data/dental.db`
-- Patient uploads: `uploads/patients/`
-- Treatment uploads: `uploads/treatments/`
-- Excel exports: `exports/`
-- Full system backups: `backups/`
-
-## Normal Clean Use
-
-Use the normal clinic system with:
-
-```powershell
-npm run dev
-```
-
-Clean mode uses only:
-
-- `data/dental.db`
-- `uploads/`
-- `exports/`
-- `backups/`
-
-Clean mode does not prepare demo data, does not show a demo banner, and keeps automatic weekly backup enabled.
-
-## Temporary Demo Use
-
-Prepare the isolated fictional demo environment with:
-
-```powershell
-npm run demo:prepare
-```
-
-Start demo mode with:
-
-```powershell
-npm run dev:demo
-```
-
-Reset the demo back to the original fictional dataset with:
-
-```powershell
-npm run demo:reset
-```
-
-Remove all generated demo runtime data with:
-
-```powershell
-npm run demo:cleanup
-```
-
-Demo mode uses only:
-
-- `data/dental-demo.db`
-- `demo-uploads/`
-- `demo-exports/`
-- `demo-backups/`
-
-Important demo behavior:
-
-- `demo:prepare` is idempotent. It prepares the demo if missing and reuses a valid prepared demo without reseeding it.
-- `demo:prepare` does not reset changes already made inside a valid demo environment.
-- `demo:reset` deletes only generated demo runtime artifacts, then recreates the original fictional dataset.
-- `demo:cleanup` permanently removes generated demo records and files and does not recreate them.
-- Demo data is fictional only and must never be treated as actual clinic data.
-- Clean data is never copied into demo mode.
-- Changes made in demo mode do not affect the clean clinic database.
-- Demo mode provides small fixed `Demo Fill` and `Reset` controls, visible only in demo mode.
-- Automatic weekly and manual backups are enabled in demo mode and write only to `demo-backups/`.
-- Automatic backup is skipped when the demo has no patients, and backups never overlap with Demo Fill or Reset.
-- Demo Fill replaces the demo records, uploads, exports, and demo backup history with fictional records after fixture validation.
-- Reset clears all demo records, manual entries, uploads, exports, and backup history, leaving the demo empty.
-- Attachment upload size is limited to `20 MB per file`.
-
-## Temporary Demo To Clean Client Handover
-
-1. Stop `npm run dev:demo`.
-2. Run `npm run demo:cleanup`.
-3. Confirm `data/dental-demo.db`, `demo-uploads/`, `demo-exports/`, and `demo-backups/` no longer exist.
-4. Confirm generated demo artifacts are not tracked by Git.
-5. Transfer or clone the source repository without ignored local runtime folders.
-6. On the client laptop, run `npm install --include=optional`.
-7. Run `npm run dev`.
-8. Confirm startup reports `Mode: clean`.
-9. Confirm the `DEMO MODE` banner is absent.
-10. Confirm the clean database is newly initialized or contains only the client's own records.
-11. Confirm the Backup page uses `backups/` and automatic backup is enabled.
-
-Notes:
-
-- `data/dental.db`, `uploads/`, `exports/`, and `backups/` are local runtime folders and are ignored by Git.
-- `data/dental-demo.db`, `demo-uploads/`, `demo-exports/`, `demo-backups/`, and `data/dental-demo.marker.json` are also ignored by Git.
-- A normal repository clone does not contain the developer's local database, uploads, exports, backups, or generated demo runtime data.
-- On first clean startup, the application initializes the normal local schema in `data/dental.db`.
-- Do not include a pre-populated clean database in Git.
-
-## API Endpoints
-
-### Patients
-
-- `GET /api/patients`
-- `GET /api/patients/next-id`
-- `GET /api/patients/search?q=`
-- `GET /api/patients/:patientId`
-- `POST /api/patients`
-- `PUT /api/patients/:patientId`
-- `GET /api/patients/:patientId/treatments`
-- `GET /api/patients/:patientId/attachments`
-- `GET /api/patients/:patientId/appointments`
-- `POST /api/patients/:patientId/appointments`
-
-### Treatments
-
-- `GET /api/treatments`
-- `GET /api/treatments/next-id`
-- `GET /api/treatments/:treatmentId`
-- `GET /api/treatments/:treatmentId/attachments`
-- `POST /api/treatments`
-- `PUT /api/treatments/:treatmentId`
-- `POST /api/treatments/:treatmentId/attachments`
-
-### Appointments
-
-- `GET /api/appointments/:appointmentId`
-- `PATCH /api/appointments/:appointmentId`
-- `PATCH /api/appointments/:appointmentId/status`
-
-### Dashboard
-
-- `GET /api/dashboard/summary`
-- `GET /api/dashboard/schedule`
-- `GET /api/dashboard/schedule-by-date?date=YYYY-MM-DD`
-
-### Attachments
-
-- `POST /api/attachments`
-- `GET /api/attachments/:id/download`
-- `DELETE /api/attachments/:id`
-- `GET /uploads/...`
-
-### Exports
-
-- `GET /api/export/patients`
-- `GET /api/export/treatments`
-- `GET /api/export/patients/:patientId/full-record`
-- `GET /api/export/patients/:patientId/treatments`
-
-### Backup
-
-- `GET /api/backup/status`
-- `POST /api/backup`
-
-### Runtime
-
-- `GET /api/runtime/status`
-
-## Attachments
-
-Patient-level attachments are stored in:
-
-- `uploads/patients/`
-
-Treatment-level attachments are stored in:
-
-- `uploads/treatments/`
-
-Allowed file types:
-
-- `jpg`
-- `jpeg`
-- `png`
-- `webp`
-- `pdf`
-- `doc`
-- `docx`
-- `txt`
-
-Blocked file examples:
-
-- `exe`
-- `msi`
-- `bat`
-- `cmd`
-- `sh`
-- `js`
-- `vbs`
-- `ps1`
-- `zip`
-- `rar`
-- `7z`
-- unsupported application files
-
-Attachment records are stored in the database, while uploaded files are stored in the `uploads/` folder. Both the database and the uploads folder must be backed up together.
-
-## Backup and Restore Guide
-
-### Backup
-
-Backup protects:
-
-- `data/dental.db`
-- `data/dental.db-shm` if present
-- `data/dental.db-wal` if present
-- `uploads/patients/`
-- `uploads/treatments/`
-- other upload subfolders under `uploads/`
-- `exports/` if present
-
-Use either:
-
-1. The Backup page in the app
-2. `Backup System.bat`
-
-Important:
-
-- A backup is incomplete if it includes only the database and not the uploads folder.
-- For real clinic use, copy the backup folder to an external drive, another computer, or secure cloud storage.
-- Demo mode does not run automatic backups.
-- Manual demo backups, when created, stay inside `demo-backups/` and do not affect clean clinic backup history.
-
-### Manual Restore
-
-1. Close the dental system.
-2. Make a safety copy of the current `data/`, `uploads/`, and `exports/` folders.
-3. Open the selected backup folder.
-4. Copy backup `data/` into the project `data/` folder.
-5. Copy backup `uploads/` into the project `uploads/` folder.
-6. Copy `exports/` if needed.
-7. Restart the system.
-8. Verify patient records, treatment records, appointments, and attachments.
-
-Important:
-
-- Restore both database and uploads.
-- Restoring only `dental.db` may leave attachment records without actual files.
-
-## Test Flow
-
-1. Start the system.
-2. Add a patient.
-3. Search for a patient.
-4. Edit a patient.
-5. Add a treatment.
-6. Edit a treatment.
-7. Schedule an appointment from Patient Record.
-8. Edit an appointment.
-9. Add a patient attachment.
-10. Add a treatment attachment.
-11. Preview an image attachment.
-12. Download an attachment.
-13. Delete an attachment.
-14. Print Patient Record.
-15. Download Patient PDF.
-16. Print Treatment Record.
-17. Download Treatment PDF.
-18. Print or download Patient Treatment History.
-19. Export Excel.
-20. Create backup.
-21. Verify the backup contains both `data/` and `uploads/`.
-
-## Data Safety Notes
-
-- Do not delete `data/dental.db` if real clinic data exists.
-- Do not delete `uploads/` if real patient or treatment attachments exist.
-- Do not delete `backups/` unless intentionally cleaning old backups.
-- Always create a backup before updating the system.
-
-## Current Limitations
-
-- Local computer/laptop system only
-- No cloud sync yet
-- No full calendar page yet
-- No SMS or email reminders yet
-- No login/authentication yet
-- Backups and restores are manual/local
-- Appointments are managed through Patient Record and Dashboard, not a full calendar module
-
-## Git and Local Files
-
-The following should not be committed:
-
-- `node_modules/`
-- `data/*.db`
-- `data/*.db-shm`
-- `data/*.db-wal`
-- `uploads/`
-- `exports/`
-- `backups/`
-- `.env` files
-- local AI/Codex folders such as `.agents` and `.codex`
-
-## Notes
-
-- The app is localhost-only.
-- SQLite database is local at `data/dental.db`.
-- Uploaded files are local in `uploads/`.
-- Database and uploads must be backed up together.
-- Do not run `npm audit fix --force` unless carefully reviewed.
+The `feature/single-clinic-cloud` branch contains the cloud demo work. `main` and `demo/presentation` preserve older local-application history. Do not merge, force-push, or deploy to real clinical use without an explicit release review. Review `git status`, run tests, and verify deployment settings before pushing changes that could trigger a hosted build.
