@@ -105,7 +105,7 @@ export default function Layout({ children, contentClassName = "" }) {
                 ref={toggleRef}
                 type="button"
                 aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-                aria-controls="mobile-primary-navigation"
+                aria-controls="compact-primary-navigation"
                 aria-expanded={menuOpen}
                 onClick={() => setMenuOpen((open) => !open)}
                 className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-clinic-900 transition-colors hover:border-clinic-700 hover:bg-clinic-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clinic-700 min-[1440px]:hidden"
@@ -114,7 +114,6 @@ export default function Layout({ children, contentClassName = "" }) {
                   {menuOpen ? <path d="M5 5l14 14M19 5L5 19" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
                 </svg>
               </button>
-              {isCloud ? <div className="hidden md:block"><AccountProfileDropdown /></div> : null}
             </div>
           </div>
           <nav aria-label="Main navigation" className="hidden min-w-0 items-center justify-center gap-2 min-[1440px]:flex min-[1600px]:gap-5 min-[1920px]:gap-7">
@@ -123,11 +122,11 @@ export default function Layout({ children, contentClassName = "" }) {
           {isCloud ? <div className="hidden min-[1440px]:flex min-[1440px]:min-w-0 min-[1440px]:justify-end"><AccountProfileDropdown /></div> : null}
           <nav
             ref={menuRef}
-            id="mobile-primary-navigation"
-            aria-label="Mobile navigation"
-            className={`${menuOpen ? "block" : "hidden"} absolute left-4 right-4 top-[calc(100%-0.35rem)] z-50 max-h-[min(75vh,calc(100dvh-6rem))] overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_45px_-20px_rgba(22,53,51,0.35)] sm:left-6 sm:right-6 lg:left-8 lg:right-8 min-[1440px]:hidden`}
+            id="compact-primary-navigation"
+            aria-label="Navigation and account menu"
+            className={`${menuOpen ? "block" : "hidden"} absolute right-4 top-[calc(100%-0.35rem)] z-50 w-[calc(100%-2rem)] max-h-[min(75vh,calc(100dvh-6rem))] overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_45px_-20px_rgba(22,53,51,0.35)] sm:right-6 sm:w-[min(22.5rem,calc(100%-3rem))] lg:right-8 min-[1440px]:hidden`}
           >
-            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-1">
               <NavigationLinks location={location} mobile onNavigate={() => setMenuOpen(false)} />
             </div>
             {isCloud ? <MobileAccountSection onSignedOut={() => setMenuOpen(false)} /> : null}

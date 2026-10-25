@@ -2,8 +2,8 @@ import { useId, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCloudAuth } from "../context/CloudAuthContext";
 
-// The account controls are part of the navigation sheet only on small screens.
-// Larger screens retain their existing header profile dropdown.
+// Mobile and tablet share account controls inside the compact navigation menu.
+// Only desktop screens (1440px and wider) use the header profile dropdown.
 export default function MobileAccountSection({ onSignedOut }) {
   const { enabled, session, signOut } = useCloudAuth();
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -32,7 +32,7 @@ export default function MobileAccountSection({ onSignedOut }) {
   }
 
   return (
-    <section aria-label="Clinic account" className="mt-3 border-t border-slate-200 pt-3 md:hidden">
+    <section aria-label="Clinic account" className="mt-3 border-t border-slate-200 pt-3">
       <div className="flex items-center gap-3 px-3 py-2">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-clinic-100 text-clinic-700">
           <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
