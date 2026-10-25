@@ -22,6 +22,7 @@ export function createCloudApp({ config = getSupabaseAuthConfig(), verifier, poo
       return cb(new Error("Origin is not allowed."));
     },
     allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Content-Disposition"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
   }));
   app.use(express.json({ limit: "1mb" }));
@@ -34,7 +35,7 @@ export function createCloudApp({ config = getSupabaseAuthConfig(), verifier, poo
   app.use("/api", createCloudAttachmentsRouter(pool));
   app.use("/api", createCloudDemoRouter(pool));
   app.use("/api", createCloudExportsRouter(pool));
-  app.use("/api", createCloudBackupRouter());
+  app.use("/api", createCloudBackupRouter(pool));
   app.use("/api", (_req, res) => res.status(404).json({ message: "Endpoint not available in cloud mode." }));
   app.use((error, _req, res, _next) => {
     if (error?.status) return res.status(error.status).json({ message: error.message });

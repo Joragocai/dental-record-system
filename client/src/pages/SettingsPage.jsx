@@ -104,7 +104,7 @@ export default function SettingsPage() {
         await downloadCloudBackup(backupPassphrase);
         setBackupPassphrase("");
         setBackupPassphraseConfirm("");
-        setStatus("Encrypted backup download started. Keep the file and passphrase in separate safe places.");
+        setStatus("Encrypted export generated and download initiated. Check that the .drb file was saved, and keep its passphrase separately.");
       } else {
         await createBackup();
         setStatus("Backup created successfully.");
@@ -121,11 +121,14 @@ export default function SettingsPage() {
     }
   }
 
-  const showWarning =
+  const showWarning = !cloudAuthEnabled && (
     backupStatus?.lastBackupStatus === "failed" ||
-    backupStatus?.isBackupOverdue;
+    backupStatus?.isBackupOverdue
+  );
 
   const latestBackup = getLatestBackupDisplay(backupStatus);
+  const latestCloudExport = backupStatus?.latestExport;
+  const cloudEmptyState = backupStatus ? "No exports recorded yet" : "Export history unavailable";
 
   const buttonState = getManualBackupButtonState({
     backupStatus,
@@ -170,7 +173,9 @@ export default function SettingsPage() {
             </h1>
 
             <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              {actionDescription}
+              {cloudAuthEnabled
+                ? "Export an encrypted copy of your demo patient records, treatments, and private attachments. Save the file and its passphrase separately."
+                : actionDescription}
             </p>
           </div>
 
@@ -244,6 +249,24 @@ export default function SettingsPage() {
             </div>
           </section>
 
+          {cloudAuthEnabled ? (
+            <section className="mt-6" aria-label="Export overview">
+              <h2 className="text-lg font-semibold text-slate-900">Export Overview</h2>
+              <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+                <OverviewItem
+                  label="Latest Export Generated"
+                  primary={isLoading ? "Loading..." : latestCloudExport ? formatBackupDateTime(latestCloudExport.generatedAt) : cloudEmptyState}
+                  secondary={latestCloudExport ? "Generated on the cloud server" : ""}
+                />
+                <OverviewItem
+                  label="Last Manual Export"
+                  primary={isLoading ? "Loading..." : latestCloudExport ? formatBackupDateTime(latestCloudExport.generatedAt) : cloudEmptyState}
+                  secondary={latestCloudExport?.filename || ""}
+                />
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-slate-500">Export history is synchronized through the clinic's cloud database for this account. It confirms that an encrypted export was generated, not that the file was saved or verified on your device. Keep your .drb file and passphrase securely; neither is stored in the export history.</p>
+            </section>
+          ) : <>
           <section className="mt-6">
             <h2 className="text-lg font-semibold text-slate-900">
               Backup Overview
@@ -291,8 +314,8 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {runtimeStatus.isDemoMode ? (
-            <p className="mt-5 text-xs text-slate-500">{cloudAuthEnabled ? "Downloaded backup files are independent of Demo Fill and Reset. Save them outside the demo database." : "Demo tools note: Reset clears locally stored demo backups along with demo records."}</p>
+          {runtimeStatus.isDemoMode && !cloudAuthEnabled ? (
+            <p className="mt-5 text-xs text-slate-500">Demo tools note: Reset clears locally stored demo backups along with demo records.</p>
           ) : null}
 
           <section className="mt-6 min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-4 sm:px-5 sm:py-5">
@@ -329,8 +352,7 @@ export default function SettingsPage() {
               </div>
             </div>
           </section>
-
-          
+          </>}
         </div>
       </section>
     </Layout>

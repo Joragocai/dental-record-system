@@ -207,7 +207,10 @@ export async function downloadPrivateAttachmentFile(attachment) {
 
 export async function downloadCloudBackup(passphrase) {
   const response = await api.post("/backup/download", { passphrase }, { responseType: "blob", timeout: 120000 });
-  const filename = `dental-demo-backup-${new Date().toISOString().slice(0, 10)}.drb`;
+  // Use the server-generated filename so the downloaded file matches cloud history.
+  const disposition = String(response.headers?.["content-disposition"] || "");
+  const filename = disposition.match(/filename="(dental-demo-backup-[0-9]{8}-[0-9]{6}[.]drb)"/)?.[1];
+  if (!filename) throw new Error("Backup response is missing a valid export filename.");
   const url = URL.createObjectURL(response.data);
   try {
     const link = document.createElement("a");
